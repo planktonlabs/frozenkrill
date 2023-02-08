@@ -1,0 +1,59 @@
+name: Releases
+on:
+  push:
+    tags:
+      - "*"
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v2
+      - name: Show cargo version
+        run: cargo --version
+      - name: Install cross
+        run: |
+          cargo install cross --git https://github.com/cross-rs/cross
+      - name: Fetch
+        run: |
+          cargo fetch --locked
+      - name: Build x86_64-unknown-linux-gnu
+        run: |
+          cargo build --target=x86_64-unknown-linux-gnu --release --frozen
+      - name: Test x86_64-unknown-linux-gnu
+        run: |
+          cargo test --target=x86_64-unknown-linux-gnu --release --frozen --workspace --features cli_tests -- --nocapture
+      - name: Build x86_64-unknown-linux-musl
+        run: |
+          cargo clean && cross build --target=x86_64-unknown-linux-musl --release --frozen
+      - name: Test x86_64-unknown-linux-musl
+        run: |
+          cross test --target=x86_64-unknown-linux-musl --release --frozen --workspace --features cli_tests -- --nocapture --test-threads 1
+      - name: Package x86_64-unknown-linux-musl
+        run: |
+          mv target/x86_64-unknown-linux-musl/release/frozenkrill . && tar cvzf "frozenkrill-x86_64_linux.tar.gz" frozenkrill
+      - name: Build armv7-unknown-linux-musleabihf
+        run: |
+          cargo clean && cross build --target=armv7-unknown-linux-musleabihf --release --frozen
+      - name: Test armv7-unknown-linux-musleabihf
+        run: |
+          cross test --target=armv7-unknown-linux-musleabihf --release --frozen --workspace -- --nocapture --test-threads 1
+      - name: Package armv7-unknown-linux-musleabihf
+        run: |
+          mv target/armv7-unknown-linux-musleabihf/release/frozenkrill . && tar cvzf "frozenkrill-armv7_linux.tar.gz" frozenkrill
+      - name: Build aarch64-unknown-linux-musl
+        run: |
+          cargo clean && cross build --target=aarch64-unknown-linux-musl --release --frozen
+      - name: Test aarch64-unknown-linux-musl
+        run: |
+          cross test --target=aarch64-unknown-linux-musl --release --frozen --workspace -- --nocapture --test-threads 1
+      - name: Package aarch64-unknown-linux-musl
+        run: |
+          mv target/aarch64-unknown-linux-musl/release/frozenkrill . && tar cvzf "frozenkrill-aarch64_linux.tar.gz" frozenkrill
+      - uses: ncipollo/release-action@v1
+        with:
+          artifacts: "frozenkrill-x86_64_linux.tar.gz,frozenkrill-armv7_linux.tar.gz,frozenkrill-aarch64_linux.tar.gz"
+          bodyFile: "Release.md"
+          prerelease: true
+          draft: true
