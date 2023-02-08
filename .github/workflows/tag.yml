@@ -1,0 +1,72 @@
+name: Releases
+on:
+  push:
+    tags:
+      - "*"
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v2
+      - name: Show cargo version
+        run: cargo --version
+      - name: Update versions
+        run: |
+          export VERSION_SHA="${{ github.ref_name }}:${{ github.sha }}"
+          sed -i "s/\"0.0.0\"/\"${VERSION_SHA}\"/g" src/main.rs
+      - name: Install cross
+        run: |
+          cargo install cross --git https://github.com/cross-rs/cross
+      - name: Fetch
+        run: |
+          cargo fetch --locked
+      - name: Build x86_64-unknown-linux-gnu
+        run: |
+          cargo build --target=x86_64-unknown-linux-gnu --release --frozen
+      - name: Test x86_64-unknown-linux-gnu
+        run: |
+          cargo test --target=x86_64-unknown-linux-gnu --release --frozen --workspace --features cli_tests -- --nocapture
+      - name: Build x86_64-unknown-linux-musl
+        run: |
+          cargo clean && cross build --target=x86_64-unknown-linux-musl --release --frozen
+      - name: Test x86_64-unknown-linux-musl
+        run: |
+          cross test --target=x86_64-unknown-linux-musl --release --frozen --workspace --features cli_tests -- --nocapture --test-threads 1
+      - name: Package x86_64-unknown-linux-musl
+        run: |
+          mkdir -p frozenkrill-x86_64-linux &&
+            mv target/x86_64-unknown-linux-musl/release/frozenkrill frozenkrill-x86_64-linux
+      - name: Build armv7-unknown-linux-musleabihf
+        run: |
+          cargo clean && cross build --target=armv7-unknown-linux-musleabihf --release --frozen
+      - name: Test armv7-unknown-linux-musleabihf
+        run: |
+          cross test --target=armv7-unknown-linux-musleabihf --release --frozen --workspace -- --nocapture --test-threads 1
+      - name: Package armv7-unknown-linux-musleabihf
+        run: |
+          mkdir -p frozenkrill-armv7-linux &&
+            mv target/armv7-unknown-linux-musleabihf/release/frozenkrill frozenkrill-armv7-linux
+      - name: Build aarch64-unknown-linux-musl
+        run: |
+          cargo clean && cross build --target=aarch64-unknown-linux-musl --release --frozen
+      - name: Test aarch64-unknown-linux-musl
+        run: |
+          cross test --target=aarch64-unknown-linux-musl --release --frozen --workspace -- --nocapture --test-threads 1
+      - name: Package aarch64-unknown-linux-musl
+        run: |
+          mkdir -p frozenkrill-aarch64-linux &&
+            mv target/aarch64-unknown-linux-musl/release/frozenkrill frozenkrill-aarch64-linux
+      - name: Finalize packages and create manifest
+        run: |
+          for i in frozenkrill-x86_64-linux frozenkrill-armv7-linux frozenkrill-aarch64-linux; do
+            tar cvzf ${i}.tar.gz $i
+            sha512sum ${i}.tar.gz $i/* >> sha512-manifest-checksums.txt
+          done
+      - uses: ncipollo/release-action@v1
+        with:
+          artifacts: "frozenkrill-x86_64-linux.tar.gz,frozenkrill-armv7-linux.tar.gz,frozenkrill-aarch64-linux.tar.gz,sha512-manifest-checksums.txt"
+          bodyFile: "Release.md"
+          prerelease: true
+          draft: true

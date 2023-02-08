@@ -1,0 +1,40 @@
+[package]
+name = "frozenkrill"
+version = "0.0.0"
+edition = "2021"
+
+[workspace]
+members = ["frozenkrill-core"]
+
+[dependencies]
+base32 = "0.4"
+clap = { version = "4", features = ["derive"] }
+const_format = "0.2"
+current_platform = "0.2"
+dialoguer = { git = "https://github.com/galtland/dialoguer", branch = "master", features = ["fuzzy-select"] }
+frozenkrill-core = {path = "./frozenkrill-core"}
+indicatif = "0.17"
+mockall = "0.11"
+path-absolutize = "3"
+qr2term = "0.3"
+serde = { version = "1", features = ["derive"] }
+termimad = "0.20"
+zxcvbn = "2"
+rexpect = { git = "https://github.com/galtland/rexpect", branch = "verbose", optional = true }
+
+[features]
+default = []
+cli_tests = ["rexpect"]
+
+[dev-dependencies]
+pretty_assertions = "1"
+tempdir = "0.3"
+
+[profile.release]
+strip = true
+
+[profile.dev]
+opt-level = 1
+
+[profile.dev.package."*"]
+opt-level = 3
