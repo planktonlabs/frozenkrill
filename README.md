@@ -328,7 +328,7 @@ If you want to make a donation, you can get a lightning invoice or bitcoin addre
 
 # Contact
 
-You can open an [issue on github](https://github.com/planktonlabs/frozenkrill/issues) or send an email to the main author: Data Retriever <dr AT galtland DOT io>
+You can open an [issue on github](https://github.com/planktonlabs/frozenkrill/issues) or send an email to the main author Data Retriever: dr AT galtland DOT io
 
 # License
 frozenkrill is distributed under the terms of both the MIT license and the Apache License (Version 2.0).
