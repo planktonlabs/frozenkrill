@@ -205,10 +205,13 @@ fn ask_open_signers(
         .default(0)
         .allow_empty(false)
         .validate_with(|v: &u32| {
-            if *v <= configuration.total {
+            if *v <= configuration.required {
                 Ok(())
             } else {
-                Err(format!("This wallet has only {} keys", configuration.total))
+                Err(format!(
+                    "This wallet requires only {} keys, you can't load more than that",
+                    configuration.required
+                ))
             }
         })
         .interact_on(term)?;

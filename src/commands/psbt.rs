@@ -73,6 +73,8 @@ pub(super) fn sign_core(
             return Ok(());
         }
     }
+    let new_sigs = partial_sigs_count_after - partial_sigs_count_before;
+
     let fee = psbt.fee()?;
     let change_addresses = wallet.derive_change_addresses(0, 100, secp)?;
     for output in &psbt.outputs {
@@ -109,6 +111,7 @@ pub(super) fn sign_core(
     {
         save_psbt_file(&psbt, signed_psbt_output_file_path)?;
         log::info!("Saved signed PSBT to {signed_psbt_output_file_path:?}");
+        log::info!("Added {new_sigs} new signatures");
         Ok(())
     } else {
         Ok(())
