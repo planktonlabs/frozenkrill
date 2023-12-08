@@ -97,6 +97,8 @@ pub struct SinglesigJsonWalletPublicExportV0 {
     multisig_derivation_path: String,
     singlesig_receiving_output_descriptor: String,
     singlesig_change_output_descriptor: String,
+    multisig_receiving_output_descriptor_key: String,
+    multisig_change_output_descriptor_key: String,
     script_type: String,
     network: String,
     receiving_addresses: Vec<JsonDerivedAddressInfo>,
@@ -122,6 +124,12 @@ impl SinglesigJsonWalletPublicExportV0 {
                 .receiving_singlesig_output_descriptor()?
                 .to_string(),
             singlesig_change_output_descriptor: w.change_singlesig_output_descriptor()?.to_string(),
+            multisig_receiving_output_descriptor_key: w
+                .receiving_multisig_public_descriptor()
+                .to_string(),
+            multisig_change_output_descriptor_key: w
+                .change_multisig_public_descriptor()
+                .to_string(),
             script_type: w.script_type.to_string(),
             network: w.network.to_string(),
             receiving_addresses: receiving_addresses.into_iter().map(Into::into).collect(),
@@ -320,6 +328,8 @@ mod tests {
             singlesig_derivation_path: "m/84'/0'/0'".into(),
             singlesig_receiving_output_descriptor: "wpkh([73c5da0a/84'/0'/0']xpub6CatWdiZiodmUeTDp8LT5or8nmbKNcuyvz7WyksVFkKB4RHwCD3XyuvPEbvqAQY3rAPshWcMLoP2fMFMKHPJ4ZeZXYVUhLv1VMrjPC7PW6V/0/*)#wc3n3van".into(),
             singlesig_change_output_descriptor: "wpkh([73c5da0a/84'/0'/0']xpub6CatWdiZiodmUeTDp8LT5or8nmbKNcuyvz7WyksVFkKB4RHwCD3XyuvPEbvqAQY3rAPshWcMLoP2fMFMKHPJ4ZeZXYVUhLv1VMrjPC7PW6V/1/*)#lv5jvedt".into(),
+            multisig_receiving_output_descriptor_key: "[73c5da0a/48'/0'/0'/2']xpub6DkFAXWQ2dHxq2vatrt9qyA3bXYU4ToWQwCHbf5XB2mSTexcHZCeKS1VZYcPoBd5X8yVcbXFHJR9R8UCVpt82VX1VhR28mCyxUFL4r6KFrf/0/*".into(),
+            multisig_change_output_descriptor_key: "[73c5da0a/48'/0'/0'/2']xpub6DkFAXWQ2dHxq2vatrt9qyA3bXYU4ToWQwCHbf5XB2mSTexcHZCeKS1VZYcPoBd5X8yVcbXFHJR9R8UCVpt82VX1VhR28mCyxUFL4r6KFrf/1/*".into(),
             network: "bitcoin".into(),
             receiving_addresses: vec![
                 JsonDerivedAddressInfo {
