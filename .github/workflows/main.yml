@@ -19,6 +19,8 @@ jobs:
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v3
+      - name: rustup update
+        run: rustup update
       - name: Show cargo version
         run: cargo --version
       - name: Show rustc version
