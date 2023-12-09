@@ -24,6 +24,8 @@ jobs:
       - name: Install cross
         run: |
           cargo install cross --git https://github.com/cross-rs/cross
+      - name: Cargo clean
+        run: cargo clean
       - name: Show Cargo.lock hash
         run: sha256sum Cargo.lock
       - name: Fetch
