@@ -259,6 +259,12 @@ mod tests {
                 )
             })
             .collect::<anyhow::Result<Vec<_>>>()?;
+        // Try to sign PSBTs using the singlesig wallet
+        let mut psbt = open_psbt_file(&psbt_path)?;
+        for signer in &signers {
+            let n: usize = signer.sign_psbt(&mut psbt, &secp)?.try_into()?;
+            assert_eq!(n, 1);
+        }
         let encrypted_wallet = read_decode_wallet(&output_file_path_encrypted)?;
         let wallet = common::multisig::multisig_core_open(
             theme.as_ref(),
@@ -279,6 +285,7 @@ mod tests {
             "wsh(sortedmulti(2,[73c5da0a/48'/1'/0'/2']tpubDFH9dgzveyD8zTbPUFuLrGmCydNvxehyNdUXKJAQN8x4aZ4j6UZqGfnqFrD4NqyaTVGKbvEW54tsvPTK2UoSbCC1PJY8iCNiwTL3RWZEheQ/0/*,[7f4d5c70/48'/1'/0'/2']tpubDFHGoJYXaCkKaEDP9Tt5mQA9uCuXdLeXqbJGagwKsffJJbfMGoBfzgrJtAu4oWLsxJFSytQhzpBE74jQ77eJZPwtags3yEqZ7DEp7VGfSvz/0/*,[98d0d15a/48'/1'/0'/2']tpubDF83NP8zFt9V85eg5zWKNHu5R17i6kAwEocvLcEGFctCB1VJrqupjvGDwepLTDVNTDZkPjzwTNgvVijmvKhsDreMjGLbAadaUCaDoXDoMeB/0/*))#tfc0mal5",
             json_wallet.expose_secret().receiving_output_descriptor
         );
+        // Try to sign PSBTs using the multisig wallet
         let mut psbt = open_psbt_file(&psbt_path)?;
         let mut psbt2 = open_psbt_file(&psbt2_path)?;
         let n: u32 = wallet.sign_psbt(&mut psbt, &secp)?.try_into()?;

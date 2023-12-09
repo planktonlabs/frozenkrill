@@ -636,13 +636,21 @@ impl PsbtWallet for SingleSigWalletDescriptionV0 {
         psbt: &mut wallet::psbt::Psbt,
         secp: &Secp256k1<All>,
     ) -> anyhow::Result<usize> {
-        let keys = self.get_psbt_singlesig_keys();
-        let n = sign_psbt(psbt, &keys, secp)?;
+        let mut n = 0;
+        for keys in [
+            self.get_psbt_singlesig_keys(),
+            self.get_psbt_multisig_keys(),
+        ] {
+            n += sign_psbt(psbt, &keys, secp)?;
+        }
         Ok(n)
     }
 
     fn get_pub_fingerprints(&self) -> Vec<Fingerprint> {
-        vec![self.get_singlesig_pub_fingerprint()]
+        vec![
+            self.get_singlesig_pub_fingerprint(),
+            self.get_multisig_pub_fingerprint(),
+        ]
     }
 
     fn derive_change_addresses(
