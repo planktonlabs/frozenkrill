@@ -218,6 +218,25 @@ mod tests {
         assert_eq!(
             "Vpub5n9Cny7T8XGH2QofyDniyNyawwZEy4r4n1KCacMx9Wz45Hw6TfPjhEj8QRraqdJhaaYujwhqRc2amUdRa67zDyF4csqJXJ1LsXnzAKC3Hmj",
             signers[2].encoded_multisig_xpub());
+
+        assert_eq!(
+            "wpkh([73c5da0a/84'/1'/0']tpubDC8msFGeGuwnKG9Upg7DM2b4DaRqg3CUZa5g8v2SRQ6K4NSkxUgd7HsL2XVWbVm39yBA4LAxysQAm397zwQSQoQgewGiYZqrA9DsP4zbQ1M/0/*)#2ag6nxcd",
+            signers[0]
+                .receiving_singlesig_output_descriptor()?
+                .to_string()
+        );
+        assert_eq!(
+            "wpkh([98d0d15a/84'/1'/0']tpubDD944mr5LAG9roWx4BiFiepQa14md36G1RhrRZ8q9LAstuzTzBuGTs81aQfskaA88gJxqk2bDUXTJjcBhQwMqCZxGa1BACAwsei6vKP4vsU/0/*)#h9dvq9qs",
+            signers[1]
+                .receiving_singlesig_output_descriptor()?
+                .to_string()
+        );
+        assert_eq!(
+            "wpkh([7f4d5c70/84'/1'/0']tpubDCJzBahFj9ZuXSnvZwemfzLpXJPKeiPVpqhrj5ZvSe8Kpu6rHJ7o7BJ7LfbaY3twqzkyrkijJq9wYPyyBhkckzY2JnENJsTt1wSL3b4xTmx/0/*)#3eq3976z",
+            signers[2]
+                .receiving_singlesig_output_descriptor()?
+                .to_string()
+        );
         let receiving_descriptors = signers
             .iter()
             .map(|s| s.receiving_multisig_public_descriptor())

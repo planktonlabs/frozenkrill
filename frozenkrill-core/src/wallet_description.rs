@@ -547,7 +547,7 @@ impl SingleSigWalletDescriptionV0 {
         }
     }
 
-    pub(crate) fn receiving_singlesig_output_descriptor(
+    pub fn receiving_singlesig_output_descriptor(
         &self,
     ) -> anyhow::Result<Descriptor<DescriptorPublicKey>> {
         match self.script_type {
@@ -557,7 +557,7 @@ impl SingleSigWalletDescriptionV0 {
         }
     }
 
-    pub(crate) fn change_singlesig_output_descriptor(
+    pub fn change_singlesig_output_descriptor(
         &self,
     ) -> anyhow::Result<Descriptor<DescriptorPublicKey>> {
         match self.script_type {
