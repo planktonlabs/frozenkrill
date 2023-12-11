@@ -16,11 +16,11 @@ pub fn open_create_file(output_file_path: &Path) -> anyhow::Result<BufWriter<Fil
     ))
 }
 
-pub fn create_file(data: &[u8], output_file_path: &Path) -> anyhow::Result<()> {
+pub fn create_file<'a>(data: &[u8], output_file_path: &'a Path) -> anyhow::Result<&'a Path> {
     let mut f = open_create_file(output_file_path)?;
     f.write_all(data).context("failure writing final data")?;
     f.flush().context("failure flushing final data")?;
-    Ok(())
+    Ok(output_file_path)
 }
 
 pub fn open_file(path: &Path) -> anyhow::Result<File> {

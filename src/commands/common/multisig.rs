@@ -1,17 +1,22 @@
 use std::{
     collections::HashSet,
+    io::Read,
     path::{Path, PathBuf},
+    str::{from_utf8, FromStr},
     sync::Arc,
 };
 
 use dialoguer::{console::Term, theme::Theme};
 use frozenkrill_core::{
-    anyhow,
+    anyhow::{self, ensure, Context},
     bitcoin::secp256k1::{All, Secp256k1},
     key_derivation::KeyDerivationDifficulty,
-    log, parse_keyfiles_paths,
+    log::{self, debug, info},
+    miniscript::DescriptorPublicKey,
+    parse_keyfiles_paths,
     secrecy::{ExposeSecret, Secret, SecretString},
-    utils,
+    serde_json,
+    utils::{self, buf_open_file},
     wallet_description::{
         self, read_decode_wallet, EncryptedWalletDescription, MultiSigWalletDescriptionV0,
         MultisigJsonWalletDescriptionV0, MultisigType, SigType, SingleSigWalletDescriptionV0,
@@ -111,22 +116,45 @@ pub(crate) fn parse_multisig_input(
             }
             _ => anyhow::bail!("Unrecognized json file {i:?}"),
         },
-        Err(_) => {
-            let e = EncryptedWalletDescription::from_path(i)?;
-            let v = loop {
-                match ask_try_decrypt(i, &e, theme, term, secp) {
-                    Ok(r) => break r,
-                    Err(e) => {
-                        eprintln!("{e:?}");
-                        if !ask_try_open_again_multisig_parse_multisig_input(theme, term)? {
-                            anyhow::bail!("Aborting because we couldn't open all desired signers")
+        Err(e) => {
+            debug!("Failed to parse {i:?} as public info export json: {e:?}");
+            match try_parse_input_as_simple_descriptor(i) {
+                Ok((receiving, change)) => {
+                    receiving_descriptors.extend(receiving);
+                    change_descriptors.extend(change);
+                }
+                Err(e) => {
+                    debug!("Failed to parse {i:?} as a simple multisig descriptor: {e:?}");
+                    match try_parse_input_as_coldcard_json(i) {
+                        Ok((receiving, change)) => {
+                            receiving_descriptors.extend(receiving);
+                            change_descriptors.extend(change);
+                        }
+                        Err(e) => {
+                            debug!("Failed to parse {i:?} as a coldcard json export: {e:?}");
+                            let e = EncryptedWalletDescription::from_path(i)?;
+                            let v = loop {
+                                match ask_try_decrypt(i, &e, theme, term, secp) {
+                                    Ok(r) => break r,
+                                    Err(e) => {
+                                        info!("{e:?}");
+                                        if !ask_try_open_again_multisig_parse_multisig_input(
+                                            theme, term,
+                                        )? {
+                                            anyhow::bail!(
+                                                "Aborting because we couldn't open all desired signers"
+                                            )
+                                        }
+                                    }
+                                }
+                            };
+                            receiving_descriptors.insert(v.receiving_multisig_public_descriptor());
+                            change_descriptors.insert(v.change_multisig_public_descriptor());
+                            signers.push(v);
                         }
                     }
                 }
-            };
-            receiving_descriptors.insert(v.receiving_multisig_public_descriptor());
-            change_descriptors.insert(v.change_multisig_public_descriptor());
-            signers.push(v);
+            }
         }
     };
     Ok(MultisigInputs {
@@ -134,6 +162,56 @@ pub(crate) fn parse_multisig_input(
         change_descriptors,
         signers,
     })
+}
+
+fn try_parse_input_as_simple_descriptor(
+    input: &Path,
+) -> anyhow::Result<(HashSet<DescriptorPublicKey>, HashSet<DescriptorPublicKey>)> {
+    let mut input = buf_open_file(input)?;
+    let mut buffer = [0u8; 256]; // a valid descriptor is certainly less than 200 bytes
+    let n = input.read(&mut buffer)?;
+    let s = from_utf8(&buffer[0..n])?.trim();
+    let receiving = DescriptorPublicKey::from_str(&s.replace("/<0;1>/*", "/0/*"))?;
+    let change =
+        DescriptorPublicKey::from_str(&s.replace("/<0;1>/*", "/1/*").replace("/0/*", "/1/*"))?;
+
+    Ok((HashSet::from([receiving]), HashSet::from([change])))
+}
+
+// Coldcard generic/sparrow json export, only the relevant parts
+#[derive(serde::Deserialize)]
+struct ColdcardJsonExport {
+    xfp: String, // 73C5DA0A
+    bip48_2: ColdcardBipDetails,
+}
+
+#[derive(serde::Deserialize)]
+struct ColdcardBipDetails {
+    name: String,  // p2wsh
+    deriv: String, // m/48'/1'/0'/2'
+    xpub: String, // tpubDFH9dgzveyD8zTbPUFuLrGmCydNvxehyNdUXKJAQN8x4aZ4j6UZqGfnqFrD4NqyaTVGKbvEW54tsvPTK2UoSbCC1PJY8iCNiwTL3RWZEheQ
+}
+
+fn try_parse_input_as_coldcard_json(
+    input: &Path,
+) -> anyhow::Result<(HashSet<DescriptorPublicKey>, HashSet<DescriptorPublicKey>)> {
+    let json = serde_json::from_reader::<_, ColdcardJsonExport>(buf_open_file(input)?)?;
+
+    ensure!(
+        json.bip48_2.name == "p2wsh",
+        format!(
+            "expected bip48_2 to contain a p2wsh, but found: {}",
+            json.bip48_2.name
+        )
+    );
+    let derivation_path = json.bip48_2.deriv.replace("m/", &format!("{}/", json.xfp));
+    let base_descriptor = format!("[{derivation_path}]{}", json.bip48_2.xpub);
+    let receiving = DescriptorPublicKey::from_str(&format!("{base_descriptor}/0/*"))
+        .with_context(|| format!("while building receiving from {base_descriptor}"))?;
+    let change = DescriptorPublicKey::from_str(&format!("{base_descriptor}/1/*"))
+        .with_context(|| format!("while building change from {base_descriptor}"))?;
+
+    Ok((HashSet::from([receiving]), HashSet::from([change])))
 }
 
 pub(crate) fn parse_multisig_inputs(
@@ -245,4 +323,85 @@ fn ask_open_signers(
         signers.push(wallet);
     }
     Ok(signers)
+}
+
+#[cfg(test)]
+mod tests {
+    use std::str::FromStr;
+
+    use frozenkrill_core::{
+        anyhow, get_secp, miniscript::DescriptorPublicKey, rand, utils::create_file,
+    };
+
+    use crate::get_term_theme;
+
+    use super::*;
+
+    #[test]
+    fn test_parse_multisig_inputs() -> anyhow::Result<()> {
+        use pretty_assertions::assert_eq;
+        let tempdir = tempdir::TempDir::new("test-parse-multisig-inputs")?;
+        let mut rng = rand::thread_rng();
+        let mut secp = get_secp(&mut rng);
+        let (term, theme) = get_term_theme(true);
+
+        // simple descriptor using /<0;1>/ syntax
+        let input_file = create_file(
+            r#" [7f4d5c70/48'/1'/0'/2']tpubDFHGoJYXaCkKaEDP9Tt5mQA9uCuXdLeXqbJGagwKsffJJbfMGoBfzgrJtAu4oWLsxJFSytQhzpBE74jQ77eJZPwtags3yEqZ7DEp7VGfSvz/<0;1>/* "#.as_bytes(),
+            &tempdir.path().join("descriptor1.txt"),
+        )?.to_path_buf();
+        let input = parse_multisig_input(theme.as_ref(), &term, &mut secp, &input_file)?;
+        assert_eq!(
+            input.receiving_descriptors,
+            HashSet::from([DescriptorPublicKey::from_str(
+                r#"[7f4d5c70/48'/1'/0'/2']tpubDFHGoJYXaCkKaEDP9Tt5mQA9uCuXdLeXqbJGagwKsffJJbfMGoBfzgrJtAu4oWLsxJFSytQhzpBE74jQ77eJZPwtags3yEqZ7DEp7VGfSvz/0/*"#
+            )?])
+        );
+        assert_eq!(
+            input.change_descriptors,
+            HashSet::from([DescriptorPublicKey::from_str(
+                r#"[7f4d5c70/48'/1'/0'/2']tpubDFHGoJYXaCkKaEDP9Tt5mQA9uCuXdLeXqbJGagwKsffJJbfMGoBfzgrJtAu4oWLsxJFSytQhzpBE74jQ77eJZPwtags3yEqZ7DEp7VGfSvz/1/*"#
+            )?])
+        );
+        assert!(input.signers.is_empty());
+
+        // simple descriptor only referring to /0/ path (but we'll generate a change descriptor anyway)
+        let input_file = create_file(
+            r#" [7f4d5c70/48'/1'/0'/2']tpubDFHGoJYXaCkKaEDP9Tt5mQA9uCuXdLeXqbJGagwKsffJJbfMGoBfzgrJtAu4oWLsxJFSytQhzpBE74jQ77eJZPwtags3yEqZ7DEp7VGfSvz/0/* "#.as_bytes(),
+            &tempdir.path().join("descriptor2.txt"),
+        )?.to_path_buf();
+        let input = parse_multisig_input(theme.as_ref(), &term, &mut secp, &input_file)?;
+        assert_eq!(
+            input.receiving_descriptors,
+            HashSet::from([DescriptorPublicKey::from_str(
+                r#"[7f4d5c70/48'/1'/0'/2']tpubDFHGoJYXaCkKaEDP9Tt5mQA9uCuXdLeXqbJGagwKsffJJbfMGoBfzgrJtAu4oWLsxJFSytQhzpBE74jQ77eJZPwtags3yEqZ7DEp7VGfSvz/0/*"#
+            )?])
+        );
+        assert_eq!(
+            input.change_descriptors,
+            HashSet::from([DescriptorPublicKey::from_str(
+                r#"[7f4d5c70/48'/1'/0'/2']tpubDFHGoJYXaCkKaEDP9Tt5mQA9uCuXdLeXqbJGagwKsffJJbfMGoBfzgrJtAu4oWLsxJFSytQhzpBE74jQ77eJZPwtags3yEqZ7DEp7VGfSvz/1/*"#
+            )?])
+        );
+        assert!(input.signers.is_empty());
+
+        // This is coldcard/sparrow json export
+        let input_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("resources/tests/73C5DA0A_coldcard-generic-export.json");
+        let input = parse_multisig_input(theme.as_ref(), &term, &mut secp, &input_file)?;
+        assert_eq!(
+            input.receiving_descriptors,
+            HashSet::from([DescriptorPublicKey::from_str(
+                r#"[73c5da0a/48'/1'/0'/2']tpubDFH9dgzveyD8zTbPUFuLrGmCydNvxehyNdUXKJAQN8x4aZ4j6UZqGfnqFrD4NqyaTVGKbvEW54tsvPTK2UoSbCC1PJY8iCNiwTL3RWZEheQ/0/*"#
+            )?])
+        );
+        assert_eq!(
+            input.change_descriptors,
+            HashSet::from([DescriptorPublicKey::from_str(
+                r#"[73c5da0a/48'/1'/0'/2']tpubDFH9dgzveyD8zTbPUFuLrGmCydNvxehyNdUXKJAQN8x4aZ4j6UZqGfnqFrD4NqyaTVGKbvEW54tsvPTK2UoSbCC1PJY8iCNiwTL3RWZEheQ/1/*"#
+            )?])
+        );
+        assert!(input.signers.is_empty());
+        Ok(())
+    }
 }

@@ -26,7 +26,7 @@ pub fn open_psbt_file(p: &Path) -> anyhow::Result<wallet::psbt::Psbt> {
     Ok(p)
 }
 
-pub fn save_psbt_file(psbt: &wallet::psbt::Psbt, path: &Path) -> anyhow::Result<()> {
+pub fn save_psbt_file<'a>(psbt: &wallet::psbt::Psbt, path: &'a Path) -> anyhow::Result<&'a Path> {
     create_file(&psbt.serialize(), path)
 }
 
