@@ -36,7 +36,7 @@ pub(crate) fn benchmark() -> anyhow::Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use std::{str::FromStr, sync::Arc};
+    use std::{path::PathBuf, str::FromStr, sync::Arc};
 
     use frozenkrill_core::{
         bip39,
@@ -343,6 +343,80 @@ mod tests {
     }
   ]
 }"#
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn test_generate_read_descriptors_multisig() -> anyhow::Result<()> {
+        use pretty_assertions::assert_eq;
+        let mut rng = rand::thread_rng();
+        let mut secp = get_secp(&mut rng);
+        let network = Network::Testnet;
+        let difficulty = KeyDerivationDifficulty::Easy;
+        let tempdir = tempdir::TempDir::new("test-public-keys-multisig")?;
+        let output_file_path_encrypted = tempdir.path().join("output_file_path_encrypted");
+        let output_file_path_json = tempdir.path().join("output_file_path_json");
+        let keyfile1 = tempdir.path().join("keyfile1");
+        create_file("stuff".as_bytes(), keyfile1.as_path())?;
+        let keyfiles = &[keyfile1];
+        let input_files_descriptors = vec![
+            create_file(
+                r#"[7f4d5c70/48'/1'/0'/2']tpubDFHGoJYXaCkKaEDP9Tt5mQA9uCuXdLeXqbJGagwKsffJJbfMGoBfzgrJtAu4oWLsxJFSytQhzpBE74jQ77eJZPwtags3yEqZ7DEp7VGfSvz/<0;1>/*"#.as_bytes(),
+                &tempdir.path().join("descriptor1.txt"),
+            )?.to_path_buf(),
+            create_file(
+                r#"[98d0d15a/48'/1'/0'/2']tpubDF83NP8zFt9V85eg5zWKNHu5R17i6kAwEocvLcEGFctCB1VJrqupjvGDwepLTDVNTDZkPjzwTNgvVijmvKhsDreMjGLbAadaUCaDoXDoMeB/0/*"#.as_bytes(),
+                &tempdir.path().join("descriptor2.txt"),
+            )?.to_path_buf(),
+            PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("resources/tests/73C5DA0A_coldcard-generic-export.json"),
+        ];
+        let (term, theme) = get_term_theme(true);
+        let mut multisig_inputs = MultisigInputs::default();
+        for input_file in input_files_descriptors {
+            let input = common::multisig::parse_multisig_input(
+                theme.as_ref(),
+                &term,
+                &mut secp,
+                &input_file,
+            )?;
+            assert_eq!(multisig_inputs.merge(input)?, 1);
+        }
+        let total = 3;
+        let password = Arc::new(SecretString::new("9asFSD$#".into()));
+        let args = MultisigCoreGenerateArgs {
+            password: Some(Arc::clone(&password)),
+            configuration: MultisigType { required: 2, total },
+            inputs: multisig_inputs,
+            output_file_path_encrypted: output_file_path_encrypted.clone(),
+            output_file_path_json: Some(output_file_path_json.clone()),
+            keyfiles,
+            network,
+            difficulty: &difficulty,
+            addresses_quantity: 2,
+            padding_params: PaddingParams::default(),
+        };
+        multisig_core_generate(theme.as_ref(), &term, &mut secp, &mut rng, args)?;
+        let encrypted_wallet = read_decode_wallet(&output_file_path_encrypted)?;
+        let wallet = common::multisig::multisig_core_open(
+            theme.as_ref(),
+            &term,
+            &secp,
+            &encrypted_wallet,
+            keyfiles,
+            &difficulty,
+            Some(vec![]),
+            Some(Arc::clone(&password)),
+        )?;
+        let json_wallet = MultisigJsonWalletDescriptionV0::from_wallet_description(&wallet, &secp)?;
+        assert_eq!(
+            "tb1qqhww8d86stcvx6kymz5vw6n5he3scggekv0tfvhxsds4zmhwhyvsp346h3",
+            json_wallet.expose_secret().first_address
+        );
+        assert_eq!(
+            "wsh(sortedmulti(2,[73c5da0a/48'/1'/0'/2']tpubDFH9dgzveyD8zTbPUFuLrGmCydNvxehyNdUXKJAQN8x4aZ4j6UZqGfnqFrD4NqyaTVGKbvEW54tsvPTK2UoSbCC1PJY8iCNiwTL3RWZEheQ/0/*,[7f4d5c70/48'/1'/0'/2']tpubDFHGoJYXaCkKaEDP9Tt5mQA9uCuXdLeXqbJGagwKsffJJbfMGoBfzgrJtAu4oWLsxJFSytQhzpBE74jQ77eJZPwtags3yEqZ7DEp7VGfSvz/0/*,[98d0d15a/48'/1'/0'/2']tpubDF83NP8zFt9V85eg5zWKNHu5R17i6kAwEocvLcEGFctCB1VJrqupjvGDwepLTDVNTDZkPjzwTNgvVijmvKhsDreMjGLbAadaUCaDoXDoMeB/0/*))#tfc0mal5",
+            json_wallet.expose_secret().receiving_output_descriptor
         );
         Ok(())
     }
