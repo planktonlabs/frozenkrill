@@ -21,7 +21,9 @@ log = "0.4"
 miniscript = "9"
 once_cell = "1"
 # psbt = { version = "0.10.0", features = ["sign"] }
-psbt = { path = "../../descriptor-wallet/psbt", features = ["sign"] }
+psbt = { git = "https://github.com/galtland/descriptor-wallet", branch = "master", features = [
+    "sign",
+] }
 rand = "0.8"
 rand_core = "0.6"
 rayon = "1.6"

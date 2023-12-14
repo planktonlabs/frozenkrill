@@ -316,6 +316,7 @@ checksum = "90064b8dee6815a6470d60bad07bbbaee885c0e12d04177138fa3291a01b7bc4"
 [[package]]
 name = "bitcoin_hd"
 version = "0.10.1"
+source = "git+https://github.com/galtland/descriptor-wallet?branch=master#3525ada6f5492203c671a69fdc532b58ba605338"
 dependencies = [
  "amplify",
  "bitcoin",
@@ -328,6 +329,7 @@ dependencies = [
 [[package]]
 name = "bitcoin_onchain"
 version = "0.10.1"
+source = "git+https://github.com/galtland/descriptor-wallet?branch=master#3525ada6f5492203c671a69fdc532b58ba605338"
 dependencies = [
  "amplify",
  "bitcoin",
@@ -833,6 +835,7 @@ dependencies = [
 [[package]]
 name = "descriptors"
 version = "0.10.1"
+source = "git+https://github.com/galtland/descriptor-wallet?branch=master#3525ada6f5492203c671a69fdc532b58ba605338"
 dependencies = [
  "amplify",
  "bitcoin",
@@ -1638,6 +1641,7 @@ dependencies = [
 [[package]]
 name = "psbt"
 version = "0.10.1"
+source = "git+https://github.com/galtland/descriptor-wallet?branch=master#3525ada6f5492203c671a69fdc532b58ba605338"
 dependencies = [
  "amplify",
  "bitcoin",
@@ -2063,6 +2067,7 @@ dependencies = [
 [[package]]
 name = "slip132"
 version = "0.10.1"
+source = "git+https://github.com/galtland/descriptor-wallet?branch=master#3525ada6f5492203c671a69fdc532b58ba605338"
 dependencies = [
  "amplify",
  "bitcoin",
