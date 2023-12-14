@@ -10,8 +10,12 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v2
+      - name: rustup update
+        run: rustup update
       - name: Show cargo version
         run: cargo --version
+      - name: Show rustc version
+        run: rustc --version
       - name: Update versions
         run: |
           export VERSION_SHA="${{ github.ref_name }}:${{ github.sha }}"
