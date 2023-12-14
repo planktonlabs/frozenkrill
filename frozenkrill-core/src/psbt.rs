@@ -4,14 +4,14 @@ use bitcoin::{
     util::bip32::DerivationPath,
     XpubIdentifier,
 };
+use psbt::sign::SignAll;
 use secp256k1::{All, Secp256k1};
 use secrecy::{ExposeSecret, Secret};
 use std::{fs::OpenOptions, io::Read, path::Path};
-use wallet::psbt::sign::SignAll;
 
 use crate::{utils::create_file, wallet_description::WExtendedPrivKey};
 
-pub fn open_psbt_file(p: &Path) -> anyhow::Result<wallet::psbt::Psbt> {
+pub fn open_psbt_file(p: &Path) -> anyhow::Result<psbt::Psbt> {
     let raw = {
         let mut f = OpenOptions::new()
             .read(true)
@@ -22,25 +22,25 @@ pub fn open_psbt_file(p: &Path) -> anyhow::Result<wallet::psbt::Psbt> {
             .context("failure reading PSBT file")?;
         buffer
     };
-    let p = wallet::psbt::Psbt::deserialize(&raw).context("failure deserializing PSBT file")?;
+    let p = psbt::Psbt::deserialize(&raw).context("failure deserializing PSBT file")?;
     Ok(p)
 }
 
-pub fn save_psbt_file<'a>(psbt: &wallet::psbt::Psbt, path: &'a Path) -> anyhow::Result<&'a Path> {
+pub fn save_psbt_file<'a>(psbt: &psbt::Psbt, path: &'a Path) -> anyhow::Result<&'a Path> {
     create_file(&psbt.serialize(), path)
 }
 
 pub(super) fn sign_psbt(
-    psbt: &mut wallet::psbt::Psbt,
+    psbt: &mut psbt::Psbt,
     keys: &[(&Secret<WExtendedPrivKey>, &DerivationPath, XpubIdentifier)],
     secp: &Secp256k1<All>,
 ) -> anyhow::Result<usize> {
     if keys.is_empty() {
         anyhow::bail!("No keys given for sign psbt")
     }
-    let mut provider = wallet::psbt::sign::MemoryKeyProvider::with(secp, false);
+    let mut provider = psbt::sign::MemoryKeyProvider::with(secp, false);
     for (k, derivation_path, identifier) in keys {
-        let account = wallet::psbt::sign::MemorySigningAccount::with(
+        let account = psbt::sign::MemorySigningAccount::with(
             secp,
             *identifier,
             (*derivation_path).to_owned(),

@@ -633,7 +633,7 @@ impl SingleSigWalletDescriptionV0 {
 impl PsbtWallet for SingleSigWalletDescriptionV0 {
     fn sign_psbt(
         &self,
-        psbt: &mut wallet::psbt::Psbt,
+        psbt: &mut psbt::Psbt,
         secp: &Secp256k1<All>,
     ) -> anyhow::Result<usize> {
         let mut n = 0;
@@ -957,7 +957,7 @@ impl MultiSigWalletDescriptionV0 {
 impl PsbtWallet for MultiSigWalletDescriptionV0 {
     fn sign_psbt(
         &self,
-        psbt: &mut wallet::psbt::Psbt,
+        psbt: &mut psbt::Psbt,
         secp: &Secp256k1<All>,
     ) -> anyhow::Result<usize> {
         let keys = self
@@ -1104,7 +1104,7 @@ impl MultisigJsonWalletDescriptionV0 {
 pub trait PsbtWallet {
     fn sign_psbt(
         &self,
-        psbt: &mut wallet::psbt::Psbt,
+        psbt: &mut psbt::Psbt,
         secp: &Secp256k1<All>,
     ) -> anyhow::Result<usize>;
 
