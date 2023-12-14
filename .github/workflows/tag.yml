@@ -26,12 +26,12 @@ jobs:
       - name: Fetch
         run: |
           cargo fetch --locked
-      # - name: Build x86_64-unknown-linux-gnu
-      #   run: |
-      #     cargo build --target=x86_64-unknown-linux-gnu --release --frozen
-      # - name: Test x86_64-unknown-linux-gnu
-      #   run: |
-      #     cargo test --target=x86_64-unknown-linux-gnu --release --frozen --workspace --features cli_tests -- --nocapture
+      - name: Build x86_64-unknown-linux-gnu
+        run: |
+          cargo build --target=x86_64-unknown-linux-gnu --release --frozen
+      - name: Test x86_64-unknown-linux-gnu
+        run: |
+          cargo test --target=x86_64-unknown-linux-gnu --release --frozen --workspace --features cli_tests -- --nocapture
       - name: Build x86_64-unknown-linux-musl
         run: |
           cargo clean && cross build --target=x86_64-unknown-linux-musl --release --frozen
