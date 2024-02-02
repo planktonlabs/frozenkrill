@@ -11,19 +11,20 @@ bip39 = { git = "https://github.com/rust-bitcoin/rust-bip39", features = [
     "zeroize",
 ] }
 bitcoin = "0.29"
-bitcoin_scripts = "0.10"
+# bitcoin_scripts = "0.10"
 blake3 = { version = "1", features = ["rayon"] }
 env_logger = "0.10"
 flate2 = "1"
 hex = "0.4"
 itertools = "0.10"
 log = "0.4"
-miniscript = "9"
+miniscript = "9.0.2"
 once_cell = "1"
 # psbt = { version = "0.10.0", features = ["sign"] }
-psbt = { git = "https://github.com/galtland/descriptor-wallet", branch = "master", features = [
-    "sign",
-] }
+# psbt = { git = "https://github.com/galtland/descriptor-wallet", branch = "master", features = [
+#     "sign",
+# ] }
+psbt = { path = "../../descriptor-wallet/psbt", features = ["sign"] }
 rand = "0.8"
 rand_core = "0.6"
 rayon = "1.6"

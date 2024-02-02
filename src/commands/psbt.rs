@@ -7,7 +7,6 @@ use frozenkrill_core::{
         secp256k1::{All, Secp256k1},
         Address, Amount, Network,
     },
-    bitcoin_scripts::address::AddressFormat,
     descriptor_wallet_psbt,
     itertools::Itertools,
     log,
@@ -54,6 +53,7 @@ pub(super) fn sign_core(
     signed_psbt_output_file_path: &PathBuf,
     network: Network,
 ) -> anyhow::Result<()> {
+    // use bitcoin_scripts::address::AddressFormat;
     validated_input_psbt_sign(&psbt)?;
     let partial_sigs_count_before: usize = psbt.inputs.iter().map(|i| i.partial_sigs.len()).sum();
     if wallet.sign_psbt(&mut psbt, secp)? == 0 {
@@ -93,11 +93,12 @@ pub(super) fn sign_core(
         } else {
             "Output"
         };
-        let address_type = address
-            .map(AddressFormat::from)
-            .as_ref()
-            .map(ToString::to_string)
-            .unwrap_or("unknown".into());
+        // let address_type = address
+        //     .map(AddressFormat::from)
+        //     .as_ref()
+        //     .map(ToString::to_string)
+        //     .unwrap_or("unknown".into());
+        let address_type = "unknown";
         eprintln!(
             "- {}: {output_string} {s} ({address_type}): {:.8} BTC",
             output.index(),
