@@ -37,7 +37,7 @@ strip = true
 opt-level = 3
 
 [profile.release.package.bitcoin_scripts]
-opt-level = 2
+opt-level = 1
 
 [profile.release.package."*"]
 opt-level = 3
