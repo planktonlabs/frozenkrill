@@ -226,15 +226,15 @@ impl SinglesigJsonWalletPublicExportV0 {
 
 #[derive(Debug, Default, Zeroize, ZeroizeOnDrop, Serialize, Deserialize, PartialEq, Eq)]
 pub struct MultisigJsonWalletPublicExportV0 {
-    wallet: String,
-    version: u32,
-    sigtype: String,
-    script_type: String,
-    network: String,
-    receiving_output_descriptor: String,
-    change_output_descriptor: String,
-    receiving_addresses: Vec<JsonAddressInfo>,
-    change_addresses: Vec<JsonAddressInfo>,
+    pub wallet: String,
+    pub version: u32,
+    pub sigtype: String,
+    pub script_type: String,
+    pub network: String,
+    pub receiving_output_descriptor: String,
+    pub change_output_descriptor: String,
+    pub receiving_addresses: Vec<JsonAddressInfo>,
+    pub change_addresses: Vec<JsonAddressInfo>,
 }
 
 impl MultisigJsonWalletPublicExportV0 {

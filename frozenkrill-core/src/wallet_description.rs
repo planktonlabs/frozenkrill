@@ -18,7 +18,7 @@ use miniscript::{Descriptor, DescriptorPublicKey};
 use rand_core::CryptoRngCore;
 use regex::Regex;
 use secp256k1::{All, Secp256k1};
-use secrecy::{ExposeSecret, Secret, SecretString, SecretVec};
+use secrecy::{CloneableSecret, ExposeSecret, Secret, SecretString, SecretVec};
 use serde::{Deserialize, Serialize};
 use zeroize::{Zeroize, ZeroizeOnDrop};
 
@@ -311,6 +311,7 @@ type PsbtKeyInfo<'a> = (
     XpubIdentifier,
 );
 
+#[derive(Clone)]
 pub struct SingleSigWalletDescriptionV0 {
     mnemonic: Arc<Secret<bip39::Mnemonic>>,
     pub master_fingerprint: Fingerprint,
@@ -631,11 +632,7 @@ impl SingleSigWalletDescriptionV0 {
 }
 
 impl PsbtWallet for SingleSigWalletDescriptionV0 {
-    fn sign_psbt(
-        &self,
-        psbt: &mut psbt::Psbt,
-        secp: &Secp256k1<All>,
-    ) -> anyhow::Result<usize> {
+    fn sign_psbt(&self, psbt: &mut psbt::Psbt, secp: &Secp256k1<All>) -> anyhow::Result<usize> {
         let mut n = 0;
         for keys in [
             self.get_psbt_singlesig_keys(),
@@ -955,11 +952,7 @@ impl MultiSigWalletDescriptionV0 {
 }
 
 impl PsbtWallet for MultiSigWalletDescriptionV0 {
-    fn sign_psbt(
-        &self,
-        psbt: &mut psbt::Psbt,
-        secp: &Secp256k1<All>,
-    ) -> anyhow::Result<usize> {
+    fn sign_psbt(&self, psbt: &mut psbt::Psbt, secp: &Secp256k1<All>) -> anyhow::Result<usize> {
         let keys = self
             .signers
             .iter()
@@ -1017,36 +1010,46 @@ impl MultisigJsonWalletDescriptionV0 {
         }))
     }
 
+    pub fn network_from_str(s: &str) -> anyhow::Result<Network> {
+        Ok(Network::from_str(s)?)
+    }
+
     pub fn network(&self) -> anyhow::Result<Network> {
-        Ok(Network::from_str(&self.network)?)
+        Self::network_from_str(&self.network)
+    }
+
+    pub fn script_type_from_str(s: &str) -> anyhow::Result<ScriptType> {
+        ScriptType::from_str(s)
     }
 
     pub fn script_type(&self) -> anyhow::Result<ScriptType> {
-        ScriptType::from_str(&self.script_type)
+        Self::script_type_from_str(&self.script_type)
+    }
+
+    pub fn descriptor_from_str(
+        s: &str,
+    ) -> anyhow::Result<miniscript::descriptor::Descriptor<DescriptorPublicKey>> {
+        Ok(miniscript::descriptor::Descriptor::<DescriptorPublicKey>::from_str(s)?)
     }
 
     pub fn receiving_output_descriptor(
         &self,
     ) -> anyhow::Result<miniscript::descriptor::Descriptor<DescriptorPublicKey>> {
-        Ok(
-            miniscript::descriptor::Descriptor::<DescriptorPublicKey>::from_str(
-                &self.receiving_output_descriptor,
-            )?,
-        )
+        Self::descriptor_from_str(&self.receiving_output_descriptor)
     }
 
     pub fn change_output_descriptor(
         &self,
     ) -> anyhow::Result<miniscript::descriptor::Descriptor<DescriptorPublicKey>> {
-        Ok(
-            miniscript::descriptor::Descriptor::<DescriptorPublicKey>::from_str(
-                &self.change_output_descriptor,
-            )?,
-        )
+        Self::descriptor_from_str(&self.change_output_descriptor)
+    }
+
+    pub fn configuration_from_str(s: &str) -> anyhow::Result<MultisigType> {
+        MultisigType::from_str(s)
     }
 
     pub fn configuration(&self) -> anyhow::Result<MultisigType> {
-        MultisigType::from_str(&self.sigtype)
+        Self::configuration_from_str(&self.sigtype)
     }
 
     pub fn validate_same(
@@ -1102,11 +1105,7 @@ impl MultisigJsonWalletDescriptionV0 {
 }
 
 pub trait PsbtWallet {
-    fn sign_psbt(
-        &self,
-        psbt: &mut psbt::Psbt,
-        secp: &Secp256k1<All>,
-    ) -> anyhow::Result<usize>;
+    fn sign_psbt(&self, psbt: &mut psbt::Psbt, secp: &Secp256k1<All>) -> anyhow::Result<usize>;
 
     fn get_pub_fingerprints(&self) -> Vec<Fingerprint>;
 
@@ -1118,6 +1117,7 @@ pub trait PsbtWallet {
     ) -> anyhow::Result<Vec<Address>>;
 }
 
+#[derive(Clone)]
 pub struct WExtendedPrivKey(pub bitcoin::util::bip32::ExtendedPrivKey);
 
 impl Zeroize for WExtendedPrivKey {
@@ -1127,6 +1127,8 @@ impl Zeroize for WExtendedPrivKey {
         // self.0.chain_code.as_bytes().zeroize();
     }
 }
+
+impl CloneableSecret for WExtendedPrivKey {}
 
 #[derive(Copy, Clone)]
 pub enum WordCount {

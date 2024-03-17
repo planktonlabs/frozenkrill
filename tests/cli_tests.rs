@@ -249,7 +249,7 @@ fn test_batch_generate_open_multisig() -> anyhow::Result<()> {
     assert!(multisig_pub_path.exists());
     let info = MultisigJsonWalletPublicExportV0::from_path(&multisig_pub_path)?;
     let multisig_pub_path2 = temp.path().join("multisigwalletpub2.json");
-    println!("---> Opening multisig wallet");
+    println!("---> Opening encrypted multisig wallet");
     let mut s = run_cli(&[
         "--disable-internet-check",
         "--use-simple-theme",
@@ -291,17 +291,52 @@ fn test_batch_generate_open_multisig() -> anyhow::Result<()> {
     send_line(&mut s, multisigpassword)?;
     s.exp_eof()?;
     assert!(multisig_pub_path2.exists());
-    let info2 = MultisigJsonWalletPublicExportV0::from_path(&multisig_pub_path2)?;
-    assert_eq!(info.to_string_pretty()?, info2.to_string_pretty()?);
+    let multisig_pub_path3 = temp.path().join("multisigwalletpub3.json");
+    println!("---> Opening pub json multisig wallet");
+    let mut s = run_cli(&[
+        "--disable-internet-check",
+        "--use-simple-theme",
+        "multisig-open",
+        multisig_pub_path.display().to_string().as_str(),
+        "-i",
+        wallets[0].display().to_string().as_str(),
+        "-i",
+        wallets[1].display().to_string().as_str(),
+        "-i",
+        wallets[2].display().to_string().as_str(),
+        "export-public-info",
+        multisig_pub_path3.display().to_string().as_str(),
+    ])?;
+    for i in 0..3 {
+        println!("---> Opening signer wallet {i} for multisig operation");
+        s.exp_string("Have you used a keyfile when generating this wallet?")?;
+        send(&mut s, "n")?;
+        s.exp_string("Select one (leave the default if unsure)")?;
+        dialoguer_up_enter(&mut s)?;
+        s.exp_string("Password:")?;
+        send_line(&mut s, mypassword)?;
+        s.exp_string("Confirm password:")?;
+        send_line(&mut s, mypassword)?;
+        s.exp_string("Enable duress feature for this wallet?")?;
+        send(&mut s, "y")?;
+        s.exp_string("Enter a non duress seed password")?;
+        send_line(&mut s, mynonduresspassword)?;
+        s.exp_string("Confirm password:")?;
+        send_line(&mut s, mynonduresspassword)?;
+    }
+    s.exp_eof()?;
+    assert!(multisig_pub_path3.exists());
+    let info3 = MultisigJsonWalletPublicExportV0::from_path(&multisig_pub_path3)?;
+    assert_eq!(info.to_string_pretty()?, info3.to_string_pretty()?);
     Ok(())
 }
 
 #[test]
 #[cfg(feature = "cli_tests")]
-fn test_batch_generate_open_multisig_plain_output_descriptors() -> anyhow::Result<()> {
+fn test_batch_generate_open_multisig_pub_json_descriptors() -> anyhow::Result<()> {
     use pretty_assertions::assert_eq;
 
-    let temp = tempdir::TempDir::new("cli-batch-generate-open-multisig-plain-output-descriptors")?;
+    let temp = tempdir::TempDir::new("cli-batch-generate-open-multisig-pub-json-descriptors")?;
     let wallet_path_prefix = temp.path().join("mywallet");
     let mypassword = "Super11Ultra&SAASD*()";
     let mynonduresspassword = "seedpass";
@@ -333,6 +368,7 @@ fn test_batch_generate_open_multisig_plain_output_descriptors() -> anyhow::Resul
     s.exp_string("Enter the non duress seed password again")?;
     send_line(&mut s, mynonduresspassword)?;
     s.exp_eof()?;
+    // In this test we use the singlesig public json as input for the multisig creation
     let pub_json_wallets = fs::read_dir(temp.path())?
         .collect::<Result<Vec<_>, _>>()?
         .into_iter()
@@ -387,7 +423,7 @@ fn test_batch_generate_open_multisig_plain_output_descriptors() -> anyhow::Resul
     assert_eq!(wallets.len(), 3);
 
     let multisig_pub_path2 = temp.path().join("multisigwalletpub2.json");
-    println!("---> Opening multisig wallet");
+    println!("---> Opening encrypted multisig wallet");
     let mut s = run_cli(&[
         "--disable-internet-check",
         "--use-simple-theme",
@@ -428,5 +464,40 @@ fn test_batch_generate_open_multisig_plain_output_descriptors() -> anyhow::Resul
     assert!(multisig_pub_path2.exists());
     let info2 = MultisigJsonWalletPublicExportV0::from_path(&multisig_pub_path2)?;
     assert_eq!(info.to_string_pretty()?, info2.to_string_pretty()?);
+
+    let multisig_pub_path3 = temp.path().join("multisigwalletpub3.json");
+    println!("---> Opening pub json multisig wallet");
+    let mut s = run_cli(&[
+        "--disable-internet-check",
+        "--use-simple-theme",
+        "multisig-open",
+        multisig_pub_path.display().to_string().as_str(),
+        "-i",
+        wallets[0].display().to_string().as_str(),
+        "-i",
+        wallets[1].display().to_string().as_str(),
+        "-i",
+        wallets[2].display().to_string().as_str(),
+        "export-public-info",
+        multisig_pub_path3.display().to_string().as_str(),
+    ])?;
+    for i in 0..3 {
+        println!("---> Opening signer wallet {i} for multisig operation");
+        s.exp_string("Have you used a keyfile when generating this wallet?")?;
+        send(&mut s, "n")?;
+        s.exp_string("Select one (leave the default if unsure)")?;
+        dialoguer_up_enter(&mut s)?;
+        s.exp_string("Password:")?;
+        send_line(&mut s, mypassword)?;
+        s.exp_string("Confirm password:")?;
+        send_line(&mut s, mypassword)?;
+        // As we are using the public json, they are for the non-duress wallet (the one with an empty password)
+        s.exp_string("Enable duress feature for this wallet?")?;
+        send(&mut s, "n")?;
+    }
+    s.exp_eof()?;
+    assert!(multisig_pub_path3.exists());
+    let info3 = MultisigJsonWalletPublicExportV0::from_path(&multisig_pub_path3)?;
+    assert_eq!(info.to_string_pretty()?, info3.to_string_pretty()?);
     Ok(())
 }

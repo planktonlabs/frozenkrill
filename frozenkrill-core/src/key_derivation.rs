@@ -16,7 +16,7 @@ pub struct Argon2DifficultyParams {
     pub mem_limit_kbytes: u32,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum KeyDerivationDifficulty {
     Easy,
     Normal,
@@ -65,7 +65,7 @@ impl KeyDerivationDifficulty {
         }
     }
 
-    const fn to_argon2_difficulty_params(&self) -> Argon2DifficultyParams {
+    const fn argon2_difficulty_params(&self) -> Argon2DifficultyParams {
         match self {
             KeyDerivationDifficulty::Easy => Argon2DifficultyParams {
                 ops_limit: 42,
@@ -135,7 +135,7 @@ fn _default_derive_key(
     } else {
         generate_password_with_keyfiles(password, salt, keyfiles)?
     };
-    let argon2_difficulty_params = difficulty.to_argon2_difficulty_params();
+    let argon2_difficulty_params = difficulty.argon2_difficulty_params();
     let key = Secret::new(libsodium_argon2id_derive_key(
         password.expose_secret(),
         salt,
@@ -253,7 +253,7 @@ mod tests {
         let mut password = [1u8; 1024 * 1024];
         rng.try_fill_bytes(&mut password)?;
         let salt = get_random_salt(&mut rng)?;
-        let difficulty = KeyDerivationDifficulty::Easy.to_argon2_difficulty_params();
+        let difficulty = KeyDerivationDifficulty::Easy.argon2_difficulty_params();
         let ops_limit = difficulty.ops_limit;
         let mem_limit = difficulty.mem_limit_kbytes;
 
