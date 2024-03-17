@@ -2,14 +2,25 @@ use std::{fs, path::PathBuf};
 
 use dialoguer::{console::Term, theme::Theme};
 use frozenkrill_core::{
-    anyhow,
+    anyhow::{self, bail},
     bitcoin::secp256k1::{All, Secp256k1},
     key_derivation::KeyDerivationDifficulty,
-    log, parse_keyfiles_paths,
-    wallet_description::{read_decode_wallet, EncryptedWalletDescription},
+    log::{self, debug},
+    parse_keyfiles_paths,
+    secrecy::Secret,
+    wallet_description::read_decode_wallet,
 };
 
-use crate::{commands::interactive::get_ask_difficulty, handle_input_path, InternetChecker};
+use crate::{
+    commands::{
+        common::{
+            multisig::MultisigCoreOpenWalletParam, try_open_as_json_input, ParsedWalletInputFile,
+            PublicInfoInput,
+        },
+        interactive::get_ask_difficulty,
+    },
+    handle_input_path, InternetChecker,
+};
 
 use super::{choose_keyfiles, duress_wallet_explanation};
 
@@ -77,7 +88,10 @@ pub(super) fn singlesig_interactive_open(
     difficulty: Option<KeyDerivationDifficulty>,
     enable_duress_wallet: bool,
 ) -> anyhow::Result<()> {
-    let (input_file_path, encrypted_wallet) = ask_wallet_input_file(theme, term)?;
+    let (input_file_path, wallet_input) = ask_wallet_input_file(theme, term)?;
+    let ParsedWalletInputFile::Encrypted(encrypted_wallet) = wallet_input else {
+        bail!("Expected an encrypted wallet but got a different format: {wallet_input:?}")
+    };
     let keyfiles = if keyfiles.is_empty() {
         ask_for_keyfiles_open(theme, term)?
     } else {
@@ -141,21 +155,33 @@ pub(super) fn multisig_interactive_open(
     difficulty: Option<KeyDerivationDifficulty>,
 ) -> anyhow::Result<()> {
     ic.check()?;
-    let (input_file_path, encrypted_wallet) = ask_wallet_input_file(theme, term)?;
-    let keyfiles = if keyfiles.is_empty() {
-        ask_for_keyfiles_open(theme, term)?
-    } else {
-        keyfiles
+    let (input_file_path, wallet_input) = ask_wallet_input_file(theme, term)?;
+    let input_wallet = match wallet_input {
+        ParsedWalletInputFile::Encrypted(encrypted_wallet) => {
+            let keyfiles = if keyfiles.is_empty() {
+                ask_for_keyfiles_open(theme, term)?
+            } else {
+                keyfiles
+            };
+            let difficulty = get_ask_difficulty(theme, term, difficulty)?;
+            MultisigCoreOpenWalletParam::Encrypted {
+                input_wallet: encrypted_wallet,
+                password: None,
+                keyfiles,
+                difficulty,
+            }
+        }
+        ParsedWalletInputFile::PublicInfo(public_info) => match public_info {
+            PublicInfoInput::MultisigJson(json) => {
+                MultisigCoreOpenWalletParam::Json(Secret::new(json))
+            }
+        },
     };
-    let difficulty = get_ask_difficulty(theme, term, difficulty)?;
     let wallet = crate::commands::common::multisig::multisig_core_open(
         theme,
         term,
         secp,
-        &encrypted_wallet,
-        &keyfiles,
-        &difficulty,
-        None,
+        input_wallet,
         None,
     )?;
     loop {
@@ -237,7 +263,7 @@ pub(crate) fn ask_for_keyfiles_open(
 pub(crate) fn ask_wallet_input_file(
     theme: &dyn Theme,
     term: &Term,
-) -> anyhow::Result<(PathBuf, EncryptedWalletDescription)> {
+) -> anyhow::Result<(PathBuf, ParsedWalletInputFile)> {
     let mut files = fs::read_dir(".")?
         .collect::<Result<Vec<_>, _>>()?
         .iter()
@@ -255,18 +281,25 @@ pub(crate) fn ask_wallet_input_file(
             .items(&files)
             .interact_on(term)?;
         let file = handle_input_path(&files[file])?.into_owned();
-        match read_decode_wallet(&file) {
-            Ok(w) => return Ok((file, w)),
-            Err(e) => {
-                eprintln!("Error reading wallet: {e:?}");
-                if !dialoguer::Confirm::with_theme(theme)
-                    .with_prompt("The selected file is invalid, do you want to pick another file?")
-                    .default(true)
-                    .interact_on(term)?
-                {
-                    anyhow::bail!("No valid wallet file selected");
+        debug!("Will try to open {file:?}");
+        let json_result = try_open_as_json_input(&file);
+        match json_result {
+            Ok(result) => return Ok((file, ParsedWalletInputFile::PublicInfo(result))),
+            Err(json_error) => match read_decode_wallet(&file) {
+                Ok(w) => return Ok((file, ParsedWalletInputFile::Encrypted(w))),
+                Err(e) => {
+                    eprintln!("Error reading wallet as encrypted: {e} and as json: {json_error}");
+                    if !dialoguer::Confirm::with_theme(theme)
+                        .with_prompt(
+                            "The selected file is invalid, do you want to pick another file?",
+                        )
+                        .default(true)
+                        .interact_on(term)?
+                    {
+                        anyhow::bail!("No valid wallet file selected");
+                    }
                 }
-            }
+            },
         }
     }
 }

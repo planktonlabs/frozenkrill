@@ -5,9 +5,15 @@ use dialoguer::{console::Term, theme::Theme};
 use frozenkrill_core::{
     anyhow::{self, Context},
     bitcoin::secp256k1::{All, Secp256k1},
-    blake3, log,
+    blake3,
+    log::{self, debug},
     rand_core::CryptoRngCore,
-    wallet_description::{EncryptedWalletDescription, KEY_SIZE},
+    utils,
+    wallet_description::{self, EncryptedWalletDescription, SigType, KEY_SIZE},
+    wallet_export::{
+        GenericOutputExportJson, MultisigJsonWalletPublicExportV0,
+        SinglesigJsonWalletPublicExportV0,
+    },
 };
 
 use frozenkrill_core::secrecy::{ExposeSecret, SecretString};
@@ -170,4 +176,44 @@ pub(crate) fn calculate_non_duress_output(
         (false, None, _) => None,
     };
     Ok(non_duress_output_file_json)
+}
+
+#[derive(Debug)]
+pub(crate) enum ParsedWalletInputFile {
+    Encrypted(EncryptedWalletDescription),
+    PublicInfo(PublicInfoInput),
+}
+
+#[derive(Debug)]
+pub(crate) enum PublicInfoInput {
+    // TODO: add single sig pub support
+    // TODO: add plain output descriptors (using something like try_parse_input_as_simple_descriptor)
+    MultisigJson(MultisigJsonWalletPublicExportV0),
+}
+
+pub fn try_open_as_json_input(file: &Path) -> anyhow::Result<PublicInfoInput> {
+    match GenericOutputExportJson::deserialize(utils::buf_open_file(file)?) {
+        Ok(g) => match g.version_sigtype()? {
+            (Some(wallet_description::ZERO_SINGLESIG_WALLET_VERSION), Some(SigType::Singlesig)) => {
+                let _v = SinglesigJsonWalletPublicExportV0::from_path(file)?;
+                let message = "Using a singlesig json pub export isn't supported right now";
+                debug!("{message}");
+                anyhow::bail!(message)
+            }
+            (
+                Some(wallet_description::ZERO_MULTISIG_WALLET_VERSION),
+                Some(SigType::Multisig(_)),
+            ) => {
+                let v = MultisigJsonWalletPublicExportV0::from_path(file)?;
+                debug!("Will open {file:?} as multisig pub json");
+                Ok(PublicInfoInput::MultisigJson(v))
+            }
+            _ => {
+                let message = format!("Unrecognized json file {file:?}");
+                debug!("{message}");
+                anyhow::bail!("{message}")
+            }
+        },
+        Err(e) => Err(e),
+    }
 }

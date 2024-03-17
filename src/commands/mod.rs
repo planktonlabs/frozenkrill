@@ -60,8 +60,9 @@ mod tests {
         *,
     };
     use crate::{
-        commands::generate::core::{
-            multisig_core_generate, DuressInputArgs, MultisigCoreGenerateArgs,
+        commands::{
+            common::multisig::MultisigCoreOpenWalletParam,
+            generate::core::{multisig_core_generate, DuressInputArgs, MultisigCoreGenerateArgs},
         },
         get_term_theme,
     };
@@ -184,7 +185,7 @@ mod tests {
         let output_file_path_json = tempdir.path().join("output_file_path_json");
         let keyfile1 = tempdir.path().join("keyfile1");
         create_file("stuff".as_bytes(), keyfile1.as_path())?;
-        let keyfiles = &[keyfile1];
+        let keyfiles = vec![keyfile1];
         let psbt = "70736274ff01005e020000000188757b1ed06cc6101dfa1de184f3af936f905c14997ed5249243b5d9694368de0100000000fdffffff01d21600000000000022002005b53149c0a926e1c534de78c706ab0140259c2634a2054ff76d808c74f67a6ce9e524004f01043587cf0000000000000000001d4fbebdd967e1af714c0997d38fcf670b5ce9d301c0440bbcc3b6a20eb7721c03568ea1f36051916ed1b690c39e12a8e70603b280bd30ce5f281f2918a55363aa043fef83ee4f01043587cf0000000000000000005f7cbbebc3eb196badd173c8416c4687a4ef7cc0cd4e0b0bdf40e7b49870f9ac02de6c4bdad6f37ea931886d213339437b478b90c9f7007636f55f36ebbd0e166c041c9cea5f4f01043587cf0000000000000000004505908a5ab63987695d789e43130dce9fc1c03bebf8a0fb1d4f243743071cf703ebc9993f99feb14b59ef12e9cabbd38529cef1cfe451bc7e970657d849648d08047a22a4fb0001012b701700000000000022002005dce3b4fa82f0c36ac4d8a8c76a74be630c2119b31eb4b2e68361516eeeb9190100ea0200000000010116d5e555d8fba55707c0fe5760844c2049bbcc057ad42910ba4825ba122b66370100000000feffffff029aac250000000000160014834bef9c2733a2983d3b9bb25e4af01ff6040a96701700000000000022002005dce3b4fa82f0c36ac4d8a8c76a74be630c2119b31eb4b2e68361516eeeb9190247304402207ae93b9a19ff553d0e206afb13ef7e02914bfac2ff05ce4465d28108b17429b00220465d2418488c50724e51540d3ce6ed64a15528b3906e5b33e4da347bff47c54a012102d4318c88211a7335dfd14c415e2c07006ea8caf746407589241a7ee15c0b39b5e9e524000105695221025df3211bcff0b1f18c83695c9d7ac7df7fb6f96df17fe1d84a5286ab7791ff6121030b90ed2e86bad7f2a4fe9769bb417d7ba9caa1124807dbfb362dfbeeb65e7e0121039daf0e68deea41a5cbd517f2637bad9bbea8327786470237f448bbca2ff57f3553ae2206025df3211bcff0b1f18c83695c9d7ac7df7fb6f96df17fe1d84a5286ab7791ff610c7a22a4fb00000000000000002206030b90ed2e86bad7f2a4fe9769bb417d7ba9caa1124807dbfb362dfbeeb65e7e010c3fef83ee00000000000000002206039daf0e68deea41a5cbd517f2637bad9bbea8327786470237f448bbca2ff57f350c1c9cea5f00000000000000000001016952210366dab8a136865a497b81ca7dc4e23cf35331d28f4459526fea1d76ca25e407fe2103689572e28b0feda9d6981c0237d9e5dedbfec16de7143f680a02ed5d159f7587210386696e229e1a346fe03965e1e4150c79a9c9ceabc25e10f91d6c031f55b5c95f53ae22020366dab8a136865a497b81ca7dc4e23cf35331d28f4459526fea1d76ca25e407fe0c1c9cea5f0000000001000000220203689572e28b0feda9d6981c0237d9e5dedbfec16de7143f680a02ed5d159f75870c3fef83ee000000000100000022020386696e229e1a346fe03965e1e4150c79a9c9ceabc25e10f91d6c031f55b5c95f0c7a22a4fb000000000100000000";
         let psbt2 = "70736274ff01005e020000000188757b1ed06cc6101dfa1de184f3af936f905c14997ed5249243b5d9694368de0100000000fdffffff01d21600000000000022002005b53149c0a926e1c534de78c706ab0140259c2634a2054ff76d808c74f67a6cd8ec24004f01043587cf04bac14839800000021d4fbebdd967e1af714c0997d38fcf670b5ce9d301c0440bbcc3b6a20eb7721c03568ea1f36051916ed1b690c39e12a8e70603b280bd30ce5f281f2918a55363aa1473c5da0a300000800100008000000080020000804f01043587cf04bb0b78ee800000025f7cbbebc3eb196badd173c8416c4687a4ef7cc0cd4e0b0bdf40e7b49870f9ac02de6c4bdad6f37ea931886d213339437b478b90c9f7007636f55f36ebbd0e166c147f4d5c70300000800100008000000080020000804f01043587cf04a563ead1800000024505908a5ab63987695d789e43130dce9fc1c03bebf8a0fb1d4f243743071cf703ebc9993f99feb14b59ef12e9cabbd38529cef1cfe451bc7e970657d849648d081498d0d15a300000800100008000000080020000800001007d020000000116d5e555d8fba55707c0fe5760844c2049bbcc057ad42910ba4825ba122b66370100000000feffffff029aac250000000000160014834bef9c2733a2983d3b9bb25e4af01ff6040a96701700000000000022002005dce3b4fa82f0c36ac4d8a8c76a74be630c2119b31eb4b2e68361516eeeb919e9e5240001012b701700000000000022002005dce3b4fa82f0c36ac4d8a8c76a74be630c2119b31eb4b2e68361516eeeb919010304010000000105695221025df3211bcff0b1f18c83695c9d7ac7df7fb6f96df17fe1d84a5286ab7791ff6121030b90ed2e86bad7f2a4fe9769bb417d7ba9caa1124807dbfb362dfbeeb65e7e0121039daf0e68deea41a5cbd517f2637bad9bbea8327786470237f448bbca2ff57f3553ae2206030b90ed2e86bad7f2a4fe9769bb417d7ba9caa1124807dbfb362dfbeeb65e7e011c73c5da0a3000008001000080000000800200008000000000000000002206039daf0e68deea41a5cbd517f2637bad9bbea8327786470237f448bbca2ff57f351c7f4d5c703000008001000080000000800200008000000000000000002206025df3211bcff0b1f18c83695c9d7ac7df7fb6f96df17fe1d84a5286ab7791ff611c98d0d15a3000008001000080000000800200008000000000000000000001016952210366dab8a136865a497b81ca7dc4e23cf35331d28f4459526fea1d76ca25e407fe2103689572e28b0feda9d6981c0237d9e5dedbfec16de7143f680a02ed5d159f7587210386696e229e1a346fe03965e1e4150c79a9c9ceabc25e10f91d6c031f55b5c95f53ae220203689572e28b0feda9d6981c0237d9e5dedbfec16de7143f680a02ed5d159f75871c73c5da0a30000080010000800000008002000080000000000100000022020366dab8a136865a497b81ca7dc4e23cf35331d28f4459526fea1d76ca25e407fe1c7f4d5c7030000080010000800000008002000080000000000100000022020386696e229e1a346fe03965e1e4150c79a9c9ceabc25e10f91d6c031f55b5c95f1c98d0d15a30000080010000800000008002000080000000000100000000";
         let psbt_path = tempdir.path().join("psbt.psbt");
@@ -257,7 +258,7 @@ mod tests {
             },
             output_file_path_encrypted: output_file_path_encrypted.clone(),
             output_file_path_json: Some(output_file_path_json.clone()),
-            keyfiles,
+            keyfiles: &keyfiles,
             network,
             difficulty: &difficulty,
             addresses_quantity: 2,
@@ -281,40 +282,50 @@ mod tests {
         // Try to sign PSBTs using the singlesig wallet
         let mut psbt = open_psbt_file(&psbt_path)?;
         for signer in &signers {
-            let n: usize = signer.sign_psbt(&mut psbt, &secp)?.try_into()?;
+            let n: usize = signer.sign_psbt(&mut psbt, &secp)?;
             assert_eq!(n, 1);
         }
-        let encrypted_wallet = read_decode_wallet(&output_file_path_encrypted)?;
-        let wallet = common::multisig::multisig_core_open(
-            theme.as_ref(),
-            &term,
-            &secp,
-            &encrypted_wallet,
-            keyfiles,
-            &difficulty,
-            Some(signers),
-            Some(Arc::clone(&password)),
-        )?;
-        let json_wallet = MultisigJsonWalletDescriptionV0::from_wallet_description(&wallet, &secp)?;
-        assert_eq!(
-            "tb1qqhww8d86stcvx6kymz5vw6n5he3scggekv0tfvhxsds4zmhwhyvsp346h3",
-            json_wallet.expose_secret().first_address
-        );
-        assert_eq!(
-            "wsh(sortedmulti(2,[73c5da0a/48'/1'/0'/2']tpubDFH9dgzveyD8zTbPUFuLrGmCydNvxehyNdUXKJAQN8x4aZ4j6UZqGfnqFrD4NqyaTVGKbvEW54tsvPTK2UoSbCC1PJY8iCNiwTL3RWZEheQ/0/*,[7f4d5c70/48'/1'/0'/2']tpubDFHGoJYXaCkKaEDP9Tt5mQA9uCuXdLeXqbJGagwKsffJJbfMGoBfzgrJtAu4oWLsxJFSytQhzpBE74jQ77eJZPwtags3yEqZ7DEp7VGfSvz/0/*,[98d0d15a/48'/1'/0'/2']tpubDF83NP8zFt9V85eg5zWKNHu5R17i6kAwEocvLcEGFctCB1VJrqupjvGDwepLTDVNTDZkPjzwTNgvVijmvKhsDreMjGLbAadaUCaDoXDoMeB/0/*))#tfc0mal5",
-            json_wallet.expose_secret().receiving_output_descriptor
-        );
-        // Try to sign PSBTs using the multisig wallet
-        let mut psbt = open_psbt_file(&psbt_path)?;
-        let mut psbt2 = open_psbt_file(&psbt2_path)?;
-        let n: u32 = wallet.sign_psbt(&mut psbt, &secp)?.try_into()?;
-        assert_eq!(n, total);
-        let n: u32 = wallet.sign_psbt(&mut psbt2, &secp)?.try_into()?;
-        assert_eq!(n, total);
-        let public_info = MultisigJsonWalletPublicExportV0::from_path(&output_file_path_json)?;
-        assert_eq!(
-            public_info.to_string_pretty()?,
-            r#"{
+
+        let input_wallets = vec![
+            MultisigCoreOpenWalletParam::Encrypted {
+                input_wallet: read_decode_wallet(&output_file_path_encrypted)?,
+                password: Some(Arc::clone(&password)),
+                keyfiles: keyfiles.to_owned(),
+                difficulty,
+            },
+            MultisigCoreOpenWalletParam::Json(Secret::new(
+                MultisigJsonWalletPublicExportV0::from_path(&output_file_path_json)?,
+            )),
+        ];
+        for input_wallet in input_wallets {
+            let wallet = common::multisig::multisig_core_open(
+                theme.as_ref(),
+                &term,
+                &secp,
+                input_wallet,
+                Some(signers.clone()),
+            )?;
+            let json_wallet =
+                MultisigJsonWalletDescriptionV0::from_wallet_description(&wallet, &secp)?;
+            assert_eq!(
+                "tb1qqhww8d86stcvx6kymz5vw6n5he3scggekv0tfvhxsds4zmhwhyvsp346h3",
+                json_wallet.expose_secret().first_address
+            );
+            assert_eq!(
+                "wsh(sortedmulti(2,[73c5da0a/48'/1'/0'/2']tpubDFH9dgzveyD8zTbPUFuLrGmCydNvxehyNdUXKJAQN8x4aZ4j6UZqGfnqFrD4NqyaTVGKbvEW54tsvPTK2UoSbCC1PJY8iCNiwTL3RWZEheQ/0/*,[7f4d5c70/48'/1'/0'/2']tpubDFHGoJYXaCkKaEDP9Tt5mQA9uCuXdLeXqbJGagwKsffJJbfMGoBfzgrJtAu4oWLsxJFSytQhzpBE74jQ77eJZPwtags3yEqZ7DEp7VGfSvz/0/*,[98d0d15a/48'/1'/0'/2']tpubDF83NP8zFt9V85eg5zWKNHu5R17i6kAwEocvLcEGFctCB1VJrqupjvGDwepLTDVNTDZkPjzwTNgvVijmvKhsDreMjGLbAadaUCaDoXDoMeB/0/*))#tfc0mal5",
+                json_wallet.expose_secret().receiving_output_descriptor
+            );
+            // Try to sign PSBTs using the multisig wallet
+            let mut psbt = open_psbt_file(&psbt_path)?;
+            let mut psbt2 = open_psbt_file(&psbt2_path)?;
+            let n: u32 = wallet.sign_psbt(&mut psbt, &secp)?.try_into()?;
+            assert_eq!(n, total);
+            let n: u32 = wallet.sign_psbt(&mut psbt2, &secp)?.try_into()?;
+            assert_eq!(n, total);
+            let public_info = MultisigJsonWalletPublicExportV0::from_path(&output_file_path_json)?;
+            assert_eq!(
+                public_info.to_string_pretty()?,
+                r#"{
   "wallet": "frozenkrill",
   "version": 0,
   "sigtype": "2-of-3",
@@ -343,7 +354,8 @@ mod tests {
     }
   ]
 }"#
-        );
+            );
+        }
         Ok(())
     }
 
@@ -359,7 +371,7 @@ mod tests {
         let output_file_path_json = tempdir.path().join("output_file_path_json");
         let keyfile1 = tempdir.path().join("keyfile1");
         create_file("stuff".as_bytes(), keyfile1.as_path())?;
-        let keyfiles = &[keyfile1];
+        let keyfiles = vec![keyfile1];
         let input_files_descriptors = vec![
             create_file(
                 r#"[7f4d5c70/48'/1'/0'/2']tpubDFHGoJYXaCkKaEDP9Tt5mQA9uCuXdLeXqbJGagwKsffJJbfMGoBfzgrJtAu4oWLsxJFSytQhzpBE74jQ77eJZPwtags3yEqZ7DEp7VGfSvz/<0;1>/*"#.as_bytes(),
@@ -375,12 +387,8 @@ mod tests {
         let (term, theme) = get_term_theme(true);
         let mut multisig_inputs = MultisigInputs::default();
         for input_file in input_files_descriptors {
-            let input = common::multisig::parse_multisig_input(
-                theme.as_ref(),
-                &term,
-                &mut secp,
-                &input_file,
-            )?;
+            let input =
+                common::multisig::parse_multisig_input(theme.as_ref(), &term, &secp, &input_file)?;
             assert_eq!(multisig_inputs.merge(input)?, 1);
         }
         let total = 3;
@@ -391,33 +399,43 @@ mod tests {
             inputs: multisig_inputs,
             output_file_path_encrypted: output_file_path_encrypted.clone(),
             output_file_path_json: Some(output_file_path_json.clone()),
-            keyfiles,
+            keyfiles: &keyfiles,
             network,
             difficulty: &difficulty,
             addresses_quantity: 2,
             padding_params: PaddingParams::default(),
         };
         multisig_core_generate(theme.as_ref(), &term, &mut secp, &mut rng, args)?;
-        let encrypted_wallet = read_decode_wallet(&output_file_path_encrypted)?;
-        let wallet = common::multisig::multisig_core_open(
-            theme.as_ref(),
-            &term,
-            &secp,
-            &encrypted_wallet,
-            keyfiles,
-            &difficulty,
-            Some(vec![]),
-            Some(Arc::clone(&password)),
-        )?;
-        let json_wallet = MultisigJsonWalletDescriptionV0::from_wallet_description(&wallet, &secp)?;
-        assert_eq!(
-            "tb1qqhww8d86stcvx6kymz5vw6n5he3scggekv0tfvhxsds4zmhwhyvsp346h3",
-            json_wallet.expose_secret().first_address
-        );
-        assert_eq!(
+        let input_wallets = vec![
+            MultisigCoreOpenWalletParam::Encrypted {
+                input_wallet: read_decode_wallet(&output_file_path_encrypted)?,
+                password: Some(Arc::clone(&password)),
+                keyfiles: keyfiles.to_owned(),
+                difficulty,
+            },
+            MultisigCoreOpenWalletParam::Json(Secret::new(
+                MultisigJsonWalletPublicExportV0::from_path(&output_file_path_json)?,
+            )),
+        ];
+        for input_wallet in input_wallets {
+            let wallet = common::multisig::multisig_core_open(
+                theme.as_ref(),
+                &term,
+                &secp,
+                input_wallet,
+                Some(vec![]),
+            )?;
+            let json_wallet =
+                MultisigJsonWalletDescriptionV0::from_wallet_description(&wallet, &secp)?;
+            assert_eq!(
+                "tb1qqhww8d86stcvx6kymz5vw6n5he3scggekv0tfvhxsds4zmhwhyvsp346h3",
+                json_wallet.expose_secret().first_address
+            );
+            assert_eq!(
             "wsh(sortedmulti(2,[73c5da0a/48'/1'/0'/2']tpubDFH9dgzveyD8zTbPUFuLrGmCydNvxehyNdUXKJAQN8x4aZ4j6UZqGfnqFrD4NqyaTVGKbvEW54tsvPTK2UoSbCC1PJY8iCNiwTL3RWZEheQ/0/*,[7f4d5c70/48'/1'/0'/2']tpubDFHGoJYXaCkKaEDP9Tt5mQA9uCuXdLeXqbJGagwKsffJJbfMGoBfzgrJtAu4oWLsxJFSytQhzpBE74jQ77eJZPwtags3yEqZ7DEp7VGfSvz/0/*,[98d0d15a/48'/1'/0'/2']tpubDF83NP8zFt9V85eg5zWKNHu5R17i6kAwEocvLcEGFctCB1VJrqupjvGDwepLTDVNTDZkPjzwTNgvVijmvKhsDreMjGLbAadaUCaDoXDoMeB/0/*))#tfc0mal5",
             json_wallet.expose_secret().receiving_output_descriptor
         );
+        }
         Ok(())
     }
 }

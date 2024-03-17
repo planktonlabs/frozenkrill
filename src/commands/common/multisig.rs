@@ -8,20 +8,27 @@ use std::{
 
 use dialoguer::{console::Term, theme::Theme};
 use frozenkrill_core::{
-    anyhow::{self, ensure, Context},
-    bitcoin::secp256k1::{All, Secp256k1},
+    anyhow::{self, bail, ensure, Context},
+    bitcoin::{
+        self,
+        secp256k1::{All, Secp256k1},
+    },
     key_derivation::KeyDerivationDifficulty,
     log::{self, debug, info},
-    miniscript::DescriptorPublicKey,
+    miniscript::{self, DescriptorPublicKey},
     parse_keyfiles_paths,
     secrecy::{ExposeSecret, Secret, SecretString},
     serde_json,
     utils::{self, buf_open_file},
     wallet_description::{
         self, read_decode_wallet, EncryptedWalletDescription, MultiSigWalletDescriptionV0,
-        MultisigJsonWalletDescriptionV0, MultisigType, SigType, SingleSigWalletDescriptionV0,
+        MultisigJsonWalletDescriptionV0, MultisigType, ScriptType, SigType,
+        SingleSigWalletDescriptionV0,
     },
-    wallet_export::{GenericOutputExportJson, SinglesigJsonWalletPublicExportV0},
+    wallet_export::{
+        GenericOutputExportJson, MultisigJsonWalletPublicExportV0,
+        SinglesigJsonWalletPublicExportV0,
+    },
     MultisigInputs,
 };
 
@@ -30,6 +37,7 @@ use crate::{
     commands::{
         common::{
             ask_try_open_again_multisig_parse_multisig_input, singlesig::singlesig_core_open,
+            try_open_as_json_input, ParsedWalletInputFile, PublicInfoInput,
         },
         interactive::{
             get_ask_difficulty,
@@ -48,31 +56,44 @@ pub(crate) fn open_multisig_wallet_non_interactive(
     ic: impl InternetChecker,
     args: &MultisigOpenArgs,
 ) -> anyhow::Result<MultiSigWalletDescriptionV0> {
-    log::info!(
-        "Trying to open multisig wallet {:?}",
-        args.common.wallet_input_file
-    );
-    let input_file_path = handle_input_path(&args.common.wallet_input_file)?;
-    let encrypted_wallet = read_decode_wallet(&input_file_path)?;
-    let keyfiles = parse_keyfiles_paths(&args.common.keyfile)?;
+    let wallet_input_file = &args.common.wallet_input_file;
+    log::info!("Trying to open multisig wallet {wallet_input_file:?}",);
+    let input_file_path = handle_input_path(wallet_input_file)?;
+    let input_wallet = match try_open_as_json_input(&input_file_path) {
+        Ok(PublicInfoInput::MultisigJson(json)) => MultisigCoreOpenWalletParam::Json(Secret::new(json)),
+        Err(json_error) =>{
+            match read_decode_wallet(&input_file_path) {
+                Ok(encrypted_wallet) => MultisigCoreOpenWalletParam::Encrypted {
+                    input_wallet: encrypted_wallet,
+                    password: None,
+                    keyfiles: parse_keyfiles_paths(&args.common.keyfile)?,
+                    difficulty: args.common.difficulty,
+                },
+                Err(encrypted_error) =>
+                    bail!(
+                        "Got {encrypted_error} while opening as encrypted wallet and {json_error} while opening as pub json"
+                    )
+            }
+        }
+    };
     let inputs = parse_multisig_inputs(theme, term, secp, ic, &args.input_files)?;
-    if args.input_files.len() != inputs.signers.len() {
-        anyhow::bail!(
-            "Given {} files but only {} signers found",
-            args.input_files.len(),
-            inputs.signers.len()
-        )
-    }
-    multisig_core_open(
-        theme,
-        term,
-        secp,
-        &encrypted_wallet,
-        &keyfiles,
-        &args.common.difficulty,
-        Some(inputs.signers),
-        None,
-    )
+    anyhow::ensure!(
+        args.input_files.len() == inputs.signers.len(),
+        "Given {} files but only {} signers found",
+        args.input_files.len(),
+        inputs.signers.len()
+    );
+    multisig_core_open(theme, term, secp, input_wallet, Some(inputs.signers))
+}
+
+pub(crate) enum MultisigCoreOpenWalletParam {
+    Encrypted {
+        input_wallet: EncryptedWalletDescription,
+        password: Option<Arc<SecretString>>,
+        keyfiles: Vec<PathBuf>,
+        difficulty: KeyDerivationDifficulty,
+    },
+    Json(Secret<MultisigJsonWalletPublicExportV0>),
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -80,19 +101,55 @@ pub(crate) fn multisig_core_open(
     theme: &dyn Theme,
     term: &Term,
     secp: &Secp256k1<All>,
-    encrypted_wallet: &EncryptedWalletDescription,
-    keyfiles: &[PathBuf],
-    difficulty: &KeyDerivationDifficulty,
+    input_wallet: MultisigCoreOpenWalletParam,
     signers: Option<Vec<SingleSigWalletDescriptionV0>>,
-    password: Option<Arc<SecretString>>,
 ) -> anyhow::Result<MultiSigWalletDescriptionV0> {
-    let password = password
-        .map(Result::Ok)
-        .unwrap_or_else(|| ask_password(theme, term).map(Arc::new))?;
-    let key = ui_derive_key(&password, keyfiles, &encrypted_wallet.salt, difficulty)?;
-    let json_wallet = encrypted_wallet.decrypt_multisig(&key)?;
-    let wallet = ui_get_multisig_wallet_description(theme, term, &json_wallet, signers, secp)?;
-    Ok(wallet)
+    match input_wallet {
+        MultisigCoreOpenWalletParam::Encrypted {
+            input_wallet,
+            password,
+            keyfiles,
+            difficulty,
+        } => {
+            let password = password
+                .map(Result::Ok)
+                .unwrap_or_else(|| ask_password(theme, term).map(Arc::new))?;
+            let key = ui_derive_key(&password, &keyfiles, &input_wallet.salt, &difficulty)?;
+            let json_wallet = input_wallet.decrypt_multisig(&key)?;
+            let params = GetMultisigWalletDescriptionParams {
+                signers,
+                receiving_descriptor: json_wallet.expose_secret().receiving_output_descriptor()?,
+                change_descriptor: json_wallet.expose_secret().change_output_descriptor()?,
+                configuration: json_wallet.expose_secret().configuration()?,
+                network: json_wallet.expose_secret().network()?,
+                script_type: json_wallet.expose_secret().script_type()?,
+            };
+            let wallet = ui_get_multisig_wallet_description(theme, term, params, secp)?;
+            Ok(wallet)
+        }
+        MultisigCoreOpenWalletParam::Json(json_wallet) => {
+            let params = GetMultisigWalletDescriptionParams {
+                signers,
+                receiving_descriptor: MultisigJsonWalletDescriptionV0::descriptor_from_str(
+                    &json_wallet.expose_secret().receiving_output_descriptor,
+                )?,
+                change_descriptor: MultisigJsonWalletDescriptionV0::descriptor_from_str(
+                    &json_wallet.expose_secret().change_output_descriptor,
+                )?,
+                configuration: MultisigJsonWalletDescriptionV0::configuration_from_str(
+                    &json_wallet.expose_secret().sigtype,
+                )?,
+                network: MultisigJsonWalletDescriptionV0::network_from_str(
+                    &json_wallet.expose_secret().network,
+                )?,
+                script_type: MultisigJsonWalletDescriptionV0::script_type_from_str(
+                    &json_wallet.expose_secret().script_type,
+                )?,
+            };
+            let wallet = ui_get_multisig_wallet_description(theme, term, params, secp)?;
+            Ok(wallet)
+        }
+    }
 }
 
 pub(crate) fn parse_multisig_input(
@@ -242,31 +299,34 @@ pub(crate) fn parse_multisig_inputs(
     })
 }
 
+pub(crate) struct GetMultisigWalletDescriptionParams {
+    signers: Option<Vec<SingleSigWalletDescriptionV0>>,
+    receiving_descriptor: miniscript::Descriptor<DescriptorPublicKey>,
+    change_descriptor: miniscript::Descriptor<DescriptorPublicKey>,
+    configuration: MultisigType,
+    network: bitcoin::Network,
+    script_type: ScriptType,
+}
+
 fn ui_get_multisig_wallet_description(
     theme: &dyn Theme,
     term: &Term,
-    j: &Secret<MultisigJsonWalletDescriptionV0>,
-    signers: Option<Vec<SingleSigWalletDescriptionV0>>,
+    params: GetMultisigWalletDescriptionParams,
     secp: &Secp256k1<All>,
 ) -> anyhow::Result<MultiSigWalletDescriptionV0> {
-    let receiving = j.expose_secret().receiving_output_descriptor()?;
-    let change = j.expose_secret().change_output_descriptor()?;
-    let configuration = j.expose_secret().configuration()?;
-    let signers = signers
+    let signers = params
+        .signers
         .map(Result::Ok)
-        .unwrap_or_else(|| ask_open_signers(theme, term, &configuration, secp))?;
+        .unwrap_or_else(|| ask_open_signers(theme, term, &params.configuration, secp))?;
     let w = MultiSigWalletDescriptionV0::generate(
         signers,
-        receiving,
-        change,
-        configuration,
-        j.expose_secret().network()?,
-        j.expose_secret().script_type()?,
+        params.receiving_descriptor,
+        params.change_descriptor,
+        params.configuration,
+        params.network,
+        params.script_type,
     )?;
-    match MultisigJsonWalletDescriptionV0::validate_same(j, &w, secp)? {
-        Ok(()) => Ok(w),
-        Err(e) => anyhow::bail!("Validation error: {e:?}"),
-    }
+    Ok(w)
 }
 
 fn ask_open_signers(
@@ -296,7 +356,12 @@ fn ask_open_signers(
     let mut signers = Vec::with_capacity(n.try_into()?);
     for _ in 0..n {
         let (wallet, non_duress_password) = loop {
-            let (_, encrypted_wallet) = ask_wallet_input_file(theme, term)?;
+            let (_, wallet_input) = ask_wallet_input_file(theme, term)?;
+
+            let ParsedWalletInputFile::Encrypted(encrypted_wallet) = wallet_input else {
+                bail!("Expected encrypted wallet but got: {wallet_input:?}")
+            };
+
             let keyfiles = ask_for_keyfiles_open(theme, term)?;
             let difficulty = get_ask_difficulty(theme, term, None)?;
             match singlesig_core_open(
@@ -342,7 +407,7 @@ mod tests {
         use pretty_assertions::assert_eq;
         let tempdir = tempdir::TempDir::new("test-parse-multisig-inputs")?;
         let mut rng = rand::thread_rng();
-        let mut secp = get_secp(&mut rng);
+        let secp = get_secp(&mut rng);
         let (term, theme) = get_term_theme(true);
 
         // simple descriptor using /<0;1>/ syntax
@@ -350,7 +415,7 @@ mod tests {
             r#" [7f4d5c70/48'/1'/0'/2']tpubDFHGoJYXaCkKaEDP9Tt5mQA9uCuXdLeXqbJGagwKsffJJbfMGoBfzgrJtAu4oWLsxJFSytQhzpBE74jQ77eJZPwtags3yEqZ7DEp7VGfSvz/<0;1>/* "#.as_bytes(),
             &tempdir.path().join("descriptor1.txt"),
         )?.to_path_buf();
-        let input = parse_multisig_input(theme.as_ref(), &term, &mut secp, &input_file)?;
+        let input = parse_multisig_input(theme.as_ref(), &term, &secp, &input_file)?;
         assert_eq!(
             input.receiving_descriptors,
             HashSet::from([DescriptorPublicKey::from_str(
@@ -370,7 +435,7 @@ mod tests {
             r#" [7f4d5c70/48'/1'/0'/2']tpubDFHGoJYXaCkKaEDP9Tt5mQA9uCuXdLeXqbJGagwKsffJJbfMGoBfzgrJtAu4oWLsxJFSytQhzpBE74jQ77eJZPwtags3yEqZ7DEp7VGfSvz/0/* "#.as_bytes(),
             &tempdir.path().join("descriptor2.txt"),
         )?.to_path_buf();
-        let input = parse_multisig_input(theme.as_ref(), &term, &mut secp, &input_file)?;
+        let input = parse_multisig_input(theme.as_ref(), &term, &secp, &input_file)?;
         assert_eq!(
             input.receiving_descriptors,
             HashSet::from([DescriptorPublicKey::from_str(
@@ -388,7 +453,7 @@ mod tests {
         // This is coldcard/sparrow json export
         let input_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("resources/tests/73C5DA0A_coldcard-generic-export.json");
-        let input = parse_multisig_input(theme.as_ref(), &term, &mut secp, &input_file)?;
+        let input = parse_multisig_input(theme.as_ref(), &term, &secp, &input_file)?;
         assert_eq!(
             input.receiving_descriptors,
             HashSet::from([DescriptorPublicKey::from_str(
