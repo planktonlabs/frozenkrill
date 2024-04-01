@@ -5,7 +5,7 @@ use std::{
 };
 
 use anyhow::Context;
-use bitcoin::util::bip32::{ChildNumber, DerivationPath, ExtendedPubKey, Fingerprint};
+use bitcoin::bip32::{ChildNumber, DerivationPath, Fingerprint, Xpub};
 use miniscript::DescriptorPublicKey;
 use secrecy::Zeroize;
 use serde::{Deserialize, Serialize};
@@ -177,7 +177,7 @@ impl SinglesigJsonWalletPublicExportV0 {
         Self::deserialize(data).with_context(|| format!("failure decoding output file {path:?}"))
     }
 
-    fn multisig_xpub(&self) -> anyhow::Result<ExtendedPubKey> {
+    fn multisig_xpub(&self) -> anyhow::Result<Xpub> {
         match self.script_type()? {
             ScriptType::SegwitNative => slip132_decode_pub(&self.multisig_xpub),
         }

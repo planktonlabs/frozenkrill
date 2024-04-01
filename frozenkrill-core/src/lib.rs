@@ -20,20 +20,20 @@ use crate::wallet_description::{
     ENCRYPTED_HEADER_LENGTH,
 };
 
-pub extern crate psbt as descriptor_wallet_psbt;
-
 pub mod compression;
+pub mod custom_logger;
 pub mod encryption;
 pub mod key_derivation;
 pub mod mnemonic_utils;
 pub mod psbt;
+pub mod slip132;
 pub mod utils;
 pub mod wallet_description;
 pub mod wallet_export;
 
 pub use {
-    anyhow, bip39, bitcoin, bitcoin_scripts, blake3, env_logger, hex, itertools, log, miniscript,
-    rand, rand_core, rayon, secrecy, serde, serde_json,
+    anyhow, bip39, bitcoin, blake3, env_logger, hex, itertools, log, miniscript, rand, rand_core,
+    rayon, secrecy, serde, serde_json,
 };
 
 pub fn get_secp<Rng: CryptoRngCore>(rng: &mut Rng) -> Secp256k1<All> {

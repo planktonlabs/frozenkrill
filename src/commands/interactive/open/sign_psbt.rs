@@ -3,8 +3,10 @@ use std::{fs, path::PathBuf, sync::Arc};
 use dialoguer::{console::Term, theme::Theme};
 use frozenkrill_core::{
     anyhow,
-    bitcoin::secp256k1::{All, Secp256k1},
-    descriptor_wallet_psbt,
+    bitcoin::{
+        psbt::Psbt,
+        secp256k1::{All, Secp256k1},
+    },
     psbt::open_psbt_file,
     secrecy::SecretString,
     wallet_description::{MultiSigWalletDescriptionV0, SingleSigWalletDescriptionV0},
@@ -73,10 +75,7 @@ pub(super) fn multisig_sign(
     )
 }
 
-fn ask_psbt_input_file(
-    theme: &dyn Theme,
-    term: &Term,
-) -> anyhow::Result<(PathBuf, descriptor_wallet_psbt::Psbt)> {
+fn ask_psbt_input_file(theme: &dyn Theme, term: &Term) -> anyhow::Result<(PathBuf, Psbt)> {
     let mut files = fs::read_dir(".")?
         .collect::<Result<Vec<_>, _>>()?
         .iter()

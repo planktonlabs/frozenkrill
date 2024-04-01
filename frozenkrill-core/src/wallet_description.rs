@@ -10,8 +10,9 @@ use std::{
 
 use anyhow::Context;
 use bitcoin::{
-    util::bip32::{ChildNumber, DerivationPath, Fingerprint},
-    Address, Network, XpubIdentifier,
+    bip32::{ChildNumber, DerivationPath, Fingerprint},
+    psbt::Psbt,
+    Address, Network,
 };
 use itertools::Itertools;
 use miniscript::{Descriptor, DescriptorPublicKey};
@@ -235,9 +236,7 @@ pub(super) fn get_singlesig_v0_derivation_path(
 ) -> DerivationPath {
     let s = match (script_type, network) {
         (ScriptType::SegwitNative, Network::Bitcoin) => "m/84'/0'/0'",
-        (ScriptType::SegwitNative, Network::Testnet | Network::Signet | Network::Regtest) => {
-            "m/84'/1'/0'"
-        }
+        (ScriptType::SegwitNative, _) => "m/84'/1'/0'",
     };
     DerivationPath::from_str(s).expect("code to be correct")
 }
@@ -248,9 +247,7 @@ pub(super) fn get_multisig_v0_derivation_path(
 ) -> DerivationPath {
     let s = match (script_type, network) {
         (ScriptType::SegwitNative, Network::Bitcoin) => "m/48'/0'/0'/2'",
-        (ScriptType::SegwitNative, Network::Testnet | Network::Signet | Network::Regtest) => {
-            "m/48'/1'/0'/2'"
-        }
+        (ScriptType::SegwitNative, _) => "m/48'/1'/0'/2'",
     };
     DerivationPath::from_str(s).expect("code to be correct")
 }
@@ -305,11 +302,7 @@ pub struct AddressInfo {
     pub index: u32,
 }
 
-type PsbtKeyInfo<'a> = (
-    &'a Secret<WExtendedPrivKey>,
-    &'a DerivationPath,
-    XpubIdentifier,
-);
+type PsbtKeyInfo<'a> = &'a Secret<WExtendedPrivKey>;
 
 #[derive(Clone)]
 pub struct SingleSigWalletDescriptionV0 {
@@ -317,11 +310,11 @@ pub struct SingleSigWalletDescriptionV0 {
     pub master_fingerprint: Fingerprint,
     root_key: Secret<WExtendedPrivKey>,
     singlesig_xpriv: Secret<WExtendedPrivKey>,
-    singlesig_xpub: bitcoin::util::bip32::ExtendedPubKey,
-    pub singlesig_derivation_path: bitcoin::util::bip32::DerivationPath,
+    singlesig_xpub: bitcoin::bip32::Xpub,
+    pub singlesig_derivation_path: bitcoin::bip32::DerivationPath,
     multisig_xpriv: Secret<WExtendedPrivKey>,
-    multisig_xpub: bitcoin::util::bip32::ExtendedPubKey,
-    pub multisig_derivation_path: bitcoin::util::bip32::DerivationPath,
+    multisig_xpub: bitcoin::bip32::Xpub,
+    pub multisig_derivation_path: bitcoin::bip32::DerivationPath,
     pub network: Network,
     pub script_type: ScriptType,
 }
@@ -344,10 +337,8 @@ impl SingleSigWalletDescriptionV0 {
                 .0
                 .derive_priv(secp, &singlesig_derivation_path)?,
         ));
-        let singlesig_xpub = bitcoin::util::bip32::ExtendedPubKey::from_priv(
-            secp,
-            &singlesig_xpriv.expose_secret().0,
-        );
+        let singlesig_xpub =
+            bitcoin::bip32::Xpub::from_priv(secp, &singlesig_xpriv.expose_secret().0);
         let multisig_derivation_path = get_multisig_v0_derivation_path(&script_type, &network);
         let multisig_xpriv = Secret::new(WExtendedPrivKey(
             root_key
@@ -355,10 +346,8 @@ impl SingleSigWalletDescriptionV0 {
                 .0
                 .derive_priv(secp, &multisig_derivation_path)?,
         ));
-        let multisig_xpub = bitcoin::util::bip32::ExtendedPubKey::from_priv(
-            secp,
-            &multisig_xpriv.expose_secret().0,
-        );
+        let multisig_xpub =
+            bitcoin::bip32::Xpub::from_priv(secp, &multisig_xpriv.expose_secret().0);
         let master_fingerprint = root_key.expose_secret().0.fingerprint(secp);
         Ok(Self {
             mnemonic,
@@ -393,14 +382,14 @@ impl SingleSigWalletDescriptionV0 {
         &self,
         start: u32,
         quantity: u32,
-        child_number: bitcoin::util::bip32::ChildNumber,
+        child_number: bitcoin::bip32::ChildNumber,
         secp: &Secp256k1<All>,
     ) -> anyhow::Result<Vec<DerivedAddress>> {
         use rayon::prelude::*;
         (start..(start + quantity))
             .into_par_iter()
             .map(|i| {
-                let i = bitcoin::util::bip32::ChildNumber::from_normal_idx(i)?;
+                let i = bitcoin::bip32::ChildNumber::from_normal_idx(i)?;
                 let public_key = self
                     .singlesig_xpub
                     .derive_pub(secp, &[child_number, i])?
@@ -431,7 +420,7 @@ impl SingleSigWalletDescriptionV0 {
     ) -> anyhow::Result<Vec<DerivedAddress>> {
         match self.script_type {
             ScriptType::SegwitNative => {
-                let zero = bitcoin::util::bip32::ChildNumber::from_normal_idx(0)?;
+                let zero = bitcoin::bip32::ChildNumber::from_normal_idx(0)?;
                 self.derive_addresses(start, quantity, zero, secp)
             }
         }
@@ -445,7 +434,7 @@ impl SingleSigWalletDescriptionV0 {
     ) -> anyhow::Result<Vec<DerivedAddress>> {
         match self.script_type {
             ScriptType::SegwitNative => {
-                let one = bitcoin::util::bip32::ChildNumber::from_normal_idx(1)?;
+                let one = bitcoin::bip32::ChildNumber::from_normal_idx(1)?;
                 self.derive_addresses(start, quantity, one, secp)
             }
         }
@@ -504,16 +493,8 @@ impl SingleSigWalletDescriptionV0 {
         self.singlesig_xpub.fingerprint()
     }
 
-    fn get_singlesig_pub_identifier(&self) -> XpubIdentifier {
-        self.singlesig_xpub.identifier()
-    }
-
     pub fn get_multisig_pub_fingerprint(&self) -> Fingerprint {
         self.multisig_xpub.fingerprint()
-    }
-
-    fn get_multisig_pub_identifier(&self) -> XpubIdentifier {
-        self.multisig_xpub.identifier()
     }
 
     fn singlesig_public_descriptor(&self, child: ChildNumber) -> DescriptorPublicKey {
@@ -601,38 +582,16 @@ impl SingleSigWalletDescriptionV0 {
     }
 
     pub(super) fn get_psbt_singlesig_keys(&self) -> Vec<PsbtKeyInfo> {
-        vec![
-            (
-                &self.root_key,
-                &self.singlesig_derivation_path,
-                self.get_singlesig_pub_identifier(),
-            ),
-            (
-                &self.singlesig_xpriv,
-                &self.singlesig_derivation_path,
-                self.get_singlesig_pub_identifier(),
-            ),
-        ]
+        vec![&self.root_key, &self.singlesig_xpriv]
     }
 
     pub(super) fn get_psbt_multisig_keys(&self) -> Vec<PsbtKeyInfo> {
-        vec![
-            (
-                &self.root_key,
-                &self.multisig_derivation_path,
-                self.get_multisig_pub_identifier(),
-            ),
-            (
-                &self.multisig_xpriv,
-                &self.multisig_derivation_path,
-                self.get_multisig_pub_identifier(),
-            ),
-        ]
+        vec![&self.root_key, &self.multisig_xpriv]
     }
 }
 
 impl PsbtWallet for SingleSigWalletDescriptionV0 {
-    fn sign_psbt(&self, psbt: &mut psbt::Psbt, secp: &Secp256k1<All>) -> anyhow::Result<usize> {
+    fn sign_psbt(&self, psbt: &mut Psbt, secp: &Secp256k1<All>) -> anyhow::Result<usize> {
         let mut n = 0;
         for keys in [
             self.get_psbt_singlesig_keys(),
@@ -952,7 +911,7 @@ impl MultiSigWalletDescriptionV0 {
 }
 
 impl PsbtWallet for MultiSigWalletDescriptionV0 {
-    fn sign_psbt(&self, psbt: &mut psbt::Psbt, secp: &Secp256k1<All>) -> anyhow::Result<usize> {
+    fn sign_psbt(&self, psbt: &mut Psbt, secp: &Secp256k1<All>) -> anyhow::Result<usize> {
         let keys = self
             .signers
             .iter()
@@ -1105,7 +1064,7 @@ impl MultisigJsonWalletDescriptionV0 {
 }
 
 pub trait PsbtWallet {
-    fn sign_psbt(&self, psbt: &mut psbt::Psbt, secp: &Secp256k1<All>) -> anyhow::Result<usize>;
+    fn sign_psbt(&self, psbt: &mut Psbt, secp: &Secp256k1<All>) -> anyhow::Result<usize>;
 
     fn get_pub_fingerprints(&self) -> Vec<Fingerprint>;
 
@@ -1118,7 +1077,7 @@ pub trait PsbtWallet {
 }
 
 #[derive(Clone)]
-pub struct WExtendedPrivKey(pub bitcoin::util::bip32::ExtendedPrivKey);
+pub struct WExtendedPrivKey(pub bitcoin::bip32::Xpriv);
 
 impl Zeroize for WExtendedPrivKey {
     fn zeroize(&mut self) {
@@ -1184,42 +1143,49 @@ fn get_root_key(
     network: bitcoin::Network,
 ) -> anyhow::Result<Secret<WExtendedPrivKey>> {
     let seed = Secret::new(mnemonic.expose_secret().to_seed(passphrase.expose_secret()));
-    let root = Secret::new(WExtendedPrivKey(
-        bitcoin::util::bip32::ExtendedPrivKey::new_master(network, seed.expose_secret())?,
-    ));
+    let root = Secret::new(WExtendedPrivKey(bitcoin::bip32::Xpriv::new_master(
+        network,
+        seed.expose_secret(),
+    )?));
     Ok(root)
 }
 
 // See https://github.com/bitcoin/bips/blob/master/bip-0084.mediawiki and https://github.com/satoshilabs/slips/blob/master/slip-0132.md
 fn m84_slip132_encode_priv(key: &Secret<WExtendedPrivKey>) -> String {
-    slip132::ToSlip132::to_slip132_string(
+    crate::slip132::ToSlip132::to_slip132_string(
         &key.expose_secret().0,
-        slip132::KeyApplication::SegWit,
+        crate::slip132::KeyApplication::SegWit,
         key.expose_secret().0.network,
     )
 }
 
-fn m84_slip132_encode_pub(key: &bitcoin::util::bip32::ExtendedPubKey) -> String {
-    slip132::ToSlip132::to_slip132_string(key, slip132::KeyApplication::SegWit, key.network)
+fn m84_slip132_encode_pub(key: &bitcoin::bip32::Xpub) -> String {
+    crate::slip132::ToSlip132::to_slip132_string(
+        key,
+        crate::slip132::KeyApplication::SegWit,
+        key.network,
+    )
 }
 
 // See https://github.com/bitcoin/bips/blob/master/bip-0048.mediawiki
 fn m48_slip132_encode_priv(key: &Secret<WExtendedPrivKey>) -> String {
-    slip132::ToSlip132::to_slip132_string(
+    crate::slip132::ToSlip132::to_slip132_string(
         &key.expose_secret().0,
-        slip132::KeyApplication::SegWitMultisig,
+        crate::slip132::KeyApplication::SegWitMultisig,
         key.expose_secret().0.network,
     )
 }
 
-fn m48_slip132_encode_pub(key: &bitcoin::util::bip32::ExtendedPubKey) -> String {
-    slip132::ToSlip132::to_slip132_string(key, slip132::KeyApplication::SegWitMultisig, key.network)
+fn m48_slip132_encode_pub(key: &bitcoin::bip32::Xpub) -> String {
+    crate::slip132::ToSlip132::to_slip132_string(
+        key,
+        crate::slip132::KeyApplication::SegWitMultisig,
+        key.network,
+    )
 }
 
-pub(crate) fn slip132_decode_pub(
-    key: &str,
-) -> anyhow::Result<bitcoin::util::bip32::ExtendedPubKey> {
-    Ok(slip132::FromSlip132::from_slip132_str(key)?)
+pub(crate) fn slip132_decode_pub(key: &str) -> anyhow::Result<bitcoin::bip32::Xpub> {
+    crate::slip132::FromSlip132::from_slip132_str(key)
 }
 
 pub fn read_decode_wallet(output_file_path: &Path) -> anyhow::Result<EncryptedWalletDescription> {
@@ -1423,7 +1389,7 @@ mod tests {
     //             .0
     //             .derive_priv(&secp, &derivation_path)?,
     //     ));
-    //     let xpub = bitcoin::util::bip32::ExtendedPubKey::from_priv(&secp, &xpriv.expose_secret().0);
+    //     let xpub = bitcoin::bip32::Xpub::from_priv(&secp, &xpriv.expose_secret().0);
     //     println!("{xpub}");
     //     println!(
     //         "master fp {}",
@@ -1437,7 +1403,7 @@ mod tests {
     //             Network::Bitcoin,
     //         )
     //     );
-    //     let zero = bitcoin::util::bip32::ChildNumber::from_normal_idx(0)?;
+    //     let zero = bitcoin::bip32::ChildNumber::from_normal_idx(0)?;
     //     let public_key = xpub.derive_pub(&secp, &vec![zero, zero])?.public_key;
     //     let w = miniscript::descriptor::Wsh::new_sortedmulti(1, vec![public_key])?;
     //     println!("{}", w.to_string());
@@ -1446,7 +1412,7 @@ mod tests {
     //     // key.at_derivation_index(0)
     //     let w = miniscript::descriptor::Wsh::new_sortedmulti(1, vec![key])?;
     //     println!("{}", w.to_string());
-    //     use bitcoin::util::bip32;
+    //     use bitcoin::bip32;
     //     miniscript::DescriptorPublicKey::XPub(miniscript::descriptor::DescriptorXKey {
     //         origin: Some((
     //             bip32::Fingerprint::from(&[0x78, 0x41, 0x2e, 0x3a][..]),

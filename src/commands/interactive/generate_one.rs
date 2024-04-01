@@ -173,13 +173,16 @@ pub(crate) fn ask_create_multisig_inputs(
                 ))
                 .items(&files)
                 .interact_on(term)?;
-            match parse_multisig_input(theme, term, secp, &handle_input_path(&files[file_index])?).and_then(|input| {
-                let descriptors_added = result.merge(input)?;
-                if descriptors_added != 1 {
-                    anyhow::bail!("Expected to read one new descriptor but got {descriptors_added} new descriptors, perhaps a duplicated file was selected?")
-                }
-                Ok(())
-            }) {
+            let parsed =
+                parse_multisig_input(theme, term, secp, &handle_input_path(&files[file_index])?);
+            let parsed = parsed.and_then(|input| {
+                    let descriptors_added = result.merge(input)?;
+                    if descriptors_added != 1 {
+                        anyhow::bail!("Expected to read one new descriptor but got {descriptors_added} new descriptors, perhaps a duplicated file was selected?")
+                    }
+                    Ok(())
+                });
+            match parsed {
                 Ok(()) => break,
                 Err(e) => {
                     eprintln!("{e:?}");

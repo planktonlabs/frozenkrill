@@ -2,15 +2,13 @@ use std::path::PathBuf;
 
 use dialoguer::{console::Term, theme::Theme};
 use frozenkrill_core::{
-    anyhow::{self},
+    anyhow,
     bitcoin::{
         secp256k1::{All, Secp256k1},
-        Address, Amount, Network,
+        Address, Network, Psbt,
     },
-    bitcoin_scripts::address::AddressFormat,
-    descriptor_wallet_psbt,
     itertools::Itertools,
-    log,
+    log::{self, debug},
     psbt::{open_psbt_file, save_psbt_file},
     wallet_description::PsbtWallet,
 };
@@ -25,7 +23,7 @@ use crate::{
 
 use super::common::{double_check_non_duress_password, from_input_to_signed_psbt};
 
-pub(super) fn validated_input_psbt_sign(psbt: &descriptor_wallet_psbt::Psbt) -> anyhow::Result<()> {
+pub(super) fn validated_input_psbt_sign(psbt: &Psbt) -> anyhow::Result<()> {
     if psbt.outputs.is_empty() {
         anyhow::bail!("The PSBT has no outputs, better avoid signing that")
     }
@@ -50,7 +48,7 @@ pub(super) fn sign_core(
     term: &Term,
     secp: &Secp256k1<All>,
     wallet: &impl PsbtWallet,
-    mut psbt: descriptor_wallet_psbt::Psbt,
+    mut psbt: Psbt,
     signed_psbt_output_file_path: &PathBuf,
     network: Network,
 ) -> anyhow::Result<()> {
@@ -77,15 +75,21 @@ pub(super) fn sign_core(
 
     let fee = psbt.fee()?;
     let change_addresses = wallet.derive_change_addresses(0, 100, secp)?;
-    for output in &psbt.outputs {
-        let address = Address::from_script(&output.script, network);
+    for (output_index, (output, psbt_output)) in psbt
+        .unsigned_tx
+        .output
+        .iter()
+        .zip(&psbt.outputs)
+        .enumerate()
+    {
+        let address = Address::from_script(output.script_pubkey.as_script(), network);
         let s = address
             .as_ref()
             .map(ToString::to_string)
-            .unwrap_or_else(|_| output.script.to_string());
+            .unwrap_or_else(|_| output.script_pubkey.as_script().to_string());
         let is_change = address.is_ok() && change_addresses.contains(address.as_ref().unwrap());
         let maybe_change = address.is_ok()
-            && !(output.bip32_derivation.is_empty() && output.tap_key_origins.is_empty());
+            && !(psbt_output.bip32_derivation.is_empty() && psbt_output.tap_key_origins.is_empty());
         let output_string = if is_change {
             "Change"
         } else if maybe_change {
@@ -93,15 +97,16 @@ pub(super) fn sign_core(
         } else {
             "Output"
         };
-        let address_type = address
-            .map(AddressFormat::from)
-            .as_ref()
-            .map(ToString::to_string)
-            .unwrap_or("unknown".into());
+        let address_type = match address.as_ref().map(|a| a.address_type()) {
+            Ok(Some(address_type)) => address_type.to_string(),
+            other => {
+                debug!("Got {other:?} while trying to figure address type");
+                "unknown".to_string()
+            }
+        };
         eprintln!(
-            "- {}: {output_string} {s} ({address_type}): {:.8} BTC",
-            output.index(),
-            Amount::from_sat(output.amount).to_btc()
+            "- {output_index}: {output_string} {s} ({address_type}): {:.8} BTC",
+            output.value.to_btc()
         )
     }
     eprintln!("Fee: {fee} sats");
