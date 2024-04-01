@@ -1,7 +1,7 @@
 use std::io::{Cursor, Write};
 
 use anyhow::Context;
-use bitcoin::util::bip158::{BitStreamReader, BitStreamWriter};
+use bitcoin::bip158::{BitStreamReader, BitStreamWriter};
 use rand_core::CryptoRngCore;
 use sha2::{Digest, Sha256};
 

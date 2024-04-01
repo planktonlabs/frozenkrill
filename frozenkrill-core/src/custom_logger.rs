@@ -2,8 +2,6 @@ use env_logger::{
     fmt::{Color, Style, StyledValue},
     Builder,
 };
-use frozenkrill_core::env_logger;
-use frozenkrill_core::log;
 use log::Level;
 use std::fmt;
 

@@ -39,20 +39,10 @@ mod tests {
     use std::{path::PathBuf, str::FromStr, sync::Arc};
 
     use frozenkrill_core::{
-        bip39,
-        bitcoin::Network,
-        get_secp, hex,
-        key_derivation::KeyDerivationDifficulty,
-        psbt::open_psbt_file,
-        rand,
-        secrecy::{ExposeSecret, Secret},
-        utils::create_file,
-        wallet_description::{
+        bip39, bitcoin::Network, custom_logger, get_secp, hex, key_derivation::KeyDerivationDifficulty, psbt::open_psbt_file, rand, secrecy::{ExposeSecret, Secret}, utils::create_file, wallet_description::{
             self, read_decode_wallet, MultisigJsonWalletDescriptionV0, MultisigType, PsbtWallet,
             ScriptType, SingleSigWalletDescriptionV0, SinglesigJsonWalletDescriptionV0,
-        },
-        wallet_export::{MultisigJsonWalletPublicExportV0, SinglesigJsonWalletPublicExportV0},
-        MultisigInputs, PaddingParams,
+        }, wallet_export::{MultisigJsonWalletPublicExportV0, SinglesigJsonWalletPublicExportV0}, MultisigInputs, PaddingParams
     };
 
     use super::{
@@ -175,6 +165,7 @@ mod tests {
     #[test]
     fn test_generate_read_multisig() -> anyhow::Result<()> {
         use pretty_assertions::assert_eq;
+        custom_logger::init();
         let mut rng = rand::thread_rng();
         let mut secp = get_secp(&mut rng);
         let network = Network::Testnet;
@@ -192,11 +183,9 @@ mod tests {
         let psbt2_path = tempdir.path().join("psbt2.psbt");
         create_file(&hex::decode(psbt)?, &psbt_path)?;
         create_file(&hex::decode(psbt2)?, &psbt2_path)?;
-        let seeds = vec![
-            bip39::Mnemonic::from_str("abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about")?,
+        let seeds = [bip39::Mnemonic::from_str("abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about")?,
             bip39::Mnemonic::from_str("fly often rather version bulk text affair super iron bunker whip shrug")?,
-            bip39::Mnemonic::from_str("father engine pizza shrimp suffer add outside inspire two visa neglect quote")?
-        ];
+            bip39::Mnemonic::from_str("father engine pizza shrimp suffer add outside inspire two visa neglect quote")?];
         let signers = seeds
             .iter()
             .cloned()

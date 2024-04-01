@@ -19,6 +19,7 @@ use frozenkrill_core::{
     anyhow::{self, Context},
     bip39::{self, Language, Mnemonic},
     bitcoin::secp256k1::{All, Secp256k1},
+    custom_logger,
     key_derivation::{self, default_derive_key, KeyDerivationDifficulty},
     log, mnemonic_utils, rand,
     rand_core::CryptoRngCore,
@@ -42,7 +43,6 @@ use frozenkrill_core::wallet_description::{
 use crate::progress_bar::get_spinner;
 
 mod commands;
-mod custom_logger;
 mod progress_bar;
 
 const VERSION: &str = "0.0.0";
