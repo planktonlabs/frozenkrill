@@ -43,15 +43,15 @@ pub(super) fn sign_psbt(
         anyhow::bail!("No keys given for sign psbt")
     }
     let keys = input_keys
-        .into_iter()
+        .iter()
         .map(|k| k.expose_secret().0.to_owned())
         .collect::<Vec<_>>();
     let provider = SignerProvider { keys };
     let result = psbt.sign_partial(&provider, secp);
     // FIXME: do we want the number of outputs signed or the number of keys used?
     let inputs_signed = result
-        .into_iter()
-        .map(|(_index, public_keys)| public_keys.len())
+        .into_values()
+        .map(|public_keys| public_keys.len())
         .sum();
     Ok(inputs_signed)
 }

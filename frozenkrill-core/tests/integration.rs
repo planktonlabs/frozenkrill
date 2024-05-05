@@ -19,7 +19,7 @@ use rand_core::RngCore;
 use secrecy::{ExposeSecret, Secret, SecretString};
 use tempdir::TempDir;
 
-fn create_keyfiles_directory() -> anyhow::Result<TempDir> {
+pub(super) fn create_keyfiles_directory() -> anyhow::Result<TempDir> {
     let tempdir = tempdir::TempDir::new("integration-test")?;
     let i: u32 = rand::random();
     let keyfile1 = tempdir.path().join(format!("namedoesntmatter{i}"));
