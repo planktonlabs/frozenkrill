@@ -39,10 +39,20 @@ mod tests {
     use std::{path::PathBuf, str::FromStr, sync::Arc};
 
     use frozenkrill_core::{
-        bip39, bitcoin::Network, custom_logger, get_secp, hex, key_derivation::KeyDerivationDifficulty, psbt::open_psbt_file, rand, secrecy::{ExposeSecret, Secret}, utils::create_file, wallet_description::{
+        bip39,
+        bitcoin::Network,
+        custom_logger, get_secp, hex,
+        key_derivation::KeyDerivationDifficulty,
+        psbt::open_psbt_file,
+        rand,
+        secrecy::{ExposeSecret, Secret},
+        utils::create_file,
+        wallet_description::{
             self, read_decode_wallet, MultisigJsonWalletDescriptionV0, MultisigType, PsbtWallet,
             ScriptType, SingleSigWalletDescriptionV0, SinglesigJsonWalletDescriptionV0,
-        }, wallet_export::{MultisigJsonWalletPublicExportV0, SinglesigJsonWalletPublicExportV0}, MultisigInputs, PaddingParams
+        },
+        wallet_export::{MultisigJsonWalletPublicExportV0, SinglesigJsonWalletPublicExportV0},
+        MultisigInputs, PaddingParams,
     };
 
     use super::{

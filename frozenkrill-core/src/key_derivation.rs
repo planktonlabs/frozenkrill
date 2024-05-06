@@ -130,11 +130,8 @@ fn _default_derive_key(
     salt: &[u8; SALT_SIZE],
     difficulty: &KeyDerivationDifficulty,
 ) -> anyhow::Result<Secret<[u8; KEY_SIZE]>> {
-    let password = if keyfiles.is_empty() {
-        SecretVec::new(password.expose_secret().as_bytes().to_vec())
-    } else {
-        generate_password_with_keyfiles(password, salt, keyfiles)?
-    };
+    // note that if keyfiles is empty the resulting password will be the original password
+    let password = generate_password_with_keyfiles(password, salt, keyfiles)?;
     let argon2_difficulty_params = difficulty.argon2_difficulty_params();
     let key = Secret::new(libsodium_argon2id_derive_key(
         password.expose_secret(),
@@ -240,9 +237,10 @@ mod tests {
         Ok(key)
     }
 
+    use alkali::random;
     use rand_core::RngCore;
 
-    use crate::get_random_salt;
+    use crate::{get_random_salt, utils::create_file};
 
     use super::*;
 
@@ -274,6 +272,42 @@ mod tests {
         assert_eq!(sodium_argon2_key, rust_argon2_key);
         assert_eq!(rust_argon2_key, rargon2_key);
 
+        Ok(())
+    }
+
+    #[test]
+    fn generate_password_with_keyfiles_test() -> anyhow::Result<()> {
+        // very simple test for quick regression discover. more tests are present as integration tests
+        let tempdir = tempdir::TempDir::new("keyfiles-test")?;
+        let password = "abc123";
+        let keyfile = tempdir
+            .path()
+            .join(format!("whatever{i}", i = random::random_u32()?));
+        create_file("somecontent".as_bytes(), keyfile.as_path())?;
+        let salt = vec![123u8; 32];
+
+        let secret = generate_password_with_keyfiles(
+            &SecretString::new(password.into()),
+            &salt,
+            &[keyfile],
+        )?;
+
+        assert_eq!(
+            hex::encode(secret.expose_secret().as_slice()),
+            "a4cca66b4fa11239814965941b2d49f59543654cfd26ac547d8bf6de93d7546f616263313233"
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn generate_password_with_empty_keyfiles_test() -> anyhow::Result<()> {
+        // if not keyfiles given, this function just returns the password
+        let password = "abc123";
+        let salt = vec![123u8; 32];
+        let secret =
+            generate_password_with_keyfiles(&SecretString::new(password.into()), &salt, &[])?;
+        assert_eq!(secret.expose_secret().as_slice(), password.as_bytes());
         Ok(())
     }
 }
