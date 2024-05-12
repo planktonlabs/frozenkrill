@@ -20,7 +20,7 @@ mockall = "0.11"
 path-absolutize = "3"
 qr2term = "0.3"
 serde = { version = "1", features = ["derive"] }
-termimad = "0.23"
+termimad = "0.26"
 zxcvbn = "2"
 rexpect = { git = "https://github.com/galtland/rexpect", branch = "verbose", optional = true }
 
