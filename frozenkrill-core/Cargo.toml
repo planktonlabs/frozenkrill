@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 alkali = "0.3"
+libsodium-sys-stable = "1.20.5" # newer versions seems to depend on openssl, we should investigate if there are alternatives
 anyhow = { version = "1", features = ["backtrace"] }
 bip39 = { git = "https://github.com/rust-bitcoin/rust-bip39", features = [
     "rand",
