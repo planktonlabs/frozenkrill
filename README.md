@@ -324,7 +324,7 @@ All testing and feedback is welcome, see below for contact information.
 
 If contributing with code, please take into account the above roadmap if it's a new feature. If in doubt, open an issue before.
 
-If you want to make a donation, you can get a lightning invoice or bitcoin address at [https://ln.galtland.io/](https://ln.galtland.io/), you can also send to our lightning address `donations@galtland.io` using any [lnurl supporting wallet](https://github.com/lnurl/luds)
+If you want to make a donation, you can get a lightning invoice or bitcoin address at [https://ln.galtland.network/](https://ln.galtland.network/), you can also send to our lightning address `donations@galtland.network` using any [lnurl supporting wallet](https://github.com/lnurl/luds)
 
 # Contact
 
