@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 alkali = "0.3"
-libsodium-sys-stable = "1.20.5" # newer versions seems to depend on openssl, we should investigate if there are alternatives
+libsodium-sys-stable = "1.20.7"
 anyhow = { version = "1", features = ["backtrace"] }
 bip39 = { git = "https://github.com/rust-bitcoin/rust-bip39", features = [
     "rand",
@@ -16,7 +16,7 @@ blake3 = { version = "1", features = ["rayon"] }
 env_logger = "0.10"
 flate2 = "1"
 hex = "0.4"
-itertools = "0.10"
+itertools = "0.12"
 log = "0.4"
 miniscript = "11"
 once_cell = "1"
@@ -34,10 +34,10 @@ walkdir = "2"
 zeroize = { version = "1", features = ["zeroize_derive"] }
 
 [dev-dependencies]
-argon2 = { version = "0.4", features = ["zeroize"] }
+argon2 = { version = "0.5", features = ["zeroize"] }
 chacha20poly1305 = "0.10"
 mockall = "0.11"
 orion = "0.17"
 pretty_assertions = "1"
-rargon2 = { version = "1", package = "rust-argon2" }
+rargon2 = { version = "2", package = "rust-argon2" }
 tempdir = "0.3"
