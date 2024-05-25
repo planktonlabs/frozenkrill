@@ -198,7 +198,7 @@ pub fn try_open_as_json_input(file: &Path) -> anyhow::Result<PublicInfoInput> {
                 let _v = SinglesigJsonWalletPublicExportV0::from_path(file)?;
                 let message = "Using a singlesig json pub export isn't supported right now";
                 debug!("{message}");
-                anyhow::bail!(message)
+                anyhow::bail!("{message}")
             }
             (
                 Some(wallet_description::ZERO_MULTISIG_WALLET_VERSION),

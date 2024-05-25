@@ -808,9 +808,10 @@ fn ui_derive_key(
 
 fn handle_input_path(input_file: &str) -> anyhow::Result<Cow<Path>> {
     let input_file_path = Path::new(input_file);
-    if !input_file_path.exists() {
-        anyhow::bail!("The given file {input_file_path:?} doesn't exists");
-    }
+    anyhow::ensure!(
+        input_file_path.exists(),
+        "The given file {input_file_path:?} doesn't exists"
+    );
     Ok(input_file_path.absolutize()?)
 }
 
@@ -818,11 +819,10 @@ fn handle_output_path<S: AsRef<std::ffi::OsStr> + ?Sized>(
     output_file: &S,
 ) -> anyhow::Result<Cow<Path>> {
     let output_file_path = Path::new(output_file);
-    if output_file_path.exists() {
-        anyhow::bail!(
-            "The output file {output_file_path:?} already exists, delete it or change the name"
-        )
-    }
+    anyhow::ensure!(
+        !output_file_path.exists(),
+        "The output file {output_file_path:?} already exists, delete it or change the name"
+    );
     Ok(output_file_path.absolutize()?)
 }
 

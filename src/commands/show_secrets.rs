@@ -19,9 +19,7 @@ use crate::{commands::common::double_check_non_duress_password, SinglesigShowSec
 pub(crate) fn singlesig_show_secrets_parse_args(
     args: &SinglesigShowSecretsArgs,
 ) -> anyhow::Result<()> {
-    if !args.acknowledge_dangerous_operation {
-        anyhow::bail!("This operation will expose secrets in plaintext, run the command again adding the --acknowledge-dangerous-operation flag if you know what you're doing");
-    }
+    anyhow::ensure!(args.acknowledge_dangerous_operation, "This operation will expose secrets in plaintext, run the command again adding the --acknowledge-dangerous-operation flag if you know what you're doing");
     Ok(())
 }
 

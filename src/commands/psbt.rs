@@ -24,9 +24,10 @@ use crate::{
 use super::common::{double_check_non_duress_password, from_input_to_signed_psbt};
 
 pub(super) fn validated_input_psbt_sign(psbt: &Psbt) -> anyhow::Result<()> {
-    if psbt.outputs.is_empty() {
-        anyhow::bail!("The PSBT has no outputs, better avoid signing that")
-    }
+    anyhow::ensure!(
+        !psbt.outputs.is_empty(),
+        "The PSBT has no outputs, better avoid signing that"
+    );
     Ok(())
 }
 

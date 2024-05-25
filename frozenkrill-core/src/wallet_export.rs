@@ -143,23 +143,20 @@ impl SinglesigJsonWalletPublicExportV0 {
 
     pub fn deserialize(reader: BufReader<impl Read>) -> anyhow::Result<Self> {
         let d: Self = serde_json::from_reader(reader).context("failure parsing json")?;
-        if d.wallet.as_str() != FROZENKRILL_WALLET {
-            anyhow::bail!(
-                "Trying to deserialize singlesig export, got wallet {} != {FROZENKRILL_WALLET}",
-                d.wallet
-            )
-        }
-        if d.version != ZERO_SINGLESIG_WALLET_VERSION {
-            anyhow::bail!("Trying to deserialize singlesig export, got version {} != {ZERO_SINGLESIG_WALLET_VERSION}", d.version)
-        }
+        anyhow::ensure!(
+            d.wallet.as_str() == FROZENKRILL_WALLET,
+            "Trying to deserialize singlesig export, got wallet {} != {FROZENKRILL_WALLET}",
+            d.wallet
+        );
+        anyhow::ensure!(d.version == ZERO_SINGLESIG_WALLET_VERSION,
+            "Trying to deserialize singlesig export, got version {} != {ZERO_SINGLESIG_WALLET_VERSION}", d.version);
         let sigtype = SigType::from_str(&d.sigtype)?;
-        if sigtype != SigType::Singlesig {
-            anyhow::bail!(
-                "Trying to deserialize singlesig export, got sigtype {} != {}",
-                d.sigtype,
-                SigType::Singlesig
-            )
-        }
+        anyhow::ensure!(
+            sigtype == SigType::Singlesig,
+            "Trying to deserialize singlesig export, got sigtype {} != {}",
+            d.sigtype,
+            SigType::Singlesig
+        );
         Ok(d)
     }
 
@@ -258,21 +255,17 @@ impl MultisigJsonWalletPublicExportV0 {
 
     pub fn deserialize(reader: BufReader<impl Read>) -> anyhow::Result<Self> {
         let d: Self = serde_json::from_reader(reader).context("failure parsing json")?;
-        if d.wallet.as_str() != FROZENKRILL_WALLET {
-            anyhow::bail!(
-                "Trying to deserialize singlesig export, got wallet {} != {FROZENKRILL_WALLET}",
-                d.wallet
-            )
-        }
-        if d.version != ZERO_MULTISIG_WALLET_VERSION {
-            anyhow::bail!("Trying to deserialize multisig export, got version {} != {ZERO_MULTISIG_WALLET_VERSION}", d.version)
-        }
+        anyhow::ensure!(
+            d.wallet.as_str() == FROZENKRILL_WALLET,
+            "Trying to deserialize singlesig export, got wallet {} != {FROZENKRILL_WALLET}",
+            d.wallet
+        );
+        anyhow::ensure!(d.version == ZERO_MULTISIG_WALLET_VERSION , "Trying to deserialize multisig export, got version {} != {ZERO_MULTISIG_WALLET_VERSION}", d.version);
         let sigtype = SigType::from_str(&d.sigtype)?;
-        if !matches!(sigtype, SigType::Multisig(_)) {
-            anyhow::bail!(
-                "Trying to deserialize multisig export, got sigtype {sigtype} not multisig"
-            )
-        }
+        anyhow::ensure!(
+            matches!(sigtype, SigType::Multisig(_)),
+            "Trying to deserialize multisig export, got sigtype {sigtype} not multisig"
+        );
         Ok(d)
     }
 
