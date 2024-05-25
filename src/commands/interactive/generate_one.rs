@@ -159,9 +159,9 @@ pub(crate) fn ask_create_multisig_inputs(
         .map(|i| i.map(|i| i.path().display().to_string()))
         .collect::<Result<Vec<_>, _>>()?;
     files.sort();
-    if files.is_empty() {
-        anyhow::bail!("You can't pick a wallet or pub key from a json file because there are no files in current directory. Copy some files or change the current directory and try again")
-    }
+    anyhow::ensure!(!files.is_empty(),
+        "You can't pick a wallet or pub key from a json file because there are no files in current directory. Copy some files or change the current directory and try again"
+    );
     let total = configuration.total;
     eprintln!("We are going to open {total} files to get the public keys for the {configuration} multisig");
     let mut result = MultisigInputs::default();

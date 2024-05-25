@@ -62,14 +62,14 @@ impl PaddingParams {
     ) -> anyhow::Result<Self> {
         let min = min.unwrap_or(DEFAULT_MIN_ADDITIONAL_PADDING);
         let max = max.unwrap_or_else(|| Ord::max(min, DEFAULT_MAX_ADDITIONAL_PADDING));
-        if min > max {
-            anyhow::bail!("Minimum padding {min} is greater than max padding {max}")
-        }
-        if max > MAX_ADDITIONAL_PADDING {
-            anyhow::bail!(
-                "Given max padding bytes {max} is greater than limit {MAX_ADDITIONAL_PADDING}"
-            )
-        }
+        anyhow::ensure!(
+            min <= max,
+            "Minimum padding {min} is greater than max padding {max}"
+        );
+        anyhow::ensure!(
+            max <= MAX_ADDITIONAL_PADDING,
+            "Given max padding bytes {max} is greater than limit {MAX_ADDITIONAL_PADDING}"
+        );
         Ok(Self {
             disable_all_padding,
             min,
@@ -87,19 +87,17 @@ pub struct CiphertextPadder {
 impl CiphertextPadder {
     pub fn pad(self, ciphertext: &mut Vec<u8>) -> anyhow::Result<()> {
         if let Some(base_padding_bytes) = self.base_padding_bytes {
-            if ciphertext.len() > MINIMUM_CIPHERTEXT_SIZE_BYTES {
-                anyhow::bail!(
+            anyhow::ensure!(
+                ciphertext.len() <= MINIMUM_CIPHERTEXT_SIZE_BYTES,
                 "Pre padded ciphertext size {} is already greater than {MINIMUM_CIPHERTEXT_SIZE_BYTES}",
                 ciphertext.len()
-            )
-            }
+            );
             ciphertext.extend_from_slice(&base_padding_bytes);
-            if ciphertext.len() < MINIMUM_CIPHERTEXT_SIZE_BYTES {
-                anyhow::bail!(
+            anyhow::ensure!(
+                ciphertext.len() >= MINIMUM_CIPHERTEXT_SIZE_BYTES,
                 "Not enough padding bytes to bring ciphertext size from {} to at least {MINIMUM_CIPHERTEXT_SIZE_BYTES}",
                 ciphertext.len()
-            )
-            }
+            );
             ciphertext.truncate(MINIMUM_CIPHERTEXT_SIZE_BYTES);
         }
         if let Some(mut additional_padding_bytes) = self.additional_padding_bytes {
@@ -268,11 +266,10 @@ pub fn parse_keyfiles_paths(keyfiles: &[String]) -> anyhow::Result<Vec<PathBuf>>
         Ok(Vec::new())
     } else {
         let keyfiles = expand_keyfiles(keyfiles).context("failure checking keyfiles paths")?;
-        if keyfiles.is_empty() {
-            anyhow::bail!(
-                "The expansion of the keyfiles yielded no files (probably an empty directory was given)"
-            )
-        }
+        anyhow::ensure!(
+            !keyfiles.is_empty(),
+            "The expansion of the keyfiles yielded no files (probably an empty directory was given)"
+        );
         Ok(keyfiles)
     }
 }
@@ -351,20 +348,18 @@ pub struct MultisigInputs {
 
 impl MultisigInputs {
     pub fn validate(&self, configuration: &MultisigType) -> anyhow::Result<()> {
-        if self.receiving_descriptors.len() != self.change_descriptors.len() {
-            anyhow::bail!(
-                "Different number of receiving public key descriptors and change public key descriptors: {} and {}",
-                self.receiving_descriptors.len(),
-                self.change_descriptors.len()
-            )
-        }
+        anyhow::ensure!(
+            self.receiving_descriptors.len() == self.change_descriptors.len(),
+            "Different number of receiving public key descriptors and change public key descriptors: {} and {}",
+            self.receiving_descriptors.len(),
+            self.change_descriptors.len()
+        );
         let total: usize = configuration.total.try_into()?;
-        if self.receiving_descriptors.len() != total {
-            anyhow::bail!(
-                "Got {} public keys but expected {total}",
-                self.receiving_descriptors.len()
-            )
-        }
+        anyhow::ensure!(
+            self.receiving_descriptors.len() == total,
+            "Got {} public keys but expected {total}",
+            self.receiving_descriptors.len()
+        );
         Ok(())
     }
 
@@ -383,9 +378,9 @@ impl MultisigInputs {
             }
         }
         self.signers.extend(other.signers);
-        if change_added != receiving_added {
-            anyhow::bail!("Expected change descriptor added {change_added} to be the same as receiving descriptor added {receiving_added}")
-        }
+        anyhow::ensure!(change_added == receiving_added,
+            "Expected change descriptor added {change_added} to be the same as receiving descriptor added {receiving_added}"
+        );
         Ok(receiving_added)
     }
 }

@@ -49,15 +49,18 @@ pub struct MultisigType {
 
 impl MultisigType {
     pub fn new(required: u32, total: u32) -> anyhow::Result<Self> {
-        if required == 0 {
-            anyhow::bail!("Required signatures must be greater than zero")
-        }
-        if required > total {
-            anyhow::bail!("Required ({required}) must be less than or equal to total ({total})")
-        }
-        if total > MAX_TOTAL_SIGS_MULTISIG {
-            anyhow::bail!("Total {total} is greater than {MAX_TOTAL_SIGS_MULTISIG}")
-        }
+        anyhow::ensure!(
+            required > 0,
+            "Required signatures must be greater than zero"
+        );
+        anyhow::ensure!(
+            required <= total,
+            "Required ({required}) must be less than or equal to total ({total})"
+        );
+        anyhow::ensure!(
+            total <= MAX_TOTAL_SIGS_MULTISIG,
+            "Total {total} is greater than {MAX_TOTAL_SIGS_MULTISIG}"
+        );
         Ok(Self { required, total })
     }
 }
@@ -69,18 +72,18 @@ impl FromStr for MultisigType {
             Lazy::new(|| Regex::new("([0-9]+)[ -]?of[ -]?([0-9]+)").unwrap());
         let s = s.to_lowercase();
         let mut captures = MULTISIGTYPE_RE.captures_iter(s.as_str());
-        let capture = captures.next().ok_or(anyhow::anyhow!(
-            "Invalid format ({s}), use a something like \"2-of-3\" or \"3-of-5\" (M-of-N)"
-        ))?;
+        let capture = captures.next().with_context(|| {
+            format!("Invalid format ({s}), use a something like \"2-of-3\" or \"3-of-5\" (M-of-N)")
+        })?;
         let required = capture
             .get(1)
-            .ok_or_else(|| anyhow::anyhow!("Missing required value (M)"))?
+            .context("Missing required value (M)")?
             .as_str()
             .parse()
             .map_err(|e| anyhow::anyhow!("Error parsing required (M) value: {e}"))?;
         let total = capture
             .get(2)
-            .ok_or_else(|| anyhow::anyhow!("Missing total value (N)"))?
+            .context("Missing total value (N)")?
             .as_str()
             .parse()
             .map_err(|e| anyhow::anyhow!("Error parsing total (N) value: {e}"))?;
@@ -724,12 +727,11 @@ impl SinglesigJsonWalletDescriptionV0 {
 
     pub fn deserialize(data: BufReader<impl Read>) -> anyhow::Result<Secret<Self>> {
         let w = serde_json::from_reader::<_, Self>(data).context("failure parsing wallet json")?;
-        if w.version != ZERO_SINGLESIG_WALLET_VERSION {
-            anyhow::bail!(
-                "Version {} isn't {ZERO_SINGLESIG_WALLET_VERSION}",
-                w.version
-            )
-        }
+        anyhow::ensure!(
+            w.version == ZERO_SINGLESIG_WALLET_VERSION,
+            "Version {} isn't {ZERO_SINGLESIG_WALLET_VERSION}",
+            w.version
+        );
         Ok(Secret::new(w))
     }
 
@@ -853,13 +855,12 @@ impl MultiSigWalletDescriptionV0 {
         signers: &[SingleSigWalletDescriptionV0],
         script_type: &ScriptType,
     ) -> anyhow::Result<()> {
-        if signers.len() > configuration.total.try_into()? {
-            anyhow::bail!(
-                "Got {} signers but there are only {} signatures",
-                signers.len(),
-                configuration.total
-            )
-        }
+        anyhow::ensure!(
+            signers.len() <= configuration.total.try_into()?,
+            "Got {} signers but there are only {} signatures",
+            signers.len(),
+            configuration.total
+        );
         let mut all_public_keys = HashSet::new();
         for v in values {
             match (script_type, v) {
@@ -875,13 +876,12 @@ impl MultiSigWalletDescriptionV0 {
                 (ScriptType::SegwitNative, miniscript::Descriptor::Wsh(v)) => match v.as_inner() {
                     miniscript::descriptor::WshInner::SortedMulti(v) => {
                         let required: usize = configuration.required.try_into()?;
-                        if v.k != required {
-                            anyhow::bail!(
-                                "Different required on descriptor and configuration: {} and {}",
-                                v.k,
-                                configuration.required
-                            )
-                        }
+                        anyhow::ensure!(
+                            v.k == required,
+                            "Different required on descriptor and configuration: {} and {}",
+                            v.k,
+                            configuration.required
+                        );
                         all_public_keys.extend(&v.pks);
                     }
                     miniscript::descriptor::WshInner::Ms(_) => {
@@ -898,12 +898,11 @@ impl MultiSigWalletDescriptionV0 {
                 signer.receiving_multisig_public_descriptor(),
                 signer.change_multisig_public_descriptor(),
             ] {
-                if !all_public_keys.contains(&descriptor) {
-                    anyhow::bail!(
-                        "Wrong signer added: descriptor public key {descriptor} not found on list {}",
-                        all_public_keys.iter().join(", ")
-                    )
-                }
+                anyhow::ensure!(
+                    all_public_keys.contains(&descriptor),
+                    "Wrong signer added: descriptor public key {descriptor} not found on list {}",
+                    all_public_keys.iter().join(", ")
+                );
             }
         }
         Ok(())
@@ -1038,9 +1037,11 @@ impl MultisigJsonWalletDescriptionV0 {
 
     pub fn deserialize<R: Read>(data: R) -> anyhow::Result<Secret<Self>> {
         let w = serde_json::from_reader::<_, Self>(data).context("failure parsing wallet json")?;
-        if w.version != ZERO_MULTISIG_WALLET_VERSION {
-            anyhow::bail!("Version {} isn't {ZERO_MULTISIG_WALLET_VERSION}", w.version)
-        }
+        anyhow::ensure!(
+            w.version == ZERO_MULTISIG_WALLET_VERSION,
+            "Version {} isn't {ZERO_MULTISIG_WALLET_VERSION}",
+            w.version
+        );
         Ok(Secret::new(w))
     }
 
@@ -1228,13 +1229,12 @@ fn get_uncompressed_wallet(
         default_decrypt(key, nonce, encrypted_header).context("failure decrypting header")?;
     let header = DecodedHeaderV0::deserialize(BufReader::new(header.expose_secret().as_slice()))?;
     let ciphertext_length: usize = header.length.try_into()?;
-    if ciphertext_length > ciphertext.len() {
-        anyhow::bail!(
-            "ciphertext is too small: only {} instead of at least {} bytes",
-            ciphertext.len(),
-            header.length
-        )
-    }
+    anyhow::ensure!(
+        ciphertext_length <= ciphertext.len(),
+        "ciphertext is too small: only {} instead of at least {} bytes",
+        ciphertext.len(),
+        header.length
+    );
     let ciphertext = &ciphertext[0..ciphertext_length];
     let compressed = default_decrypt(&header.key, &header.nonce, ciphertext)
         .context("failure decrypting data")?;
@@ -1305,19 +1305,16 @@ impl DecodedHeaderV0 {
             .read_exact(&mut version)
             .context("failure reading version")?;
         let version = HeaderVersionType::from_le_bytes(version);
-        if version != ZERO_ENCRYPTED_WALLET_VERSION {
-            anyhow::bail!(
-                "Header version is {version} but expected {ZERO_ENCRYPTED_WALLET_VERSION}"
-            )
-        }
+        anyhow::ensure!(
+            version == ZERO_ENCRYPTED_WALLET_VERSION,
+            "Header version is {version} but expected {ZERO_ENCRYPTED_WALLET_VERSION}"
+        );
         let mut length = [0u8; HEADER_LENGTH_SIZE];
         reader
             .read_exact(&mut length)
             .context("failure reading length")?;
         let length = HeaderLengthType::from_le_bytes(length);
-        if length == 0 {
-            anyhow::bail!("Got zero on header length")
-        }
+        anyhow::ensure!(length > 0, "Got zero on header length");
         Ok(Self {
             nonce,
             key: Secret::new(key),

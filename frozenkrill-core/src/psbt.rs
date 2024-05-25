@@ -39,9 +39,7 @@ pub(super) fn sign_psbt(
     input_keys: &[&Secret<WExtendedPrivKey>],
     secp: &Secp256k1<All>,
 ) -> anyhow::Result<usize> {
-    if input_keys.is_empty() {
-        anyhow::bail!("No keys given for sign psbt")
-    }
+    anyhow::ensure!(!input_keys.is_empty(), "No keys given for sign psbt");
     let keys = input_keys
         .iter()
         .map(|k| k.expose_secret().0.to_owned())

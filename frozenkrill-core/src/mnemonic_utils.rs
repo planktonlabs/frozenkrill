@@ -9,12 +9,11 @@ pub fn complete_words_with_checksum(
     rng: &mut impl CryptoRngCore,
     words: &[String],
 ) -> anyhow::Result<Vec<String>> {
-    if words.len() != 11 && words.len() != 23 {
-        anyhow::bail!(
-            "Only 11 or 23 words inputs are supported, got {}",
-            words.len()
-        );
-    }
+    anyhow::ensure!(
+        words.len() == 11 || words.len() == 23,
+        "Only 11 or 23 words inputs are supported, got {}",
+        words.len()
+    );
     let mut data = Vec::new();
     let mut writer = BitStreamWriter::new(&mut data);
     let mut mnemonic = Vec::new();
