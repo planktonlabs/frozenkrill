@@ -18,8 +18,8 @@ pub(crate) fn default_decrypt(
     key: &Secret<[u8; KEY_SIZE]>,
     nonce: &[u8; NONCE_SIZE],
     ciphertext: &[u8],
-) -> anyhow::Result<Secret<Vec<u8>>> {
-    let cleartext = Secret::new(libsodium_decrypt_xchacha20poly1305(
+) -> anyhow::Result<SecretVec<u8>> {
+    let cleartext = SecretVec::new(libsodium_decrypt_xchacha20poly1305(
         key.expose_secret(),
         nonce,
         ciphertext,

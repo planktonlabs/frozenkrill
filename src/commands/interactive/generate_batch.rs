@@ -6,6 +6,7 @@ use frozenkrill_core::{
     bitcoin::secp256k1::{All, Secp256k1},
     key_derivation::KeyDerivationDifficulty,
     rand_core::CryptoRngCore,
+    wallet_description::ScriptType,
     PaddingParams,
 };
 use path_absolutize::Absolutize;
@@ -14,7 +15,7 @@ use crate::{commands::batch_generate_export::CoreBatchGenerateExportArgs, Intern
 
 use super::{
     ask_addresses_quantity, ask_for_keyfiles_generate, ask_network, ask_non_duress_wallet_generate,
-    ask_word_count, get_ask_difficulty,
+    ask_wallet_file_type, ask_word_count, get_ask_difficulty,
 };
 
 #[allow(clippy::too_many_arguments)]
@@ -42,11 +43,14 @@ pub(super) fn interactive_generate_batch(
         ask_addresses_quantity(theme, term)?
     };
     let word_count = ask_word_count(theme, term)?;
+    let wallet_file_type = ask_wallet_file_type(theme, term)?;
     let difficulty = get_ask_difficulty(theme, term, difficulty)?;
     let network = ask_network(theme, term)?;
+    let script_type = ScriptType::SegwitNative;
     let args = CoreBatchGenerateExportArgs {
         keyfiles: &keyfiles,
         word_count,
+        script_type,
         network,
         wallets_quantity,
         output_prefix: &output_prefix,
@@ -55,6 +59,8 @@ pub(super) fn interactive_generate_batch(
         disable_public_info_export,
         addresses_quantity,
         padding_params: PaddingParams::default(),
+        encrypted_wallet_version: wallet_file_type
+            .to_encrypted_wallet_version(network, script_type)?,
     };
     crate::commands::batch_generate_export::core_batch_generate_export(
         theme, term, secp, rng, ic, args,

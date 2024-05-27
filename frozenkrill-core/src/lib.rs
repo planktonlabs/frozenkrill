@@ -11,7 +11,8 @@ use rand_core::CryptoRngCore;
 use secp256k1::{All, Secp256k1};
 use secrecy::{ExposeSecret, Secret, SecretString, SecretVec};
 use wallet_description::{
-    EncryptedWalletDescription, MultisigType, ScriptType, SingleSigWalletDescriptionV0,
+    EncryptedWalletDescription, EncryptedWalletVersion, MultisigType, ScriptType,
+    SingleSigCompactWalletDescriptionV0, SingleSigWalletDescriptionV0,
     SinglesigJsonWalletDescriptionV0, KEY_SIZE, NONCE_SIZE, SALT_SIZE,
 };
 
@@ -119,6 +120,49 @@ pub fn generate_encrypted_encoded_singlesig_wallet(
     padder: CiphertextPadder,
     script_type: ScriptType,
     network: Network,
+    encrypted_version: EncryptedWalletVersion,
+    secp: &Secp256k1<All>,
+) -> anyhow::Result<Vec<u8>> {
+    match encrypted_version {
+        EncryptedWalletVersion::V0Standard => generate_encrypted_encoded_singlesig_wallet_standard(
+            key,
+            header_key,
+            mnemonic,
+            seed_password,
+            salt,
+            nonce,
+            header_nonce,
+            padder,
+            script_type,
+            network,
+            secp,
+        ),
+        EncryptedWalletVersion::V0CompactMainnet | EncryptedWalletVersion::V0CompactTestnet => {
+            generate_encrypted_encoded_singlesig_wallet_compact(
+                key,
+                header_key,
+                mnemonic,
+                salt,
+                nonce,
+                header_nonce,
+                encrypted_version,
+            )
+        }
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn generate_encrypted_encoded_singlesig_wallet_standard(
+    key: &Secret<[u8; KEY_SIZE]>,
+    header_key: Secret<[u8; KEY_SIZE]>,
+    mnemonic: Arc<Secret<Mnemonic>>,
+    seed_password: &Option<Arc<SecretString>>,
+    salt: [u8; SALT_SIZE],
+    nonce: [u8; NONCE_SIZE],
+    header_nonce: [u8; NONCE_SIZE],
+    padder: CiphertextPadder,
+    script_type: ScriptType,
+    network: Network,
     secp: &Secp256k1<All>,
 ) -> anyhow::Result<Vec<u8>> {
     let compressed: SecretVec<u8> = {
@@ -145,6 +189,7 @@ pub fn generate_encrypted_encoded_singlesig_wallet(
     let header = DecodedHeaderV0::new(
         header_key,
         header_nonce,
+        EncryptedWalletVersion::V0Standard,
         ciphertext.len().try_into().with_context(|| {
             format!(
                 "resulting ciphertext is too big: {} bytes",
@@ -162,6 +207,45 @@ pub fn generate_encrypted_encoded_singlesig_wallet(
         .context("failure encrypting header")?,
     );
     padder.pad(&mut ciphertext)?;
+    EncryptedWalletDescription::new(nonce, salt, encrypted_header, ciphertext)
+        .serialize()
+        .context("failure encoding encrypted wallet")
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn generate_encrypted_encoded_singlesig_wallet_compact(
+    key: &Secret<[u8; KEY_SIZE]>,
+    header_key: Secret<[u8; KEY_SIZE]>,
+    mnemonic: Arc<Secret<Mnemonic>>,
+    salt: [u8; SALT_SIZE],
+    nonce: [u8; NONCE_SIZE],
+    header_nonce: [u8; NONCE_SIZE],
+    header_version: EncryptedWalletVersion,
+) -> anyhow::Result<Vec<u8>> {
+    let wallet_description =
+        SingleSigCompactWalletDescriptionV0::new(mnemonic).context("failure generating wallet")?;
+    let ciphertext = default_encrypt(&header_key, &header_nonce, &wallet_description.serialize())
+        .context("failure encrypting wallet")?;
+    let header = DecodedHeaderV0::new(
+        header_key,
+        header_nonce,
+        header_version,
+        ciphertext.len().try_into().with_context(|| {
+            format!(
+                "resulting ciphertext is too big: {} bytes",
+                ciphertext.len()
+            )
+        })?,
+    );
+    let mut encrypted_header = [0u8; ENCRYPTED_HEADER_LENGTH];
+    encrypted_header.copy_from_slice(
+        &default_encrypt(
+            key,
+            &nonce,
+            &header.serialize().context("failure encoding header")?,
+        )
+        .context("failure encrypting header")?,
+    );
     EncryptedWalletDescription::new(nonce, salt, encrypted_header, ciphertext)
         .serialize()
         .context("failure encoding encrypted wallet")
@@ -225,6 +309,7 @@ pub fn generate_encrypted_encoded_multisig_wallet(
     let header = DecodedHeaderV0::new(
         header_key,
         header_nonce,
+        EncryptedWalletVersion::V0Standard,
         ciphertext.len().try_into().with_context(|| {
             format!(
                 "resulting ciphertext is too big: {} bytes",

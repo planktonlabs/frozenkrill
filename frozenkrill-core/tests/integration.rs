@@ -10,8 +10,8 @@ use frozenkrill_core::{
     parse_keyfiles_paths,
     utils::create_file,
     wallet_description::{
-        generate_seeds, EncryptedWalletDescription, ScriptType, SinglesigJsonWalletDescriptionV0,
-        WordCount,
+        generate_seeds, EncryptedWalletDescription, EncryptedWalletVersion, ScriptType,
+        SinglesigJsonWalletDescriptionV0, WordCount,
     },
     PaddingParams,
 };
@@ -50,34 +50,45 @@ fn test_full_generation_process_random_wallet() -> anyhow::Result<()> {
     let secp = get_secp(&mut rng);
     let password = SecretString::new(TEST_PASSWORD.into());
     let seed_password = Some(Arc::new(SecretString::new(TEST_SEED_PASSWORD.into())));
-    let mnemonic = generate_seeds(&mut rng, WordCount::W24, Language::English)?;
+    let mnemonic = Arc::new(generate_seeds(&mut rng, WordCount::W24, Language::English)?);
     let keyfiles = parse_keyfiles_paths(&[tempdir.into_path().to_str().unwrap().to_owned()])?;
     let key = default_derive_key(&password, &keyfiles, &salt, &TEST_DIFFICULTY)?;
-    let encoded_wallet = generate_encrypted_encoded_singlesig_wallet(
-        &key,
-        Secret::new(header_key),
-        Arc::new(mnemonic),
-        &seed_password,
-        salt,
-        nonce,
-        header_nonce,
-        padder,
-        TEST_SCRIPT_TYPE,
-        TEST_NETWORK,
-        &secp,
-    )?;
-    println!(
-        "encoded_wallet {} length {}",
-        hex::encode(&encoded_wallet),
-        encoded_wallet.len()
-    );
-    let decoded_wallet =
-        EncryptedWalletDescription::deserialize(BufReader::new(encoded_wallet.as_slice()))?;
-    let key = default_derive_key(&password, &keyfiles, &decoded_wallet.salt, &TEST_DIFFICULTY)?;
-    let decrypted_wallet = decoded_wallet.decrypt_singlesig(&key)?;
-    let wallet_description = decrypted_wallet.expose_secret().to(&seed_password, &secp)?;
-    SinglesigJsonWalletDescriptionV0::validate_same(&decrypted_wallet, &wallet_description, &secp)?
+
+    for encrypted_wallet_version in [
+        EncryptedWalletVersion::V0Standard,
+        EncryptedWalletVersion::V0CompactTestnet,
+    ] {
+        let encoded_wallet = generate_encrypted_encoded_singlesig_wallet(
+            &key,
+            Secret::new(header_key),
+            Arc::clone(&mnemonic),
+            &seed_password,
+            salt,
+            nonce,
+            header_nonce,
+            padder.clone(),
+            TEST_SCRIPT_TYPE,
+            TEST_NETWORK,
+            encrypted_wallet_version,
+            &secp,
+        )?;
+        println!(
+            "encoded_wallet {encrypted_wallet_version:?}: {} length {}",
+            hex::encode(&encoded_wallet),
+            encoded_wallet.len()
+        );
+        let decoded_wallet =
+            EncryptedWalletDescription::deserialize(BufReader::new(encoded_wallet.as_slice()))?;
+        let key = default_derive_key(&password, &keyfiles, &decoded_wallet.salt, &TEST_DIFFICULTY)?;
+        let decrypted_wallet = decoded_wallet.decrypt_singlesig(&key, &seed_password, &secp)?;
+        let wallet_description = decrypted_wallet.expose_secret().to(&seed_password, &secp)?;
+        SinglesigJsonWalletDescriptionV0::validate_same(
+            &decrypted_wallet,
+            &wallet_description,
+            &secp,
+        )?
         .context("failure checking generated wallet")?;
+    }
     Ok(())
 }
 
@@ -97,36 +108,43 @@ fn test_default_seed_password() -> anyhow::Result<()> {
     let mnemonic = Arc::new(generate_seeds(&mut rng, WordCount::W24, Language::English)?);
     let keyfiles = parse_keyfiles_paths(&[tempdir.into_path().to_str().unwrap().to_owned()])?;
     let key = default_derive_key(&password, &keyfiles, &salt, &TEST_DIFFICULTY)?;
-    let encoded_wallet_no_seed_password = generate_encrypted_encoded_singlesig_wallet(
-        &key,
-        Secret::new(header_key),
-        Arc::clone(&mnemonic),
-        &None,
-        salt,
-        nonce,
-        header_nonce,
-        padder.clone(),
-        TEST_SCRIPT_TYPE,
-        TEST_NETWORK,
-        &secp,
-    )?;
-    let encoded_wallet_empty_password = generate_encrypted_encoded_singlesig_wallet(
-        &key,
-        Secret::new(header_key),
-        mnemonic,
-        &Some(Arc::new(SecretString::new("".into()))), // empty password is the default
-        salt,
-        nonce,
-        header_nonce,
-        padder,
-        TEST_SCRIPT_TYPE,
-        TEST_NETWORK,
-        &secp,
-    )?;
-    assert_eq!(
-        encoded_wallet_no_seed_password,
-        encoded_wallet_empty_password
-    );
+    for encrypted_wallet_version in [
+        EncryptedWalletVersion::V0Standard,
+        EncryptedWalletVersion::V0CompactTestnet,
+    ] {
+        let encoded_wallet_no_seed_password = generate_encrypted_encoded_singlesig_wallet(
+            &key,
+            Secret::new(header_key),
+            Arc::clone(&mnemonic),
+            &None,
+            salt,
+            nonce,
+            header_nonce,
+            padder.clone(),
+            TEST_SCRIPT_TYPE,
+            TEST_NETWORK,
+            encrypted_wallet_version,
+            &secp,
+        )?;
+        let encoded_wallet_empty_password = generate_encrypted_encoded_singlesig_wallet(
+            &key,
+            Secret::new(header_key),
+            Arc::clone(&mnemonic),
+            &Some(Arc::new(SecretString::new("".into()))), // empty password is the default
+            salt,
+            nonce,
+            header_nonce,
+            padder.clone(),
+            TEST_SCRIPT_TYPE,
+            TEST_NETWORK,
+            encrypted_wallet_version,
+            &secp,
+        )?;
+        assert_eq!(
+            encoded_wallet_no_seed_password,
+            encoded_wallet_empty_password
+        );
+    }
     Ok(())
 }
 
@@ -141,9 +159,9 @@ fn test_read_existing_wallet() -> anyhow::Result<()> {
     let tempdir = create_keyfiles_directory()?;
     let keyfiles = parse_keyfiles_paths(&[tempdir.into_path().to_str().unwrap().to_owned()])?;
     let key = default_derive_key(&password, &keyfiles, &decoded_wallet.salt, &TEST_DIFFICULTY)?;
-    let decrypted_wallet = decoded_wallet.decrypt_singlesig(&key)?;
     let mut rng = rand::thread_rng();
     let secp = get_secp(&mut rng);
+    let decrypted_wallet = decoded_wallet.decrypt_singlesig(&key, &seed_password, &secp)?;
     let wallet_description = decrypted_wallet.expose_secret().to(&seed_password, &secp)?;
     SinglesigJsonWalletDescriptionV0::validate_same(&decrypted_wallet, &wallet_description, &secp)?
         .context("failure checking generated wallet")?;

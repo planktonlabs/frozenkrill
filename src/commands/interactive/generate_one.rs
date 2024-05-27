@@ -11,7 +11,7 @@ use frozenkrill_core::{
     bitcoin::secp256k1::{All, Secp256k1},
     key_derivation::KeyDerivationDifficulty,
     rand_core::CryptoRngCore,
-    wallet_description::{MultisigType, MAX_TOTAL_SIGS_MULTISIG},
+    wallet_description::{MultisigType, ScriptType, MAX_TOTAL_SIGS_MULTISIG},
     MultisigInputs, PaddingParams,
 };
 use path_absolutize::Absolutize;
@@ -28,8 +28,8 @@ use crate::{
 
 use super::{
     ask_addresses_quantity, ask_for_keyfiles_generate, ask_network, ask_non_duress_wallet_generate,
-    ask_public_info_json_output, ask_user_generated_seed, ask_word_count, get_ask_difficulty,
-    ValidateOutputFile,
+    ask_public_info_json_output, ask_user_generated_seed, ask_wallet_file_type, ask_word_count,
+    get_ask_difficulty, ValidateOutputFile,
 };
 
 #[allow(clippy::too_many_arguments)]
@@ -55,6 +55,7 @@ pub(super) fn singlesig_interactive_generate_one(
         None => 0,
     };
     let word_count = ask_word_count(theme, term)?;
+    let wallet_file_type = ask_wallet_file_type(theme, term)?;
     let user_mnemonic = if ask_user_generated_seed(theme, term)? {
         Some(Arc::new(ui_ask_manually_seed_input(
             &mut rng,
@@ -73,6 +74,7 @@ pub(super) fn singlesig_interactive_generate_one(
         non_duress_output_file_json: None,
         public_json_file_path: public_info_json_output.clone(),
     };
+    let script_type = ScriptType::SegwitNative;
     let args = SinglesigCoreGenerateArgs {
         password: None,
         output_file_path,
@@ -81,10 +83,13 @@ pub(super) fn singlesig_interactive_generate_one(
         user_mnemonic,
         duress_input_args,
         word_count,
+        script_type,
         network,
         difficulty: &difficulty,
         addresses_quantity,
         padding_params: PaddingParams::default(),
+        encrypted_wallet_version: wallet_file_type
+            .to_encrypted_wallet_version(network, script_type)?,
     };
     crate::commands::generate::core::singlesig_core_generate(theme, term, secp, rng, ic, args)?;
     Ok(())

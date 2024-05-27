@@ -88,6 +88,7 @@ mod tests {
             non_duress_output_file_json: None,
             public_json_file_path: None,
         };
+        let script_type = ScriptType::SegwitNative;
         let args = SinglesigCoreGenerateArgs {
             password: Some(Arc::clone(&password)),
             output_file_path: output_file_path.clone(),
@@ -96,10 +97,12 @@ mod tests {
             keyfiles,
             user_mnemonic: Some(Arc::new(Secret::new(mnemonic))),
             word_count,
+            script_type,
             network,
             difficulty: &difficulty,
             addresses_quantity: 2,
             padding_params: PaddingParams::default(),
+            encrypted_wallet_version: wallet_description::EncryptedWalletVersion::V0Standard,
         };
         let mut ic = crate::MockInternetChecker::new();
         ic.expect_check().never();

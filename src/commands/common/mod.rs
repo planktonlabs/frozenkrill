@@ -145,8 +145,9 @@ fn ask_try_decrypt(
             None
         };
     let key = ui_derive_key(&password, &keyfiles, &encrypted_wallet.salt, &difficulty)?;
-    let json_wallet = encrypted_wallet.decrypt_singlesig(&key)?;
-    let wallet = crate::ui_get_singlesig_wallet_description(&json_wallet, &None, secp)?;
+    let seed_password = &None;
+    let json_wallet = encrypted_wallet.decrypt_singlesig(&key, seed_password, secp)?;
+    let wallet = crate::ui_get_singlesig_wallet_description(&json_wallet, seed_password, secp)?;
     wallet.change_seed_password(&non_duress_password, secp)
 }
 

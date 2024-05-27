@@ -20,7 +20,7 @@ use frozenkrill_core::{
     utils::create_file,
     wallet_description::{
         calculate_seed_entropy_bytes, generate_entropy_for_seeds, generate_seeds_from_entropy,
-        ScriptType, KEY_SIZE, NONCE_SIZE, SALT_SIZE,
+        EncryptedWalletVersion, ScriptType, KEY_SIZE, NONCE_SIZE, SALT_SIZE,
     },
     PaddingParams,
 };
@@ -48,6 +48,7 @@ pub(super) struct CoreBatchGenerateExportArgs<'a> {
     pub(super) keyfiles: &'a [PathBuf],
     pub(super) word_count: WordCount,
     pub(super) network: Network,
+    pub(super) script_type: ScriptType,
     pub(super) wallets_quantity: usize,
     pub(super) output_prefix: &'a str,
     pub(super) enable_duress_wallet: bool,
@@ -55,6 +56,7 @@ pub(super) struct CoreBatchGenerateExportArgs<'a> {
     pub(super) disable_public_info_export: bool,
     pub(super) addresses_quantity: u32,
     pub(super) padding_params: PaddingParams,
+    pub(super) encrypted_wallet_version: EncryptedWalletVersion,
 }
 
 pub(super) fn core_batch_generate_export(
@@ -65,7 +67,6 @@ pub(super) fn core_batch_generate_export(
     ic: impl InternetChecker,
     args: CoreBatchGenerateExportArgs,
 ) -> anyhow::Result<()> {
-    let script_type = ScriptType::SegwitNative;
     if args.enable_duress_wallet && args.disable_public_info_export {
         anyhow::bail!("--enable-duress-wallet is incompatible with --disable-public-info-export")
     }
@@ -227,8 +228,9 @@ pub(super) fn core_batch_generate_export(
                     nonce,
                     header_nonce,
                     padding,
-                    script_type,
+                    args.script_type,
                     args.network,
+                    args.encrypted_wallet_version,
                     secp,
                 );
                 pb.inc(1);
@@ -278,11 +280,14 @@ pub(super) fn core_batch_generate_export(
         "Wallet files",
         "Decrypting...",
     ));
+    let seed_password = &None;
     let decrypted_json_read_wallets = read_wallets
         .par_iter()
         .zip(derived_keys)
         .map(|(w, k)| {
-            let decrypted_json = w.decrypt_singlesig(&k).context(CONTEXT_CORRUPTION_WARNING);
+            let decrypted_json = w
+                .decrypt_singlesig(&k, seed_password, secp)
+                .context(CONTEXT_CORRUPTION_WARNING);
             pb.inc(1);
             decrypted_json
         })
@@ -296,7 +301,7 @@ pub(super) fn core_batch_generate_export(
     let decrypted_read_wallets: anyhow::Result<Vec<_>> = decrypted_json_read_wallets
         .par_iter()
         .map(|w| {
-            let decrypted = w.expose_secret().to(&None, secp);
+            let decrypted = w.expose_secret().to(seed_password, secp);
             if let Ok(d) = &decrypted {
                 // Sanity check
                 SinglesigJsonWalletDescriptionV0::validate_same(w, d, secp)?
@@ -402,10 +407,12 @@ pub(crate) fn batch_generate_export(
     } else {
         Network::Bitcoin
     };
+    let script_type = ScriptType::SegwitNative;
     let args = CoreBatchGenerateExportArgs {
         keyfiles: &keyfiles,
         word_count,
         network,
+        script_type,
         wallets_quantity: args.wallets_quantity,
         output_prefix: &args.output_prefix,
         enable_duress_wallet: args.enable_duress_wallet,
@@ -417,6 +424,9 @@ pub(crate) fn batch_generate_export(
             Some(args.common.min_additional_padding_bytes),
             Some(args.common.max_additional_padding_bytes),
         )?,
+        encrypted_wallet_version: args
+            .wallet_file_type
+            .to_encrypted_wallet_version(network, script_type)?,
     };
     core_batch_generate_export(theme, term, secp, rng, ic, args)
 }

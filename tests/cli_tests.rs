@@ -52,89 +52,95 @@ fn send_line(p: &mut PtySession, s: &str) -> anyhow::Result<()> {
 #[cfg(feature = "cli_tests")]
 fn test_generate_open_singlesig() -> anyhow::Result<()> {
     use pretty_assertions::{assert_eq, assert_ne};
-    let temp = tempdir::TempDir::new("cli-generate-singlesig")?;
-    let keyfile1 = temp.path().join("keyfile1");
-    create_file("keyfile1".as_bytes(), &keyfile1)?;
-    let wallet_path = temp.path().join("mywallet");
-    let public_info_path = temp.path().join("public_info.json");
-    let nonduress_public_info_path = temp.path().join("public_info_non_duress.json");
-    let mypassword = "Super11Ultra&SAASD*()";
-    let mynonduresspassword = "seedpass";
 
-    let mut s = run_cli(&[
-        "--disable-internet-check",
-        "--use-simple-theme",
-        "singlesig-generate",
-        "--difficulty",
-        "easy",
-        "--enable-duress-wallet",
-        "--keyfile",
-        keyfile1.display().to_string().as_str(),
-        wallet_path.display().to_string().as_str(),
-        public_info_path.display().to_string().as_str(),
-    ])?;
-    s.exp_string("Password:")?;
-    send_line(&mut s, mypassword)?;
-    s.exp_string("Confirm password:")?;
-    send_line(&mut s, mypassword)?;
-    s.exp_string("Enter a non duress seed password")?;
-    send_line(&mut s, mynonduresspassword)?;
-    s.exp_string("Confirm password:")?;
-    send_line(&mut s, mynonduresspassword)?;
-    s.exp_string("Wallet saved to")?;
-    s.exp_string("Enter the non duress seed password again")?;
-    send_line(&mut s, mynonduresspassword)?;
-    s.exp_string("Exported public info to")?;
-    s.exp_string("Exported non duress public info to")?;
-    s.exp_string("Finished successfully!")?;
-    s.exp_eof()?;
-    assert!(wallet_path.exists());
-    assert!(public_info_path.exists());
-    assert!(nonduress_public_info_path.exists());
-    let info = SinglesigJsonWalletPublicExportV0::from_path(&public_info_path)?;
-    let non_duress_info =
-        SinglesigJsonWalletPublicExportV0::from_path(&nonduress_public_info_path)?;
-    assert_ne!(
-        info.to_string_pretty()?,
-        non_duress_info.to_string_pretty()?
-    );
-    let public_info_path2 = temp.path().join("public_info2.json");
-    let nonduress_public_info_path2 = temp.path().join("public_info_non_duress2.json");
-    let mut s = run_cli(&[
-        "--disable-internet-check",
-        "--use-simple-theme",
-        "singlesig-open",
-        "--difficulty",
-        "easy",
-        "--keyfile",
-        keyfile1.display().to_string().as_str(),
-        "--enable-duress-wallet",
-        wallet_path.display().to_string().as_str(),
-        "export-public-info",
-        public_info_path2.display().to_string().as_str(),
-        nonduress_public_info_path2.display().to_string().as_str(),
-    ])?;
-    s.exp_string("Password:")?;
-    send_line(&mut s, mypassword)?;
-    s.exp_string("Confirm password:")?;
-    send_line(&mut s, mypassword)?;
-    s.exp_string("Enter a non duress seed password")?;
-    send_line(&mut s, mynonduresspassword)?;
-    s.exp_string("Confirm password:")?;
-    send_line(&mut s, mynonduresspassword)?;
-    s.exp_string("Enter the non duress seed password again")?;
-    send_line(&mut s, mynonduresspassword)?;
-    s.exp_eof()?;
-    assert!(public_info_path2.exists());
-    assert!(nonduress_public_info_path2.exists());
-    let info2 = SinglesigJsonWalletPublicExportV0::from_path(&public_info_path2)?;
-    let non_duress_info2 =
-        SinglesigJsonWalletPublicExportV0::from_path(&nonduress_public_info_path2)?;
-    assert_eq!(info.to_string_pretty()?, info2.to_string_pretty()?);
-    assert_eq!(
-        non_duress_info.to_string_pretty()?,
-        non_duress_info2.to_string_pretty()?
-    );
+    for wallet_type in ["standard", "compact"] {
+        let temp = tempdir::TempDir::new(&format!("cli-generate-singlesig-{wallet_type}"))?;
+        let keyfile1 = temp.path().join("keyfile1");
+        create_file("keyfile1".as_bytes(), &keyfile1)?;
+        let wallet_path = temp.path().join("mywallet");
+        let public_info_path = temp.path().join("public_info.json");
+        let nonduress_public_info_path = temp.path().join("public_info_non_duress.json");
+        let mypassword = "Super11Ultra&SAASD*()";
+        let mynonduresspassword = "seedpass";
+
+        let mut s = run_cli(&[
+            "--disable-internet-check",
+            "--use-simple-theme",
+            "singlesig-generate",
+            "--difficulty",
+            "easy",
+            "--enable-duress-wallet",
+            "--wallet-file-type",
+            wallet_type,
+            "--keyfile",
+            keyfile1.display().to_string().as_str(),
+            wallet_path.display().to_string().as_str(),
+            public_info_path.display().to_string().as_str(),
+        ])?;
+        s.exp_string("Password:")?;
+        send_line(&mut s, mypassword)?;
+        s.exp_string("Confirm password:")?;
+        send_line(&mut s, mypassword)?;
+        s.exp_string("Enter a non duress seed password")?;
+        send_line(&mut s, mynonduresspassword)?;
+        s.exp_string("Confirm password:")?;
+        send_line(&mut s, mynonduresspassword)?;
+        s.exp_string("Wallet saved to")?;
+        s.exp_string("Enter the non duress seed password again")?;
+        send_line(&mut s, mynonduresspassword)?;
+        s.exp_string("Exported public info to")?;
+        s.exp_string("Exported non duress public info to")?;
+        s.exp_string("Finished successfully!")?;
+        s.exp_eof()?;
+        assert!(wallet_path.exists());
+        assert!(public_info_path.exists());
+        assert!(nonduress_public_info_path.exists());
+        let info = SinglesigJsonWalletPublicExportV0::from_path(&public_info_path)?;
+        let non_duress_info =
+            SinglesigJsonWalletPublicExportV0::from_path(&nonduress_public_info_path)?;
+        assert_ne!(
+            info.to_string_pretty()?,
+            non_duress_info.to_string_pretty()?
+        );
+        let public_info_path2 = temp.path().join("public_info2.json");
+        let nonduress_public_info_path2 = temp.path().join("public_info_non_duress2.json");
+        let mut s = run_cli(&[
+            "--disable-internet-check",
+            "--use-simple-theme",
+            "singlesig-open",
+            "--difficulty",
+            "easy",
+            "--keyfile",
+            keyfile1.display().to_string().as_str(),
+            "--enable-duress-wallet",
+            wallet_path.display().to_string().as_str(),
+            "export-public-info",
+            public_info_path2.display().to_string().as_str(),
+            nonduress_public_info_path2.display().to_string().as_str(),
+        ])?;
+        s.exp_string("Password:")?;
+        send_line(&mut s, mypassword)?;
+        s.exp_string("Confirm password:")?;
+        send_line(&mut s, mypassword)?;
+        s.exp_string("Enter a non duress seed password")?;
+        send_line(&mut s, mynonduresspassword)?;
+        s.exp_string("Confirm password:")?;
+        send_line(&mut s, mynonduresspassword)?;
+        s.exp_string("Enter the non duress seed password again")?;
+        send_line(&mut s, mynonduresspassword)?;
+        s.exp_eof()?;
+        assert!(public_info_path2.exists());
+        assert!(nonduress_public_info_path2.exists());
+        let info2 = SinglesigJsonWalletPublicExportV0::from_path(&public_info_path2)?;
+        let non_duress_info2 =
+            SinglesigJsonWalletPublicExportV0::from_path(&nonduress_public_info_path2)?;
+        assert_eq!(info.to_string_pretty()?, info2.to_string_pretty()?);
+        assert_eq!(
+            non_duress_info.to_string_pretty()?,
+            non_duress_info2.to_string_pretty()?
+        );
+        eprintln!("generated {wallet_type} wallet");
+    }
     Ok(())
 }
 
