@@ -316,7 +316,7 @@ type PsbtKeyInfo<'a> = &'a Secret<WExtendedPrivKey>;
 
 #[derive(Clone)]
 pub struct SingleSigWalletDescriptionV0 {
-    mnemonic: Arc<Secret<bip39::Mnemonic>>,
+    pub mnemonic: Arc<Secret<bip39::Mnemonic>>,
     pub master_fingerprint: Fingerprint,
     root_key: Secret<WExtendedPrivKey>,
     singlesig_xpriv: Secret<WExtendedPrivKey>,

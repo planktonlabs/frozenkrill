@@ -140,6 +140,64 @@ fn test_generate_open_singlesig() -> anyhow::Result<()> {
             non_duress_info2.to_string_pretty()?
         );
         eprintln!("generated {wallet_type} wallet");
+
+        eprintln!("opening generated wallet to change the password");
+        let wallet_reencoded_path = temp.path().join("mywallet_reencoded");
+        let mypassword_reencoded = "Super11Ultra&SAASD*()reencoded";
+        let public_info_path_reencoded = temp.path().join("public_info_reencoded.json");
+        let mut s = run_cli(&[
+            "--disable-internet-check",
+            "--use-simple-theme",
+            "singlesig-open",
+            "--difficulty",
+            "easy",
+            "--keyfile",
+            keyfile1.display().to_string().as_str(),
+            wallet_path.display().to_string().as_str(),
+            "reencode",
+            "--difficulty",
+            "easy",
+            "--wallet-file-type",
+            "compact",
+            "--keyfile",
+            keyfile1.display().to_string().as_str(),
+            wallet_reencoded_path.display().to_string().as_str(),
+        ])?;
+
+        s.exp_string("Password:")?;
+        send_line(&mut s, mypassword)?;
+        s.exp_string("Confirm password:")?;
+        send_line(&mut s, mypassword)?;
+
+        s.exp_string("Enter a new password to encrypt the wallet")?;
+        s.exp_string("Password:")?;
+        send_line(&mut s, mypassword_reencoded)?;
+        s.exp_string("Confirm password:")?;
+        send_line(&mut s, mypassword_reencoded)?;
+        s.exp_string("Wallet saved to")?;
+        s.exp_eof()?;
+        assert!(wallet_reencoded_path.exists());
+
+        let mut s = run_cli(&[
+            "--disable-internet-check",
+            "--use-simple-theme",
+            "singlesig-open",
+            "--difficulty",
+            "easy",
+            "--keyfile",
+            keyfile1.display().to_string().as_str(),
+            wallet_reencoded_path.display().to_string().as_str(),
+            "export-public-info",
+            public_info_path_reencoded.display().to_string().as_str(),
+        ])?;
+        s.exp_string("Password:")?;
+        send_line(&mut s, mypassword_reencoded)?;
+        s.exp_string("Confirm password:")?;
+        send_line(&mut s, mypassword_reencoded)?;
+        s.exp_eof()?;
+        assert!(public_info_path_reencoded.exists());
+        let public_info_reencoded = SinglesigJsonWalletPublicExportV0::from_path(&public_info_path_reencoded)?;
+        assert_eq!(public_info_reencoded.to_string_pretty()?, info2.to_string_pretty()?);
     }
     Ok(())
 }

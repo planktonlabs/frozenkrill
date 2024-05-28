@@ -117,6 +117,7 @@ pub(crate) fn interactive(
             theme,
             term,
             secp,
+            rng,
             ic,
             keyfiles,
             args.difficulty.to_owned(),

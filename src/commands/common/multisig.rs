@@ -275,7 +275,7 @@ pub(crate) fn parse_multisig_inputs(
     theme: &dyn Theme,
     term: &Term,
     secp: &Secp256k1<All>,
-    ic: impl InternetChecker,
+    mut ic: impl InternetChecker,
     inputs: &[String],
 ) -> anyhow::Result<MultisigInputs> {
     ic.check()?;

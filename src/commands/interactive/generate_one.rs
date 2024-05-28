@@ -207,7 +207,7 @@ pub(super) fn multisig_interactive_generate_single(
     term: &Term,
     secp: &mut Secp256k1<All>,
     rng: &mut impl CryptoRngCore,
-    ic: impl InternetChecker,
+    mut ic: impl InternetChecker,
     keyfiles: Vec<PathBuf>,
     difficulty: Option<KeyDerivationDifficulty>,
 ) -> anyhow::Result<()> {

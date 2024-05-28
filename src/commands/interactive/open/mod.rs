@@ -7,6 +7,7 @@ use frozenkrill_core::{
     key_derivation::KeyDerivationDifficulty,
     log::{self, debug},
     parse_keyfiles_paths,
+    rand_core::CryptoRngCore,
     secrecy::Secret,
     wallet_description::read_decode_wallet,
 };
@@ -25,6 +26,7 @@ use crate::{
 use super::{choose_keyfiles, duress_wallet_explanation};
 
 mod export_public_info;
+mod reencode;
 mod show_receiving_qr_code;
 mod show_secrets;
 mod sign_psbt;
@@ -35,6 +37,7 @@ enum InteractiveOpenActions {
     ExportPublicInfo,
     ShowSecrets,
     SignPsbt,
+    Reencode,
 }
 
 impl ToString for InteractiveOpenActions {
@@ -44,16 +47,18 @@ impl ToString for InteractiveOpenActions {
             InteractiveOpenActions::ExportPublicInfo => "Export public info json",
             InteractiveOpenActions::ShowSecrets => "Show secrets",
             InteractiveOpenActions::SignPsbt => "Sign a PSBT",
+            InteractiveOpenActions::Reencode => "Reencode the wallet",
         }
         .into()
     }
 }
 
-const INTERACTIVE_OPEN_ACTIONS: [InteractiveOpenActions; 4] = [
+const INTERACTIVE_OPEN_ACTIONS: [InteractiveOpenActions; 5] = [
     InteractiveOpenActions::ShowReceivingQrCode,
     InteractiveOpenActions::ExportPublicInfo,
     InteractiveOpenActions::ShowSecrets,
     InteractiveOpenActions::SignPsbt,
+    InteractiveOpenActions::Reencode,
 ];
 
 fn ask_interactive_open_action(
@@ -79,10 +84,12 @@ fn ask_select_another_action(theme: &dyn Theme, term: &Term) -> anyhow::Result<b
         .interact_on(term)?)
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(super) fn singlesig_interactive_open(
     theme: &dyn Theme,
     term: &Term,
     secp: &mut Secp256k1<All>,
+    rng: &mut impl CryptoRngCore,
     ic: impl InternetChecker,
     keyfiles: Vec<PathBuf>,
     difficulty: Option<KeyDerivationDifficulty>,
@@ -102,7 +109,7 @@ pub(super) fn singlesig_interactive_open(
         theme,
         term,
         secp,
-        Some(ic),
+        Some(ic.clone()),
         &encrypted_wallet,
         &keyfiles,
         &difficulty,
@@ -136,6 +143,17 @@ pub(super) fn singlesig_interactive_open(
             Some(InteractiveOpenActions::SignPsbt) => {
                 sign_psbt::singlesig_sign(theme, term, secp, &wallet, &non_duress_password)?;
             }
+            Some(InteractiveOpenActions::Reencode) => {
+                reencode::singlesig_reencode(
+                    theme,
+                    term,
+                    secp,
+                    rng,
+                    ic.clone(),
+                    &wallet,
+                    &input_file_path,
+                )?;
+            }
             None => break,
         };
         if !ask_select_another_action(theme, term)? {
@@ -150,7 +168,7 @@ pub(super) fn multisig_interactive_open(
     theme: &dyn Theme,
     term: &Term,
     secp: &mut Secp256k1<All>,
-    ic: impl InternetChecker,
+    mut ic: impl InternetChecker,
     keyfiles: Vec<PathBuf>,
     difficulty: Option<KeyDerivationDifficulty>,
 ) -> anyhow::Result<()> {
@@ -201,6 +219,9 @@ pub(super) fn multisig_interactive_open(
                 } else {
                     log::error!("No signers added, impossible to sign a PSBT")
                 }
+            }
+            Some(InteractiveOpenActions::Reencode) => {
+                unimplemented!("Reencode for multisig is not implemented yet")
             }
             None => break,
         };

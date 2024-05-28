@@ -10,7 +10,7 @@ use std::{
     borrow::Cow,
     path::{Path, PathBuf},
     str::FromStr,
-    sync::Arc,
+    sync::{Arc, Mutex},
     thread::JoinHandle,
     time::Instant,
 };
@@ -324,12 +324,27 @@ struct SignPsbtArgs {
     signed_output_psbt_file: Option<String>,
 }
 
+#[derive(clap::Args)]
+#[command(about = "Reencode the wallet with new password and other parameters")]
+struct ReencodeArgs {
+    #[clap(flatten)]
+    common: GenerateCommon,
+    #[clap(
+        help = WALLET_OUTPUT_FILE_HELP
+    )]
+    wallet_output_file: Option<String>,
+    #[clap(long, help = WALLET_FILE_TYPE_HELP,
+        default_value_t = WalletFileType::Standard)]
+    wallet_file_type: WalletFileType,
+}
+
 #[derive(Subcommand)]
 enum SinglesigOpenCommands {
     ShowSecrets(SinglesigShowSecretsArgs),
     ShowReceivingQrCode(ShowReceivingQrCodeArgs),
     ExportPublicInfo(SinglesigExportPublicInfoArgs),
     SignPsbt(SignPsbtArgs),
+    Reencode(ReencodeArgs),
 }
 
 #[derive(Subcommand)]
@@ -646,6 +661,28 @@ fn process(cli: Cli, theme: Box<dyn Theme>, term: &Term) -> Result<(), anyhow::E
                     args,
                 )?;
             }
+            SinglesigOpenCommands::Reencode(args) => {
+                let core_args =
+                    commands::reencode::singlesig_reencode_parse_args(&open_args, args)?;
+                // FIXME: should we ask/use non duress password here?
+                let (wallet, _non_duress_password) = open_singlesig_wallet_non_interactive(
+                    theme.as_ref(),
+                    term,
+                    &secp,
+                    ic.clone(),
+                    &open_args,
+                )?;
+
+                commands::reencode::singlesig_core_reencode(
+                    theme.as_ref(),
+                    term,
+                    &mut secp,
+                    &mut rng,
+                    ic,
+                    &wallet,
+                    core_args,
+                )?;
+            }
         },
         Commands::MultisigOpen(open_args) => match &open_args.command {
             MultisigOpenCommands::ShowSecrets(_) => {
@@ -730,13 +767,25 @@ fn process(cli: Cli, theme: Box<dyn Theme>, term: &Term) -> Result<(), anyhow::E
     Ok(())
 }
 
+#[derive(Clone)]
 pub(crate) struct InternetCheckerImpl {
-    h: Option<JoinHandle<bool>>,
+    h: Arc<Mutex<Option<JoinHandle<bool>>>>,
+    is_connected: Option<bool>,
 }
 
-#[mockall::automock]
-pub(crate) trait InternetChecker {
-    fn check(self) -> anyhow::Result<()>;
+pub(crate) trait InternetChecker: Clone {
+    fn check(&mut self) -> anyhow::Result<()>;
+}
+
+mockall::mock! {
+    InternetChecker {}     // Name of the mock struct, less the "Mock" prefix
+    impl Clone for InternetChecker {   // specification of the trait to mock
+        fn clone(&self) -> Self;
+    }
+
+    impl InternetChecker for InternetChecker {   // specification of the trait to mock
+        fn check(&mut self) -> anyhow::Result<()>;
+    }
 }
 
 impl InternetCheckerImpl {
@@ -744,10 +793,13 @@ impl InternetCheckerImpl {
         if disable_check {
             log::warn!("Will proceed without checking if the device is connected to internet");
             log::warn!("Only do this for testing or on exceptional circumstances");
-            Self { h: None }
+            Self {
+                h: Arc::new(Mutex::new(None)),
+                is_connected: None,
+            }
         } else {
             Self {
-                h: Some(std::thread::spawn({
+                h: Arc::new(Mutex::new(Some(std::thread::spawn({
                     move || {
                         use std::net::ToSocketAddrs;
                         {
@@ -766,19 +818,21 @@ impl InternetCheckerImpl {
                         }
                         false
                     }
-                })),
+                })))),
+                is_connected: None,
             }
         }
     }
 }
 
 impl InternetChecker for InternetCheckerImpl {
-    fn check(self) -> anyhow::Result<()> {
-        if let Some(h) = self.h {
+    fn check(&mut self) -> anyhow::Result<()> {
+        if let Some(h) = self.h.lock().expect("to lock").take() {
             if !h.is_finished() {
                 log::info!("Making sure internet is disconnected...")
             }
             let is_connected = h.join().expect("to join");
+            self.is_connected = Some(is_connected);
             if is_connected {
                 log::error!("You are connected to internet");
                 eprintln!("This software should only be used in offline devices");
@@ -790,6 +844,8 @@ impl InternetChecker for InternetCheckerImpl {
             } else {
                 Ok(())
             }
+        } else if self.is_connected.unwrap_or_default() {
+            anyhow::bail!("Internet is reachable")
         } else {
             Ok(())
         }

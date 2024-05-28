@@ -53,7 +53,7 @@ pub(crate) fn singlesig_core_open(
     enable_duress_wallet: bool,
     password: Option<Arc<SecretString>>,
 ) -> anyhow::Result<(SingleSigWalletDescriptionV0, Option<Arc<SecretString>>)> {
-    ic.map(|i| i.check()).transpose()?;
+    ic.map(|mut i| i.check()).transpose()?;
     let password = password
         .map(Result::Ok)
         .unwrap_or_else(|| ask_password(theme, term).map(Arc::new))?;
