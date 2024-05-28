@@ -250,6 +250,7 @@ pub(crate) fn singlesig_generate(
         non_duress_output_file_json: None,
         public_json_file_path: public_info_json_output.clone(),
     };
+    let script_type = frozenkrill_core::wallet_description::ScriptType::SegwitNative;
     let args = SinglesigCoreGenerateArgs {
         password: None,
         output_file_path,
@@ -258,6 +259,7 @@ pub(crate) fn singlesig_generate(
         user_mnemonic,
         duress_input_args,
         word_count,
+        script_type,
         network,
         difficulty: &args.common.difficulty,
         addresses_quantity: args.common.addresses_quantity,
@@ -266,6 +268,9 @@ pub(crate) fn singlesig_generate(
             Some(args.common.min_additional_padding_bytes),
             Some(args.common.max_additional_padding_bytes),
         )?,
+        encrypted_wallet_version: args
+            .wallet_file_type
+            .to_encrypted_wallet_version(network, script_type)?,
     };
     singlesig_core_generate(theme, term, secp, rng, ic, args)?;
     Ok(())

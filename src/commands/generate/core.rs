@@ -16,8 +16,8 @@ use frozenkrill_core::{
     secrecy::{Secret, SecretString},
     utils::create_file,
     wallet_description::{
-        generate_seeds, MultiSigWalletDescriptionV0, MultisigJsonWalletDescriptionV0, MultisigType,
-        ScriptType,
+        generate_seeds, EncryptedWalletVersion, MultiSigWalletDescriptionV0,
+        MultisigJsonWalletDescriptionV0, MultisigType, ScriptType,
     },
     MultisigInputs, PaddingParams,
 };
@@ -59,10 +59,12 @@ pub(crate) struct SinglesigCoreGenerateArgs<'a> {
     pub(crate) keyfiles: &'a [PathBuf],
     pub(crate) user_mnemonic: Option<Arc<Secret<Mnemonic>>>,
     pub(crate) word_count: WordCount,
+    pub(crate) script_type: ScriptType,
     pub(crate) network: Network,
     pub(crate) difficulty: &'a KeyDerivationDifficulty,
     pub(crate) addresses_quantity: u32,
     pub(crate) padding_params: PaddingParams,
+    pub(crate) encrypted_wallet_version: EncryptedWalletVersion,
 }
 
 pub(crate) struct MultisigCoreGenerateArgs<'a> {
@@ -106,17 +108,19 @@ pub(crate) fn singlesig_core_generate(
     } else {
         Arc::new(generate_seeds(&mut rng, args.word_count, ENGLISH)?)
     };
+    let seed_password = &None;
     let encrypted_wallet = generate_encrypted_encoded_singlesig_wallet(
         &key,
         header_key,
         mnemonic,
-        &None,
+        seed_password,
         salt,
         nonce,
         header_nonce,
         padder,
-        ScriptType::SegwitNative,
+        args.script_type,
         args.network,
+        args.encrypted_wallet_version,
         secp,
     )?;
     // Write file
@@ -138,11 +142,11 @@ pub(crate) fn singlesig_core_generate(
         .context("failure trying to derive the same key again")?;
         pb.finish_using_style();
         let read_json_wallet_description = encrypted_wallet
-            .decrypt_singlesig(&key)
+            .decrypt_singlesig(&key, seed_password, secp)
             .context(CONTEXT_CORRUPTION_WARNING)?;
         let wallet_description = read_json_wallet_description
             .expose_secret()
-            .to(&None, secp)
+            .to(seed_password, secp)
             .context("failure parsing generated wallet")?;
         // Sanity check
         SinglesigJsonWalletDescriptionV0::validate_same(
@@ -171,11 +175,11 @@ pub(crate) fn singlesig_core_generate(
         // So we are delaying the key derivation to the future
         let encrypted_wallet = read_decode_wallet(output_file_path)?;
         let read_json_wallet_description = encrypted_wallet
-            .decrypt_singlesig(&key)
+            .decrypt_singlesig(&key, seed_password, secp)
             .context(CONTEXT_CORRUPTION_WARNING)?;
         let wallet_description = read_json_wallet_description
             .expose_secret()
-            .to(&None, secp)
+            .to(seed_password, secp)
             .context("failure parsing generated wallet")?;
         // Sanity check
         SinglesigJsonWalletDescriptionV0::validate_same(

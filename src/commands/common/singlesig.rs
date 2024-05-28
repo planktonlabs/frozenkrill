@@ -63,8 +63,9 @@ pub(crate) fn singlesig_core_open(
         None
     };
     let key = ui_derive_key(&password, keyfiles, &encrypted_wallet.salt, difficulty)?;
-    let json_wallet = encrypted_wallet.decrypt_singlesig(&key)?;
-    let wallet = ui_get_singlesig_wallet_description(&json_wallet, &None, secp)?;
+    let seed_password = &None;
+    let json_wallet = encrypted_wallet.decrypt_singlesig(&key, seed_password, secp)?;
+    let wallet = ui_get_singlesig_wallet_description(&json_wallet, seed_password, secp)?;
     Ok((wallet, non_duress_password))
 }
 

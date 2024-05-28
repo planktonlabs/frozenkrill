@@ -18,12 +18,15 @@ use std::{
 use frozenkrill_core::{
     anyhow::{self, Context},
     bip39::{self, Language, Mnemonic},
-    bitcoin::secp256k1::{All, Secp256k1},
+    bitcoin::{
+        secp256k1::{All, Secp256k1},
+        Network,
+    },
     custom_logger,
     key_derivation::{self, default_derive_key, KeyDerivationDifficulty},
     log, mnemonic_utils, rand,
     rand_core::CryptoRngCore,
-    wallet_description::{MultisigType, KEY_SIZE, SALT_SIZE},
+    wallet_description::{EncryptedWalletVersion, MultisigType, ScriptType, KEY_SIZE, SALT_SIZE},
     DEFAULT_MAX_ADDITIONAL_PADDING, DEFAULT_MIN_ADDITIONAL_PADDING,
 };
 
@@ -89,6 +92,10 @@ const WALLET_OUTPUT_FILE_HELP: &str = "Where to save the generated encrypted wal
 
 const PUBLIC_INFO_JSON_OUTPUT_HELP: &str = "Name of the file to export public parameters and addresses of the wallet into. Useful to import on hot wallets";
 
+const WALLET_FILE_TYPE_HELP: &str = r#"Pick between a 'standard' or a 'compact' wallet.
+The standard one will include all metadata required to describe the wallet, while the compact one will only save the encrypted entropy and will rely on implicit standard and conventions.
+Use the compact only if you need to save bytes (for instance, to put the wallet in a QR code)"#;
+
 #[derive(clap::Args)]
 #[command(
     arg_required_else_help = true,
@@ -129,6 +136,9 @@ struct SinglesigGenerateArgs {
         help = PUBLIC_INFO_JSON_OUTPUT_HELP
     )]
     public_info_json_output: Option<String>,
+    #[clap(long, help = WALLET_FILE_TYPE_HELP,
+        default_value_t = WalletFileType::Standard)]
+    wallet_file_type: WalletFileType,
 }
 
 #[derive(clap::Args)]
@@ -168,6 +178,54 @@ struct GenerateCommon {
     difficulty: KeyDerivationDifficulty,
     #[clap(long, help = ADDRESSES_QUANTITY_HELP, default_value = "100")]
     addresses_quantity: u32,
+}
+
+#[derive(Clone, Copy)]
+pub enum WalletFileType {
+    Standard,
+    Compact,
+}
+impl WalletFileType {
+    pub fn to_encrypted_wallet_version(
+        self,
+        network: Network,
+        script_type: ScriptType,
+    ) -> anyhow::Result<EncryptedWalletVersion> {
+        match self {
+            Self::Standard => Ok(EncryptedWalletVersion::V0Standard),
+            Self::Compact => match (network, script_type) {
+                (Network::Bitcoin, ScriptType::SegwitNative) => {
+                    Ok(EncryptedWalletVersion::V0CompactMainnet)
+                }
+                (Network::Testnet, ScriptType::SegwitNative) => {
+                    Ok(EncryptedWalletVersion::V0CompactTestnet)
+                }
+                (other, ScriptType::SegwitNative) => {
+                    anyhow::bail!("Unsupported bitcoin network: {other:?}")
+                }
+            },
+        }
+    }
+}
+impl FromStr for WalletFileType {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.trim().to_lowercase().as_str() {
+            "standard" => Ok(Self::Standard),
+            "compact" => Ok(Self::Compact),
+            other => anyhow::bail!("Got '{other}', it should be either 'standard' or 'compact'"),
+        }
+    }
+}
+
+impl std::fmt::Display for WalletFileType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            WalletFileType::Standard => f.write_str("standard"),
+            WalletFileType::Compact => f.write_str("compact"),
+        }
+    }
 }
 
 #[derive(clap::Args)]
@@ -358,6 +416,9 @@ struct SinglesigBatchGenerateExportArgs {
     disable_public_info_export: bool,
     #[clap(long, help = "How many wallets to generate", default_value = "10")]
     wallets_quantity: usize,
+    #[clap(long, help = WALLET_FILE_TYPE_HELP,
+        default_value_t = WalletFileType::Standard)]
+    wallet_file_type: WalletFileType,
     #[clap(
         help = "Files names will be automatically generated based on this prefix",
         default_value = "wallet"

@@ -16,7 +16,7 @@ use frozenkrill_core::{
     wallet_description::WordCount,
 };
 
-use crate::{handle_output_path, InteractiveArgs, InternetChecker};
+use crate::{handle_output_path, InteractiveArgs, InternetChecker, WalletFileType};
 
 use self::{
     generate_batch::interactive_generate_batch,
@@ -332,6 +332,23 @@ fn ask_word_count(theme: &dyn Theme, term: &Term) -> anyhow::Result<WordCount> {
         Ok(WordCount::W12)
     } else {
         Ok(WordCount::W24)
+    }
+}
+
+fn ask_wallet_file_type(theme: &dyn Theme, term: &Term) -> anyhow::Result<WalletFileType> {
+    let items = ["Standard (recommended)", "Compact"];
+    let item = dialoguer::Select::with_theme(theme)
+        .items(&items)
+        .default(0)
+        .with_prompt(
+            r#"What's the type of the encrypted file?
+Only pick compact if you really need it (e.g if you want to store it on a QR code)"#,
+        )
+        .interact_on(term)?;
+    if item == 0 {
+        Ok(WalletFileType::Standard)
+    } else {
+        Ok(WalletFileType::Compact)
     }
 }
 

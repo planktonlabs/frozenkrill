@@ -9,6 +9,7 @@ use std::{
 };
 
 use anyhow::Context;
+use bip39::Mnemonic;
 use bitcoin::{
     bip32::{ChildNumber, DerivationPath, Fingerprint},
     psbt::Psbt,
@@ -34,9 +35,13 @@ use once_cell::sync::Lazy;
 /// The maximum number of words in a mnemonic.
 const MAX_NB_WORDS: usize = 24;
 
-pub const ZERO_MULTISIG_WALLET_VERSION: u32 = 0;
-pub const ZERO_SINGLESIG_WALLET_VERSION: u32 = 0;
-pub const ZERO_ENCRYPTED_WALLET_VERSION: u32 = 0;
+pub type WalletVersionType = u32;
+
+pub const ZERO_MULTISIG_WALLET_VERSION: WalletVersionType = 0;
+pub const ZERO_SINGLESIG_WALLET_VERSION: WalletVersionType = 0;
+pub const STANDARD_ENCRYPTED_WALLET_VERSION: HeaderVersionType = 0;
+pub const COMPACT_ENCRYPTED_MAINNET_WALLET_VERSION: HeaderVersionType = 1;
+pub const COMPACT_ENCRYPTED_TESTNET_WALLET_VERSION: HeaderVersionType = 2;
 
 pub const MAX_TOTAL_SIGS_MULTISIG: u32 = 15;
 
@@ -157,7 +162,7 @@ pub struct EncryptedWalletDescription {
     nonce: [u8; NONCE_SIZE],
     pub salt: [u8; SALT_SIZE],
     encrypted_header: [u8; ENCRYPTED_HEADER_LENGTH],
-    padded_ciphertext: Vec<u8>,
+    ciphertext: Vec<u8>,
 }
 
 impl EncryptedWalletDescription {
@@ -165,13 +170,13 @@ impl EncryptedWalletDescription {
         nonce: [u8; NONCE_SIZE],
         salt: [u8; SALT_SIZE],
         encrypted_header: [u8; ENCRYPTED_HEADER_LENGTH],
-        padded_ciphertext: Vec<u8>,
+        ciphertext: Vec<u8>,
     ) -> Self {
         Self {
             nonce,
             salt,
             encrypted_header,
-            padded_ciphertext,
+            ciphertext,
         }
     }
 
@@ -180,7 +185,7 @@ impl EncryptedWalletDescription {
         writer.write_all(&self.nonce)?;
         writer.write_all(&self.salt)?;
         writer.write_all(&self.encrypted_header)?;
-        writer.write_all(&self.padded_ciphertext)?;
+        writer.write_all(&self.ciphertext)?;
         Ok(writer.into_inner()?)
     }
 
@@ -197,15 +202,15 @@ impl EncryptedWalletDescription {
         reader
             .read_exact(&mut encrypted_header)
             .context("failure reading encrypted header")?;
-        let mut padded_ciphertext = Vec::new();
+        let mut ciphertext = Vec::new();
         reader
-            .read_to_end(&mut padded_ciphertext)
+            .read_to_end(&mut ciphertext)
             .context("failure reading ciphertext")?;
         Ok(Self {
             nonce,
             salt,
             encrypted_header,
-            padded_ciphertext,
+            ciphertext,
         })
     }
 
@@ -219,8 +224,10 @@ impl EncryptedWalletDescription {
     pub fn decrypt_singlesig(
         &self,
         key: &Secret<[u8; KEY_SIZE]>,
+        seed_password: &Option<Arc<SecretString>>,
+        secp: &Secp256k1<All>,
     ) -> anyhow::Result<Secret<SinglesigJsonWalletDescriptionV0>> {
-        decrypt_wallet_singlesig(&self.nonce, &self.encrypted_header, &self.padded_ciphertext, key)
+        decrypt_wallet_singlesig(&self.nonce, &self.encrypted_header, &self.ciphertext, key, seed_password,secp)
             .context("failed to decrypt the wallet, check if you have used the correct password, keyfiles and difficulty parameter")
     }
 
@@ -228,7 +235,7 @@ impl EncryptedWalletDescription {
         &self,
         key: &Secret<[u8; KEY_SIZE]>,
     ) -> anyhow::Result<Secret<MultisigJsonWalletDescriptionV0>> {
-        decrypt_wallet_multisig(&self.nonce, &self.encrypted_header, &self.padded_ciphertext, key)
+        decrypt_wallet_multisig(&self.nonce, &self.encrypted_header, &self.ciphertext, key)
             .context("failed to decrypt the wallet, check if you have used the correct password, keyfiles and difficulty parameter")
     }
 }
@@ -628,7 +635,7 @@ impl PsbtWallet for SingleSigWalletDescriptionV0 {
 
 #[derive(Default, Zeroize, ZeroizeOnDrop, Serialize, Deserialize, PartialEq, Eq)]
 pub struct SinglesigJsonWalletDescriptionV0 {
-    pub version: u32,
+    pub version: WalletVersionType,
     pub sigtype: String,
     pub seed_phrase: String,
     pub master_fingerprint: String,
@@ -751,6 +758,47 @@ impl SinglesigJsonWalletDescriptionV0 {
         Ok(SecretString::new(
             serde_json::to_string_pretty(self).context("failure serializing json")?,
         ))
+    }
+}
+
+#[derive(Clone)]
+pub struct SingleSigCompactWalletDescriptionV0 {
+    mnemonic: Arc<Secret<bip39::Mnemonic>>,
+}
+
+impl SingleSigCompactWalletDescriptionV0 {
+    pub fn new(mnemonic: Arc<Secret<bip39::Mnemonic>>) -> anyhow::Result<Self> {
+        Ok(Self { mnemonic })
+    }
+
+    pub fn serialize(&self) -> SecretVec<u8> {
+        let entropy = self.mnemonic.expose_secret().to_entropy();
+        SecretVec::new(entropy)
+    }
+
+    pub fn deserialize(mut data: BufReader<impl Read>) -> anyhow::Result<Self> {
+        let mut entropy = Vec::with_capacity(32);
+        data.read_to_end(&mut entropy)?;
+        let mnemonic = Mnemonic::from_entropy(&entropy)?;
+        Ok(Self {
+            mnemonic: Arc::new(Secret::new(mnemonic)),
+        })
+    }
+
+    pub fn to_description(
+        self,
+        seed_password: &Option<Arc<SecretString>>,
+        network: bitcoin::Network,
+        script_type: ScriptType,
+        secp: &Secp256k1<All>,
+    ) -> anyhow::Result<SingleSigWalletDescriptionV0> {
+        SingleSigWalletDescriptionV0::generate(
+            self.mnemonic,
+            seed_password,
+            network,
+            script_type,
+            secp,
+        )
     }
 }
 
@@ -943,7 +991,7 @@ impl PsbtWallet for MultiSigWalletDescriptionV0 {
 
 #[derive(Default, Zeroize, ZeroizeOnDrop, Serialize, Deserialize, PartialEq, Eq)]
 pub struct MultisigJsonWalletDescriptionV0 {
-    pub version: u32,
+    pub version: WalletVersionType,
     pub sigtype: String,
     pub receiving_output_descriptor: String,
     pub change_output_descriptor: String,
@@ -1219,12 +1267,12 @@ impl DecryptedWallet {
     }
 }
 
-fn get_uncompressed_wallet(
+fn decrypt_header<'a>(
     nonce: &[u8; NONCE_SIZE],
     encrypted_header: &[u8; ENCRYPTED_HEADER_LENGTH],
-    ciphertext: &[u8],
+    ciphertext: &'a [u8],
     key: &Secret<[u8; KEY_SIZE]>,
-) -> anyhow::Result<SecretVec<u8>> {
+) -> anyhow::Result<(DecodedHeaderV0, &'a [u8])> {
     let header =
         default_decrypt(key, nonce, encrypted_header).context("failure decrypting header")?;
     let header = DecodedHeaderV0::deserialize(BufReader::new(header.expose_secret().as_slice()))?;
@@ -1236,6 +1284,13 @@ fn get_uncompressed_wallet(
         header.length
     );
     let ciphertext = &ciphertext[0..ciphertext_length];
+    Ok((header, ciphertext))
+}
+
+fn get_uncompressed_wallet(
+    header: &DecodedHeaderV0,
+    ciphertext: &[u8],
+) -> anyhow::Result<SecretVec<u8>> {
     let compressed = default_decrypt(&header.key, &header.nonce, ciphertext)
         .context("failure decrypting data")?;
     let uncompressed = SecretVec::new(
@@ -1244,16 +1299,47 @@ fn get_uncompressed_wallet(
     Ok(uncompressed)
 }
 
+fn from_compact_wallet(
+    header: &DecodedHeaderV0,
+    ciphertext: &[u8],
+) -> anyhow::Result<SingleSigCompactWalletDescriptionV0> {
+    let ciphertext = default_decrypt(&header.key, &header.nonce, ciphertext)
+        .context("failure decrypting data")?;
+    let reader = BufReader::new(ciphertext.expose_secret().as_slice());
+    let compact = SingleSigCompactWalletDescriptionV0::deserialize(reader)?;
+    Ok(compact)
+}
+
+// TODO: perhaps the best would be to return the wallet description here
 fn decrypt_wallet_singlesig(
     nonce: &[u8; NONCE_SIZE],
     encrypted_header: &[u8; ENCRYPTED_HEADER_LENGTH],
     ciphertext: &[u8],
     key: &Secret<[u8; KEY_SIZE]>,
+    seed_password: &Option<Arc<SecretString>>,
+    secp: &Secp256k1<All>,
 ) -> anyhow::Result<Secret<SinglesigJsonWalletDescriptionV0>> {
-    let uncompressed = get_uncompressed_wallet(nonce, encrypted_header, ciphertext, key)?;
-    SinglesigJsonWalletDescriptionV0::deserialize(BufReader::new(
-        uncompressed.expose_secret().as_slice(),
-    ))
+    let (decrypted_header, ciphertext) = decrypt_header(nonce, encrypted_header, ciphertext, key)?;
+    match decrypted_header.version {
+        EncryptedWalletVersion::V0Standard => {
+            let uncompressed = get_uncompressed_wallet(&decrypted_header, ciphertext)?;
+            SinglesigJsonWalletDescriptionV0::deserialize(BufReader::new(
+                uncompressed.expose_secret().as_slice(),
+            ))
+        }
+        EncryptedWalletVersion::V0CompactMainnet | EncryptedWalletVersion::V0CompactTestnet => {
+            let script_type = ScriptType::SegwitNative;
+            let network = if decrypted_header.version == EncryptedWalletVersion::V0CompactMainnet {
+                Network::Bitcoin
+            } else {
+                Network::Testnet
+            };
+            let compact = from_compact_wallet(&decrypted_header, ciphertext)?;
+            // TODO: this intermediate wallet description is a bit unnecessary, try to optimize this whole process
+            let wallet = compact.to_description(seed_password, network, script_type, secp)?;
+            SinglesigJsonWalletDescriptionV0::from_wallet_description(&wallet, secp)
+        }
+    }
 }
 
 fn decrypt_wallet_multisig(
@@ -1262,7 +1348,8 @@ fn decrypt_wallet_multisig(
     ciphertext: &[u8],
     key: &Secret<[u8; KEY_SIZE]>,
 ) -> anyhow::Result<Secret<MultisigJsonWalletDescriptionV0>> {
-    let uncompressed = get_uncompressed_wallet(nonce, encrypted_header, ciphertext, key)?;
+    let (decrypted_header, ciphertext) = decrypt_header(nonce, encrypted_header, ciphertext, key)?;
+    let uncompressed = get_uncompressed_wallet(&decrypted_header, ciphertext)?;
     MultisigJsonWalletDescriptionV0::deserialize(BufReader::new(
         uncompressed.expose_secret().as_slice(),
     ))
@@ -1276,19 +1363,52 @@ const HEADER_LENGTH_SIZE: usize = size_of::<HeaderLengthType>();
 const HEADER_LENGTH: usize = KEY_SIZE + NONCE_SIZE + HEADER_VERSION_SIZE + HEADER_LENGTH_SIZE;
 pub(crate) const ENCRYPTED_HEADER_LENGTH: usize = HEADER_LENGTH + MAC_LENGTH;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EncryptedWalletVersion {
+    V0Standard,
+    V0CompactMainnet,
+    V0CompactTestnet,
+}
+
+impl EncryptedWalletVersion {
+    fn from_bytes(bytes: [u8; HEADER_VERSION_SIZE]) -> anyhow::Result<Self> {
+        let version = HeaderVersionType::from_le_bytes(bytes);
+        match version {
+            STANDARD_ENCRYPTED_WALLET_VERSION => Ok(Self::V0Standard),
+            COMPACT_ENCRYPTED_MAINNET_WALLET_VERSION => Ok(Self::V0CompactMainnet),
+            COMPACT_ENCRYPTED_TESTNET_WALLET_VERSION => Ok(Self::V0CompactTestnet),
+            other => anyhow::bail!("Got header version {other}, which isn't supported"),
+        }
+    }
+
+    fn to_bytes(self) -> [u8; HEADER_VERSION_SIZE] {
+        let version: HeaderVersionType = match self {
+            EncryptedWalletVersion::V0Standard => STANDARD_ENCRYPTED_WALLET_VERSION,
+            EncryptedWalletVersion::V0CompactMainnet => COMPACT_ENCRYPTED_MAINNET_WALLET_VERSION,
+            EncryptedWalletVersion::V0CompactTestnet => COMPACT_ENCRYPTED_TESTNET_WALLET_VERSION,
+        };
+        version.to_le_bytes()
+    }
+}
+
 pub(crate) struct DecodedHeaderV0 {
     key: Secret<[u8; KEY_SIZE]>,
     nonce: [u8; NONCE_SIZE],
-    version: HeaderVersionType,
+    version: EncryptedWalletVersion,
     length: HeaderLengthType,
 }
 
 impl DecodedHeaderV0 {
-    pub(crate) fn new(key: Secret<[u8; KEY_SIZE]>, nonce: [u8; NONCE_SIZE], length: u32) -> Self {
+    pub(crate) fn new(
+        key: Secret<[u8; KEY_SIZE]>,
+        nonce: [u8; NONCE_SIZE],
+        version: EncryptedWalletVersion,
+        length: u32,
+    ) -> Self {
         Self {
             key,
             nonce,
-            version: ZERO_ENCRYPTED_WALLET_VERSION,
+            version,
             length,
         }
     }
@@ -1304,11 +1424,8 @@ impl DecodedHeaderV0 {
         reader
             .read_exact(&mut version)
             .context("failure reading version")?;
-        let version = HeaderVersionType::from_le_bytes(version);
-        anyhow::ensure!(
-            version == ZERO_ENCRYPTED_WALLET_VERSION,
-            "Header version is {version} but expected {ZERO_ENCRYPTED_WALLET_VERSION}"
-        );
+        let version =
+            EncryptedWalletVersion::from_bytes(version).context("failure decoding version")?;
         let mut length = [0u8; HEADER_LENGTH_SIZE];
         reader
             .read_exact(&mut length)
@@ -1327,7 +1444,7 @@ impl DecodedHeaderV0 {
         let mut writer = BufWriter::new(Vec::with_capacity(HEADER_LENGTH));
         writer.write_all(self.key.expose_secret())?;
         writer.write_all(&self.nonce)?;
-        writer.write_all(&self.version.to_le_bytes())?;
+        writer.write_all(&self.version.to_bytes())?;
         writer.write_all(&self.length.to_le_bytes())?;
         let secret = writer.into_inner()?;
         assert_eq!(secret.len(), HEADER_LENGTH);
@@ -1437,7 +1554,8 @@ mod tests {
         let key = Secret::new(get_random_key(&mut rng)?);
         let nonce = get_random_nonce(&mut rng)?;
 
-        let original = DecodedHeaderV0::new(key, nonce, 123);
+        let original =
+            DecodedHeaderV0::new(key, nonce, EncryptedWalletVersion::V0CompactMainnet, 123);
         let decoded = DecodedHeaderV0::deserialize(BufReader::new(
             original.serialize()?.expose_secret().as_slice(),
         ))?;

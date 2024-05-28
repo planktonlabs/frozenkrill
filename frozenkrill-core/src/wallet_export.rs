@@ -13,7 +13,7 @@ use zeroize::ZeroizeOnDrop;
 
 use crate::wallet_description::{
     self, slip132_decode_pub, AddressInfo, DerivedAddress, MultiSigWalletDescriptionV0, ScriptType,
-    SigType, SingleSigWalletDescriptionV0, ZERO_MULTISIG_WALLET_VERSION,
+    SigType, SingleSigWalletDescriptionV0, WalletVersionType, ZERO_MULTISIG_WALLET_VERSION,
     ZERO_SINGLESIG_WALLET_VERSION,
 };
 
@@ -22,7 +22,7 @@ pub const FROZENKRILL_WALLET: &str = "frozenkrill";
 #[derive(serde::Deserialize)]
 pub struct GenericOutputExportJson {
     wallet: Option<String>,
-    version: Option<u32>,
+    version: Option<WalletVersionType>,
     sigtype: Option<String>,
 }
 
@@ -44,7 +44,10 @@ impl GenericOutputExportJson {
 
     pub fn version_sigtype(
         &self,
-    ) -> anyhow::Result<(Option<u32>, Option<wallet_description::SigType>)> {
+    ) -> anyhow::Result<(
+        Option<WalletVersionType>,
+        Option<wallet_description::SigType>,
+    )> {
         Ok((
             self.version,
             self.sigtype
@@ -88,7 +91,7 @@ impl From<AddressInfo> for JsonAddressInfo {
 #[derive(Debug, Default, Zeroize, ZeroizeOnDrop, Serialize, Deserialize, PartialEq, Eq)]
 pub struct SinglesigJsonWalletPublicExportV0 {
     wallet: String,
-    version: u32,
+    version: WalletVersionType,
     sigtype: String,
     master_fingerprint: String,
     singlesig_xpub: String,
@@ -224,7 +227,7 @@ impl SinglesigJsonWalletPublicExportV0 {
 #[derive(Debug, Default, Zeroize, ZeroizeOnDrop, Serialize, Deserialize, PartialEq, Eq)]
 pub struct MultisigJsonWalletPublicExportV0 {
     pub wallet: String,
-    pub version: u32,
+    pub version: WalletVersionType,
     pub sigtype: String,
     pub script_type: String,
     pub network: String,
