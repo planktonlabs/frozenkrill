@@ -345,7 +345,7 @@ pub(crate) fn generate_ask_password(
     term: &Term,
     ic: Option<impl InternetChecker>,
 ) -> anyhow::Result<Arc<SecretString>> {
-    ic.map(|i| i.check()).transpose()?;
+    ic.map(|mut i| i.check()).transpose()?;
     log::info!("Enter a new password to encrypt the wallet:");
     loop {
         let password = Arc::new(ask_password(theme, term)?);

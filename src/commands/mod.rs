@@ -17,6 +17,7 @@ pub(crate) mod export_public_info;
 pub(crate) mod generate;
 pub(crate) mod interactive;
 pub(crate) mod psbt;
+pub(crate) mod reencode;
 pub(crate) mod show_receiving_qr_code;
 pub(crate) mod show_secrets;
 

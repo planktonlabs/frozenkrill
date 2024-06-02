@@ -29,6 +29,7 @@ pub(crate) const CONTEXT_CORRUPTION_WARNING: &str = "failure decrypting wallet, 
 const PUB_FILE_SUFFIX: &str = "_pub.json";
 const PUB_NON_DURESS_FILE_SUFFIX: &str = "_non_duress.json";
 const SIGNED_PSBT_FILE_SUFFIX: &str = "_signed.psbt";
+const REENCODED_FILE_SUFFIX: &str = "_reencoded";
 
 pub(crate) fn ask_try_open_again_multisig_parse_multisig_input(
     theme: &dyn Theme,
@@ -89,6 +90,10 @@ pub(crate) fn from_wallet_to_public_info_json_path(
 
 pub(crate) fn from_input_to_signed_psbt(file: &Path) -> anyhow::Result<PathBuf> {
     extend_base_name_with_suffix(file, SIGNED_PSBT_FILE_SUFFIX)
+}
+
+pub(crate) fn from_input_to_reencoded(file: &Path) -> anyhow::Result<PathBuf> {
+    extend_base_name_with_suffix(file, REENCODED_FILE_SUFFIX)
 }
 
 pub(crate) fn from_public_info_json_path_to_non_duress(file: &Path) -> anyhow::Result<PathBuf> {
