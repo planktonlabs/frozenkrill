@@ -22,7 +22,7 @@ use std::str::FromStr;
 use anyhow::Context;
 use bitcoin::base58::{self};
 use bitcoin::bip32::{ChildNumber, DerivationPath, Xpriv, Xpub};
-use bitcoin::Network;
+use bitcoin::NetworkKind;
 
 /// Magical version bytes for xpub: bitcoin mainnet public key for P2PKH or P2SH
 pub const VERSION_MAGIC_XPUB: [u8; 4] = [0x04, 0x88, 0xB2, 0x1E];
@@ -382,7 +382,7 @@ impl KeyVersion {
 }
 
 impl VersionResolver for DefaultResolver {
-    type Network = Network;
+    type Network = NetworkKind;
     type Application = KeyApplication;
 
     fn resolve(
@@ -391,22 +391,22 @@ impl VersionResolver for DefaultResolver {
         is_priv: bool,
     ) -> KeyVersion {
         match (network, applicable_for, is_priv) {
-            (Network::Bitcoin, KeyApplication::Hashed, false) => KeyVersion(VERSION_MAGIC_XPUB),
-            (Network::Bitcoin, KeyApplication::Hashed, true) => KeyVersion(VERSION_MAGIC_XPRV),
-            (Network::Bitcoin, KeyApplication::Nested, false) => KeyVersion(VERSION_MAGIC_YPUB),
-            (Network::Bitcoin, KeyApplication::Nested, true) => KeyVersion(VERSION_MAGIC_YPRV),
-            (Network::Bitcoin, KeyApplication::SegWit, false) => KeyVersion(VERSION_MAGIC_ZPUB),
-            (Network::Bitcoin, KeyApplication::SegWit, true) => KeyVersion(VERSION_MAGIC_ZPRV),
-            (Network::Bitcoin, KeyApplication::NestedMultisig, false) => {
+            (NetworkKind::Main, KeyApplication::Hashed, false) => KeyVersion(VERSION_MAGIC_XPUB),
+            (NetworkKind::Main, KeyApplication::Hashed, true) => KeyVersion(VERSION_MAGIC_XPRV),
+            (NetworkKind::Main, KeyApplication::Nested, false) => KeyVersion(VERSION_MAGIC_YPUB),
+            (NetworkKind::Main, KeyApplication::Nested, true) => KeyVersion(VERSION_MAGIC_YPRV),
+            (NetworkKind::Main, KeyApplication::SegWit, false) => KeyVersion(VERSION_MAGIC_ZPUB),
+            (NetworkKind::Main, KeyApplication::SegWit, true) => KeyVersion(VERSION_MAGIC_ZPRV),
+            (NetworkKind::Main, KeyApplication::NestedMultisig, false) => {
                 KeyVersion(VERSION_MAGIC_YPUB_MULTISIG)
             }
-            (Network::Bitcoin, KeyApplication::NestedMultisig, true) => {
+            (NetworkKind::Main, KeyApplication::NestedMultisig, true) => {
                 KeyVersion(VERSION_MAGIC_YPRV_MULTISIG)
             }
-            (Network::Bitcoin, KeyApplication::SegWitMultisig, false) => {
+            (NetworkKind::Main, KeyApplication::SegWitMultisig, false) => {
                 KeyVersion(VERSION_MAGIC_ZPUB_MULTISIG)
             }
-            (Network::Bitcoin, KeyApplication::SegWitMultisig, true) => {
+            (NetworkKind::Main, KeyApplication::SegWitMultisig, true) => {
                 KeyVersion(VERSION_MAGIC_ZPRV_MULTISIG)
             }
             (_, KeyApplication::Hashed, false) => KeyVersion(VERSION_MAGIC_TPUB),
@@ -463,7 +463,7 @@ impl VersionResolver for DefaultResolver {
             | &VERSION_MAGIC_YPRV_MULTISIG
             | &VERSION_MAGIC_YPUB_MULTISIG
             | &VERSION_MAGIC_ZPRV_MULTISIG
-            | &VERSION_MAGIC_ZPUB_MULTISIG => Some(Network::Bitcoin),
+            | &VERSION_MAGIC_ZPUB_MULTISIG => Some(NetworkKind::Main),
             &VERSION_MAGIC_TPRV
             | &VERSION_MAGIC_TPUB
             | &VERSION_MAGIC_UPRV
@@ -473,7 +473,7 @@ impl VersionResolver for DefaultResolver {
             | &VERSION_MAGIC_UPRV_MULTISIG
             | &VERSION_MAGIC_UPUB_MULTISIG
             | &VERSION_MAGIC_VPRV_MULTISIG
-            | &VERSION_MAGIC_VPUB_MULTISIG => Some(Network::Testnet),
+            | &VERSION_MAGIC_VPUB_MULTISIG => Some(NetworkKind::Test),
             _ => None,
         }
     }
@@ -700,11 +700,11 @@ impl FromSlip132 for Xpriv {
 pub trait ToSlip132 {
     /// Creates SLIP132 key representation matching the provided application
     /// and bitcoin network.
-    fn to_slip132_string(&self, key_application: KeyApplication, network: Network) -> String;
+    fn to_slip132_string(&self, key_application: KeyApplication, network: NetworkKind) -> String;
 }
 
 impl ToSlip132 for Xpub {
-    fn to_slip132_string(&self, key_application: KeyApplication, network: Network) -> String {
+    fn to_slip132_string(&self, key_application: KeyApplication, network: NetworkKind) -> String {
         let key_version = DefaultResolver::resolve(network, key_application, false);
         let mut xpub = self.encode();
         xpub[0..4].copy_from_slice(key_version.as_slice());
@@ -713,7 +713,7 @@ impl ToSlip132 for Xpub {
 }
 
 impl ToSlip132 for Xpriv {
-    fn to_slip132_string(&self, key_application: KeyApplication, network: Network) -> String {
+    fn to_slip132_string(&self, key_application: KeyApplication, network: NetworkKind) -> String {
         let key_version = DefaultResolver::resolve(network, key_application, true);
         let mut xpriv = self.encode();
         xpriv[0..4].copy_from_slice(key_version.as_slice());
@@ -761,19 +761,19 @@ mod test {
             Some(KeyApplication::Hashed)
         );
         assert_eq!(
-            KeyApplication::from_derivation_path("m/49'/0'/5'".parse().unwrap()),
+            KeyApplication::from_derivation_path("49'/0'/5'".parse().unwrap()),
             Some(KeyApplication::Nested)
         );
         assert_eq!(
-            KeyApplication::from_derivation_path("m/48'/0'/8'/1'".parse().unwrap()),
+            KeyApplication::from_derivation_path("48'/0'/8'/1'".parse().unwrap()),
             Some(KeyApplication::NestedMultisig)
         );
         assert_eq!(
-            KeyApplication::from_derivation_path("m/84'/0'/13'".parse().unwrap()),
+            KeyApplication::from_derivation_path("84'/0'/13'".parse().unwrap()),
             Some(KeyApplication::SegWit)
         );
         assert_eq!(
-            KeyApplication::from_derivation_path("m/48'/0'/21'/2'".parse().unwrap()),
+            KeyApplication::from_derivation_path("48'/0'/21'/2'".parse().unwrap()),
             Some(KeyApplication::SegWitMultisig)
         );
 
@@ -783,19 +783,19 @@ mod test {
             Some(KeyApplication::Hashed)
         );
         assert_eq!(
-            KeyApplication::from_derivation_path("m/49'/1'/55'".parse().unwrap()),
+            KeyApplication::from_derivation_path("49'/1'/55'".parse().unwrap()),
             Some(KeyApplication::Nested)
         );
         assert_eq!(
-            KeyApplication::from_derivation_path("m/48'/1'/89'/1'".parse().unwrap()),
+            KeyApplication::from_derivation_path("48'/1'/89'/1'".parse().unwrap()),
             Some(KeyApplication::NestedMultisig)
         );
         assert_eq!(
-            KeyApplication::from_derivation_path("m/84'/1'/144'".parse().unwrap()),
+            KeyApplication::from_derivation_path("84'/1'/144'".parse().unwrap()),
             Some(KeyApplication::SegWit)
         );
         assert_eq!(
-            KeyApplication::from_derivation_path("m/48'/1'/233'/2'".parse().unwrap()),
+            KeyApplication::from_derivation_path("48'/1'/233'/2'".parse().unwrap()),
             Some(KeyApplication::SegWitMultisig)
         );
 
@@ -807,7 +807,7 @@ mod test {
 
         // Unknown script type 21'
         assert_eq!(
-            KeyApplication::from_derivation_path("m/48'/0'/0'/21'".parse().unwrap()),
+            KeyApplication::from_derivation_path("48'/0'/0'/21'".parse().unwrap()),
             None
         );
     }
@@ -820,11 +820,11 @@ mod test {
         );
         assert_eq!(
             KeyApplication::Nested.to_derivation_path(),
-            Some(DerivationPath::from_str("m/49'").unwrap())
+            Some(DerivationPath::from_str("49'").unwrap())
         );
         assert_eq!(
             KeyApplication::SegWit.to_derivation_path(),
-            Some(DerivationPath::from_str("m/84'").unwrap())
+            Some(DerivationPath::from_str("84'").unwrap())
         );
         assert_eq!(KeyApplication::NestedMultisig.to_derivation_path(), None);
         assert_eq!(KeyApplication::SegWitMultisig.to_derivation_path(), None);
@@ -903,88 +903,88 @@ mod test {
     #[test]
     fn default_resolver_resolve() {
         assert_eq!(
-            DefaultResolver::resolve(Network::Testnet, KeyApplication::Hashed, true),
+            DefaultResolver::resolve(NetworkKind::Test, KeyApplication::Hashed, true),
             KeyVersion(VERSION_MAGIC_TPRV)
         );
         assert_eq!(
-            DefaultResolver::resolve(Network::Testnet, KeyApplication::Hashed, false),
+            DefaultResolver::resolve(NetworkKind::Test, KeyApplication::Hashed, false),
             KeyVersion(VERSION_MAGIC_TPUB)
         );
 
         assert_eq!(
-            DefaultResolver::resolve(Network::Testnet, KeyApplication::Nested, true),
+            DefaultResolver::resolve(NetworkKind::Test, KeyApplication::Nested, true),
             KeyVersion(VERSION_MAGIC_UPRV)
         );
         assert_eq!(
-            DefaultResolver::resolve(Network::Testnet, KeyApplication::NestedMultisig, true),
+            DefaultResolver::resolve(NetworkKind::Test, KeyApplication::NestedMultisig, true),
             KeyVersion(VERSION_MAGIC_UPRV_MULTISIG)
         );
         assert_eq!(
-            DefaultResolver::resolve(Network::Testnet, KeyApplication::Nested, false),
+            DefaultResolver::resolve(NetworkKind::Test, KeyApplication::Nested, false),
             KeyVersion(VERSION_MAGIC_UPUB)
         );
         assert_eq!(
-            DefaultResolver::resolve(Network::Testnet, KeyApplication::NestedMultisig, false),
+            DefaultResolver::resolve(NetworkKind::Test, KeyApplication::NestedMultisig, false),
             KeyVersion(VERSION_MAGIC_UPUB_MULTISIG)
         );
 
         assert_eq!(
-            DefaultResolver::resolve(Network::Testnet, KeyApplication::SegWit, true),
+            DefaultResolver::resolve(NetworkKind::Test, KeyApplication::SegWit, true),
             KeyVersion(VERSION_MAGIC_VPRV)
         );
         assert_eq!(
-            DefaultResolver::resolve(Network::Testnet, KeyApplication::SegWitMultisig, true),
+            DefaultResolver::resolve(NetworkKind::Test, KeyApplication::SegWitMultisig, true),
             KeyVersion(VERSION_MAGIC_VPRV_MULTISIG)
         );
         assert_eq!(
-            DefaultResolver::resolve(Network::Testnet, KeyApplication::SegWit, false),
+            DefaultResolver::resolve(NetworkKind::Test, KeyApplication::SegWit, false),
             KeyVersion(VERSION_MAGIC_VPUB)
         );
         assert_eq!(
-            DefaultResolver::resolve(Network::Testnet, KeyApplication::SegWitMultisig, false),
+            DefaultResolver::resolve(NetworkKind::Test, KeyApplication::SegWitMultisig, false),
             KeyVersion(VERSION_MAGIC_VPUB_MULTISIG)
         );
 
         assert_eq!(
-            DefaultResolver::resolve(Network::Bitcoin, KeyApplication::Hashed, true),
+            DefaultResolver::resolve(NetworkKind::Main, KeyApplication::Hashed, true),
             KeyVersion(VERSION_MAGIC_XPRV)
         );
         assert_eq!(
-            DefaultResolver::resolve(Network::Bitcoin, KeyApplication::Hashed, false),
+            DefaultResolver::resolve(NetworkKind::Main, KeyApplication::Hashed, false),
             KeyVersion(VERSION_MAGIC_XPUB)
         );
 
         assert_eq!(
-            DefaultResolver::resolve(Network::Bitcoin, KeyApplication::Nested, true),
+            DefaultResolver::resolve(NetworkKind::Main, KeyApplication::Nested, true),
             KeyVersion(VERSION_MAGIC_YPRV)
         );
         assert_eq!(
-            DefaultResolver::resolve(Network::Bitcoin, KeyApplication::NestedMultisig, true),
+            DefaultResolver::resolve(NetworkKind::Main, KeyApplication::NestedMultisig, true),
             KeyVersion(VERSION_MAGIC_YPRV_MULTISIG)
         );
         assert_eq!(
-            DefaultResolver::resolve(Network::Bitcoin, KeyApplication::Nested, false),
+            DefaultResolver::resolve(NetworkKind::Main, KeyApplication::Nested, false),
             KeyVersion(VERSION_MAGIC_YPUB)
         );
         assert_eq!(
-            DefaultResolver::resolve(Network::Bitcoin, KeyApplication::NestedMultisig, false),
+            DefaultResolver::resolve(NetworkKind::Main, KeyApplication::NestedMultisig, false),
             KeyVersion(VERSION_MAGIC_YPUB_MULTISIG)
         );
 
         assert_eq!(
-            DefaultResolver::resolve(Network::Bitcoin, KeyApplication::SegWit, true),
+            DefaultResolver::resolve(NetworkKind::Main, KeyApplication::SegWit, true),
             KeyVersion(VERSION_MAGIC_ZPRV)
         );
         assert_eq!(
-            DefaultResolver::resolve(Network::Bitcoin, KeyApplication::SegWitMultisig, true),
+            DefaultResolver::resolve(NetworkKind::Main, KeyApplication::SegWitMultisig, true),
             KeyVersion(VERSION_MAGIC_ZPRV_MULTISIG)
         );
         assert_eq!(
-            DefaultResolver::resolve(Network::Bitcoin, KeyApplication::SegWit, false),
+            DefaultResolver::resolve(NetworkKind::Main, KeyApplication::SegWit, false),
             KeyVersion(VERSION_MAGIC_ZPUB)
         );
         assert_eq!(
-            DefaultResolver::resolve(Network::Bitcoin, KeyApplication::SegWitMultisig, false),
+            DefaultResolver::resolve(NetworkKind::Main, KeyApplication::SegWitMultisig, false),
             KeyVersion(VERSION_MAGIC_ZPUB_MULTISIG)
         );
     }
@@ -1055,88 +1055,88 @@ mod test {
     fn default_resolver_network() {
         assert_eq!(
             DefaultResolver::network(&KeyVersion(VERSION_MAGIC_TPRV)),
-            Some(Network::Testnet)
+            Some(NetworkKind::Test)
         );
         assert_eq!(
             DefaultResolver::network(&KeyVersion(VERSION_MAGIC_TPUB)),
-            Some(Network::Testnet)
+            Some(NetworkKind::Test)
         );
 
         assert_eq!(
             DefaultResolver::network(&KeyVersion(VERSION_MAGIC_UPRV)),
-            Some(Network::Testnet)
+            Some(NetworkKind::Test)
         );
         assert_eq!(
             DefaultResolver::network(&KeyVersion(VERSION_MAGIC_UPRV_MULTISIG)),
-            Some(Network::Testnet)
+            Some(NetworkKind::Test)
         );
         assert_eq!(
             DefaultResolver::network(&KeyVersion(VERSION_MAGIC_UPUB)),
-            Some(Network::Testnet)
+            Some(NetworkKind::Test)
         );
         assert_eq!(
             DefaultResolver::network(&KeyVersion(VERSION_MAGIC_UPUB_MULTISIG)),
-            Some(Network::Testnet)
+            Some(NetworkKind::Test)
         );
 
         assert_eq!(
             DefaultResolver::network(&KeyVersion(VERSION_MAGIC_VPRV)),
-            Some(Network::Testnet)
+            Some(NetworkKind::Test)
         );
         assert_eq!(
             DefaultResolver::network(&KeyVersion(VERSION_MAGIC_VPRV_MULTISIG)),
-            Some(Network::Testnet)
+            Some(NetworkKind::Test)
         );
         assert_eq!(
             DefaultResolver::network(&KeyVersion(VERSION_MAGIC_VPUB)),
-            Some(Network::Testnet)
+            Some(NetworkKind::Test)
         );
         assert_eq!(
             DefaultResolver::network(&KeyVersion(VERSION_MAGIC_VPUB_MULTISIG)),
-            Some(Network::Testnet)
+            Some(NetworkKind::Test)
         );
 
         assert_eq!(
             DefaultResolver::network(&KeyVersion(VERSION_MAGIC_XPRV)),
-            Some(Network::Bitcoin)
+            Some(NetworkKind::Main)
         );
         assert_eq!(
             DefaultResolver::network(&KeyVersion(VERSION_MAGIC_XPUB)),
-            Some(Network::Bitcoin)
+            Some(NetworkKind::Main)
         );
 
         assert_eq!(
             DefaultResolver::network(&KeyVersion(VERSION_MAGIC_YPRV)),
-            Some(Network::Bitcoin)
+            Some(NetworkKind::Main)
         );
         assert_eq!(
             DefaultResolver::network(&KeyVersion(VERSION_MAGIC_YPRV_MULTISIG)),
-            Some(Network::Bitcoin)
+            Some(NetworkKind::Main)
         );
         assert_eq!(
             DefaultResolver::network(&KeyVersion(VERSION_MAGIC_YPUB)),
-            Some(Network::Bitcoin)
+            Some(NetworkKind::Main)
         );
         assert_eq!(
             DefaultResolver::network(&KeyVersion(VERSION_MAGIC_YPUB_MULTISIG)),
-            Some(Network::Bitcoin)
+            Some(NetworkKind::Main)
         );
 
         assert_eq!(
             DefaultResolver::network(&KeyVersion(VERSION_MAGIC_ZPRV)),
-            Some(Network::Bitcoin)
+            Some(NetworkKind::Main)
         );
         assert_eq!(
             DefaultResolver::network(&KeyVersion(VERSION_MAGIC_ZPRV_MULTISIG)),
-            Some(Network::Bitcoin)
+            Some(NetworkKind::Main)
         );
         assert_eq!(
             DefaultResolver::network(&KeyVersion(VERSION_MAGIC_ZPUB)),
-            Some(Network::Bitcoin)
+            Some(NetworkKind::Main)
         );
         assert_eq!(
             DefaultResolver::network(&KeyVersion(VERSION_MAGIC_ZPUB_MULTISIG)),
-            Some(Network::Bitcoin)
+            Some(NetworkKind::Main)
         );
 
         assert!(DefaultResolver::network(&KeyVersion([0, 0, 0, 0])).is_none());
@@ -1250,50 +1250,50 @@ mod test {
             DefaultResolver::derivation_path(&KeyVersion(VERSION_MAGIC_UPRV), account)
                 .unwrap()
                 .to_string(),
-            "m/49'/1'/100'"
+            "49'/1'/100'"
         );
         assert_eq!(
             DefaultResolver::derivation_path(&KeyVersion(VERSION_MAGIC_UPRV_MULTISIG), account)
                 .unwrap()
                 .to_string(),
-            "m/48'/1'/100'/1'"
+            "48'/1'/100'/1'"
         );
         assert_eq!(
             DefaultResolver::derivation_path(&KeyVersion(VERSION_MAGIC_UPUB), account)
                 .unwrap()
                 .to_string(),
-            "m/49'/1'/100'"
+            "49'/1'/100'"
         );
         assert_eq!(
             DefaultResolver::derivation_path(&KeyVersion(VERSION_MAGIC_UPUB_MULTISIG), account)
                 .unwrap()
                 .to_string(),
-            "m/48'/1'/100'/1'"
+            "48'/1'/100'/1'"
         );
 
         assert_eq!(
             DefaultResolver::derivation_path(&KeyVersion(VERSION_MAGIC_VPRV), account)
                 .unwrap()
                 .to_string(),
-            "m/84'/1'/100'"
+            "84'/1'/100'"
         );
         assert_eq!(
             DefaultResolver::derivation_path(&KeyVersion(VERSION_MAGIC_VPRV_MULTISIG), account)
                 .unwrap()
                 .to_string(),
-            "m/48'/1'/100'/2'"
+            "48'/1'/100'/2'"
         );
         assert_eq!(
             DefaultResolver::derivation_path(&KeyVersion(VERSION_MAGIC_VPUB), account)
                 .unwrap()
                 .to_string(),
-            "m/84'/1'/100'"
+            "84'/1'/100'"
         );
         assert_eq!(
             DefaultResolver::derivation_path(&KeyVersion(VERSION_MAGIC_VPUB_MULTISIG), account)
                 .unwrap()
                 .to_string(),
-            "m/48'/1'/100'/2'"
+            "48'/1'/100'/2'"
         );
 
         assert_eq!(
@@ -1309,50 +1309,50 @@ mod test {
             DefaultResolver::derivation_path(&KeyVersion(VERSION_MAGIC_YPRV), account)
                 .unwrap()
                 .to_string(),
-            "m/49'/0'/100'"
+            "49'/0'/100'"
         );
         assert_eq!(
             DefaultResolver::derivation_path(&KeyVersion(VERSION_MAGIC_YPRV_MULTISIG), account)
                 .unwrap()
                 .to_string(),
-            "m/48'/0'/100'/1'"
+            "48'/0'/100'/1'"
         );
         assert_eq!(
             DefaultResolver::derivation_path(&KeyVersion(VERSION_MAGIC_YPUB), account)
                 .unwrap()
                 .to_string(),
-            "m/49'/0'/100'"
+            "49'/0'/100'"
         );
         assert_eq!(
             DefaultResolver::derivation_path(&KeyVersion(VERSION_MAGIC_YPUB_MULTISIG), account)
                 .unwrap()
                 .to_string(),
-            "m/48'/0'/100'/1'"
+            "48'/0'/100'/1'"
         );
 
         assert_eq!(
             DefaultResolver::derivation_path(&KeyVersion(VERSION_MAGIC_ZPRV), account)
                 .unwrap()
                 .to_string(),
-            "m/84'/0'/100'"
+            "84'/0'/100'"
         );
         assert_eq!(
             DefaultResolver::derivation_path(&KeyVersion(VERSION_MAGIC_ZPRV_MULTISIG), account)
                 .unwrap()
                 .to_string(),
-            "m/48'/0'/100'/2'"
+            "48'/0'/100'/2'"
         );
         assert_eq!(
             DefaultResolver::derivation_path(&KeyVersion(VERSION_MAGIC_ZPUB), account)
                 .unwrap()
                 .to_string(),
-            "m/84'/0'/100'"
+            "84'/0'/100'"
         );
         assert_eq!(
             DefaultResolver::derivation_path(&KeyVersion(VERSION_MAGIC_ZPUB_MULTISIG), account)
                 .unwrap()
                 .to_string(),
-            "m/48'/0'/100'/2'"
+            "48'/0'/100'/2'"
         );
 
         assert!(DefaultResolver::derivation_path(&KeyVersion([0, 0, 0, 0]), account).is_none());
@@ -1605,45 +1605,45 @@ mod test {
 
         // Mainnet
         assert_eq!(
-            xpub.to_slip132_string(KeyApplication::Hashed, Network::Bitcoin),
+            xpub.to_slip132_string(KeyApplication::Hashed, NetworkKind::Main),
             xpub_str
         );
         assert_eq!(
-            xpub.to_slip132_string(KeyApplication::Nested, Network::Bitcoin),
+            xpub.to_slip132_string(KeyApplication::Nested, NetworkKind::Main),
             "ypub6We8xsTdpgW69bD4PGaWUPkkCxXkgqdm4Lrb51DG7fNnhft8AS3VzDXR32pwdM9kbzv6wVbkNoGRKwT16krpp82bNTGxf4Um3sKqwYoGn8q"
         );
         assert_eq!(
-            xpub.to_slip132_string(KeyApplication::NestedMultisig, Network::Bitcoin),
+            xpub.to_slip132_string(KeyApplication::NestedMultisig, NetworkKind::Main),
             "Ypub6hYE67C5Pe4TaANSKw3VJU6Yvka1uCKMNcWFzGUoVSDCKrT2vqRn5LPLqjnRBnNeqTz5p5bsG1evT74mPz1mxc9GCvPN4TwkwbbiXTy4WMA"
         );
         assert_eq!(
-            xpub.to_slip132_string(KeyApplication::SegWit, Network::Bitcoin),
+            xpub.to_slip132_string(KeyApplication::SegWit, NetworkKind::Main),
             "zpub6qUQGY8YyN3ZztQBDdN8gUrFNvgCdTdFyTNorQ79VfkfkmhMR6D4cHBZ4EnXdFog1e2ugyCJqTcyDE4ZpTGqcMiCEnyPEyJFKbPVL9knhKU"
         );
         assert_eq!(
-            xpub.to_slip132_string(KeyApplication::SegWitMultisig, Network::Bitcoin),
+            xpub.to_slip132_string(KeyApplication::SegWitMultisig, NetworkKind::Main),
             "Zpub72NVPmrzYKbwRTZZAHq7WZC46iiTqpJrHj2UmfNgsSb5NxGGBVbLhQ3Urwk1Bh2aF76tZZCRig1ULPgL7gRnkqps5G5neNmFDKfMv51dh4F"
         );
 
         // Testnet
         assert_eq!(
-            xpub.to_slip132_string(KeyApplication::Hashed, Network::Testnet),
+            xpub.to_slip132_string(KeyApplication::Hashed, NetworkKind::Test),
             "tpubDCBWBScQPGv4a6Co16myUDzcN7Uxjc9KgrvfeANX5ZkoPrjbyzj2WbY7Frx99wT4zGLCobX4TEjv8qL3mvJ3uKoHZiKqkgKWN6rcK3NAdLv"
         );
         assert_eq!(
-            xpub.to_slip132_string(KeyApplication::Nested, Network::Testnet),
+            xpub.to_slip132_string(KeyApplication::Nested, NetworkKind::Test),
             "upub5DK5kCmyDxLAkQSb3qS1e3NjX5wxvMfmPtmhwRdibdsGVGdD9oPFVxtrxCzbdiY4ySSswbDWY9rDnnzkDyCmdBJBu6VGKRCoxy5GPFTTwv5"
         );
         assert_eq!(
-            xpub.to_slip132_string(KeyApplication::NestedMultisig, Network::Testnet),
+            xpub.to_slip132_string(KeyApplication::NestedMultisig, NetworkKind::Test),
             "Upub5QDAsSWQnutYAybxzVtzU7iYEszE8iMMiARNrguFyQhg7TC7vCmXb5knkux5C9kyCuWrpBDdRNEiuxcWXCMimfQrjZbfipforhM8yFdtHZV"
         );
         assert_eq!(
-            xpub.to_slip132_string(KeyApplication::SegWit, Network::Testnet),
+            xpub.to_slip132_string(KeyApplication::SegWit, NetworkKind::Test),
             "vpub5Y9M3sStNdsebhdhtCDdr8UEh46QryfGK1HvipXbyeF9YNSSQTYp82YzyQxBddBzP5Zgh4p4zpCmg5cJwfcnRQynmSBguL2JEh8umtXSXHN"
         );
         assert_eq!(
-            xpub.to_slip132_string(KeyApplication::SegWitMultisig, Network::Testnet),
+            xpub.to_slip132_string(KeyApplication::SegWitMultisig, NetworkKind::Test),
             "Vpub5j3SB7BKwbS22Go5prgcgCp3Qr8g5LLrdGwbe5o9MR5ZAZ1MArw6D9Qvn7ufC4QtcYdfZepBt2bGoFE5EtmjZu6TbuJ6JjVJ8RQnMkMTT7U"
         );
     }
@@ -1655,45 +1655,45 @@ mod test {
 
         // Mainnet
         assert_eq!(
-            xprv.to_slip132_string(KeyApplication::Hashed, Network::Bitcoin),
+            xprv.to_slip132_string(KeyApplication::Hashed, NetworkKind::Main),
             xprv_str
         );
         assert_eq!(
-            xprv.to_slip132_string(KeyApplication::Nested, Network::Bitcoin),
+            xprv.to_slip132_string(KeyApplication::Nested, NetworkKind::Main),
             "yprvAHenZMvjzJwnw78bHF3W7Fp1evhGHNuuh7vzGcoeZKqopsYyctjFSRCwBn8FtnhDuHLWBEXXobCsUBJnBVtNSDhrhkwXtHQQWqyFBpXETuS"
         );
         assert_eq!(
-            xprv.to_slip132_string(KeyApplication::NestedMultisig, Network::Bitcoin),
+            xprv.to_slip132_string(KeyApplication::NestedMultisig, NetworkKind::Main),
             "YprvAUYsgbfBZGWAMgHyDuWUwL9pNijXVjbW1PafBt5Bw6gDT47tPJ7XXY4rzV5jTDv88kQV3pXegobNbLvYUj3KahpXYE3wHgsQQaF7mkmDXua"
         );
         assert_eq!(
-            xprv.to_slip132_string(KeyApplication::SegWit, Network::Bitcoin),
+            xprv.to_slip132_string(KeyApplication::SegWit, NetworkKind::Main),
             "zprvAcV3s2bf8zVGnQKi7bq8KLuWptqiDzuQcETD41hXwLDgsyNCsYtp4Us5Cz5qthM9JvTJvi86GFZRMTvLuCJPETPTa6dxUCDtna2taUzNeUa"
         );
         assert_eq!(
-            xprv.to_slip132_string(KeyApplication::SegWitMultisig, Network::Bitcoin),
+            xprv.to_slip132_string(KeyApplication::SegWitMultisig, NetworkKind::Main),
             "ZprvAoP8zGL6hx3eCyV64GJ79RFKYgsySMazvW6syGy5K746W9w7dxH69bj11h3KT8a3YPXHoJ8D9TwvUdY7CRTLNwW8QZkMsbgtgJJmANdRWza"
         );
 
         // Testnet
         assert_eq!(
-            xprv.to_slip132_string(KeyApplication::Hashed, Network::Testnet),
+            xprv.to_slip132_string(KeyApplication::Hashed, NetworkKind::Test),
             "tprv8fVU32aAEuEPgdB17T7P4pLVo5y2aGxR7ZKtMeLDfHxQZNUqMbuSL6vF5kLKuFRcs5kURrYjWHS83kExb1pJT3HrN4TQxjJyADf2F32kmMf"
         );
         assert_eq!(
-            xprv.to_slip132_string(KeyApplication::Nested, Network::Testnet),
+            xprv.to_slip132_string(KeyApplication::Nested, NetworkKind::Test),
             "uprv8zKjLhF5PamsXvN7wou1GuRzy47UWtwv2fr793E73JLHcUJ4cG4zxAaP6xHuuA5YGisHBL9Hxwnfw2rXJiEKFGyTEQ9qYe8TRwifdcMUKTP"
         );
         assert_eq!(
-            xprv.to_slip132_string(KeyApplication::NestedMultisig, Network::Testnet),
+            xprv.to_slip132_string(KeyApplication::NestedMultisig, NetworkKind::Test),
             "Uprv9BDpTvyWxYLExVXVtUMz6ymogr9jjFdWLwVn4JVeR5AhEeryNfTH3HSJufFPTbJSWBwG3v9QrABB4CUHbwPGPm684sGEx3bTKfzYDSPHHCV"
         );
         assert_eq!(
-            xprv.to_slip132_string(KeyApplication::SegWit, Network::Testnet),
+            xprv.to_slip132_string(KeyApplication::SegWit, NetworkKind::Test),
             "vprv9K9zeMuzYGKMPDZEnAgdUzXW92FvTWwQwnNKvS7zRJiAfa7HrvEZaEEX8AFVu4jTgMz5vojrRc9DpKU62QeL3Wf46jrG8YwwhfnK26J1Pi6"
         );
         assert_eq!(
-            xprv.to_slip132_string(KeyApplication::SegWitMultisig, Network::Testnet),
+            xprv.to_slip132_string(KeyApplication::SegWitMultisig, NetworkKind::Test),
             "Vprv1CMQ2h95oDkM8omHwD22Go9vqpcjv19x3yLpMZkqw9HAL4kaYU7W2eo4c1HqwNPSVN3wBuqrw5HUiA8z3zHz7cb2QFRfWnUkvYDCHhvLxCW"
         );
     }

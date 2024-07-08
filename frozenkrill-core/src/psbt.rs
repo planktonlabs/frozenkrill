@@ -3,7 +3,7 @@ use bitcoin::{
     ecdsa,
     psbt::{
         Error, ExtractTxError, GetKey, GetKeyError, IndexOutOfBoundsError, Input, KeyRequest,
-        OutputType, SignError, SigningAlgorithm, SigningKeys,
+        OutputType, SignError, SigningAlgorithm, SigningKeys, SigningKeysMap,
     },
     sighash::SighashCache,
     FeeRate, PrivateKey, Psbt, PublicKey, Transaction,
@@ -11,7 +11,7 @@ use bitcoin::{
 use log::{debug, warn};
 use secp256k1::{All, Secp256k1, Signing};
 use secrecy::{ExposeSecret, Secret};
-use std::{borrow::Borrow, collections::BTreeMap, fs::OpenOptions, io::Read, path::Path};
+use std::{borrow::Borrow, fs::OpenOptions, io::Read, path::Path};
 
 use crate::{utils::create_file, wallet_description::WExtendedPrivKey};
 
@@ -49,8 +49,12 @@ pub(super) fn sign_psbt(
     // FIXME: do we want the number of outputs signed or the number of keys used?
     let inputs_signed = result
         .into_values()
-        .map(|public_keys| public_keys.len())
+        .map(|public_keys| match public_keys {
+            SigningKeys::Ecdsa(v) => v.len(),
+            SigningKeys::Schnorr(v) => v.len(),
+        })
         .sum();
+
     Ok(inputs_signed)
 }
 
@@ -88,7 +92,7 @@ impl GetKey for SignerProvider {
 }
 
 trait PsbtExt {
-    fn sign_partial<C, K>(&mut self, k: &K, secp: &Secp256k1<C>) -> SigningKeys
+    fn sign_partial<C, K>(&mut self, k: &K, secp: &Secp256k1<C>) -> SigningKeysMap
     where
         C: Signing,
         K: GetKey;
@@ -221,8 +225,8 @@ impl PsbtExt for Psbt {
             };
 
             let sig = ecdsa::Signature {
-                sig: secp.sign_ecdsa(&msg, &sk.inner),
-                hash_ty: sighash_ty,
+                signature: secp.sign_ecdsa(&msg, &sk.inner),
+                sighash_type: sighash_ty,
             };
 
             let pk = sk.public_key(secp);
@@ -320,7 +324,7 @@ impl PsbtExt for Psbt {
     }
 
     // like sign, but won't generate an error if some input can't be signed
-    fn sign_partial<C, K>(&mut self, k: &K, secp: &Secp256k1<C>) -> SigningKeys
+    fn sign_partial<C, K>(&mut self, k: &K, secp: &Secp256k1<C>) -> SigningKeysMap
     where
         C: Signing,
         K: GetKey,
@@ -328,7 +332,7 @@ impl PsbtExt for Psbt {
         let tx = self.unsigned_tx.clone(); // clone because we need to mutably borrow when signing.
         let mut cache = SighashCache::new(&tx);
 
-        let mut used = BTreeMap::new();
+        let mut used = SigningKeysMap::new();
 
         for i in 0..self.inputs.len() {
             match self.signing_algorithm(i) {
@@ -336,7 +340,7 @@ impl PsbtExt for Psbt {
                     match self.bip32_sign_ecdsa(k, i, &mut cache, secp) {
                         Ok(v) if !v.is_empty() => {
                             debug!("Signed input {i}");
-                            used.insert(i, v);
+                            used.insert(i, SigningKeys::Ecdsa(v));
                         }
                         Ok(_) => {
                             debug!("Can't sign input {i}: no key found");

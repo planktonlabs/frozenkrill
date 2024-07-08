@@ -269,6 +269,7 @@ pub(crate) fn singlesig_generate(
             Some(args.common.max_additional_padding_bytes),
         )?,
         encrypted_wallet_version: args
+            .common
             .wallet_file_type
             .to_encrypted_wallet_version(network, script_type)?,
     };
@@ -304,10 +305,12 @@ pub(crate) fn multisig_generate(
         Network::Bitcoin
     };
     let inputs = parse_multisig_inputs(theme, term, secp, ic, &args.input_files)?;
+    let script_type = frozenkrill_core::wallet_description::ScriptType::SegwitNative;
     let args = MultisigCoreGenerateArgs {
         password: None,
         keyfiles: &keyfiles,
         network,
+        script_type,
         difficulty: &args.common.difficulty,
         addresses_quantity: args.common.addresses_quantity,
         padding_params: PaddingParams::new(
@@ -319,6 +322,10 @@ pub(crate) fn multisig_generate(
         inputs,
         output_file_path_encrypted,
         output_file_path_json,
+        encrypted_wallet_version: args
+            .common
+            .wallet_file_type
+            .to_encrypted_wallet_version(network, script_type)?,
     };
     multisig_core_generate(theme, term, secp, rng, args)?;
     Ok(())

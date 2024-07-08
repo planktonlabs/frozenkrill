@@ -228,10 +228,13 @@ pub(super) fn multisig_interactive_generate_single(
     };
     let difficulty = get_ask_difficulty(theme, term, difficulty)?;
     let network = ask_network(theme, term)?;
+    let wallet_file_type = ask_wallet_file_type(theme, term)?;
+    let script_type = ScriptType::SegwitNative;
     let args = MultisigCoreGenerateArgs {
         password: None,
         keyfiles: &keyfiles,
         network,
+        script_type,
         difficulty: &difficulty,
         addresses_quantity,
         padding_params: PaddingParams::default(),
@@ -239,6 +242,8 @@ pub(super) fn multisig_interactive_generate_single(
         inputs,
         output_file_path_encrypted,
         output_file_path_json,
+        encrypted_wallet_version: wallet_file_type
+            .to_encrypted_wallet_version(network, script_type)?,
     };
     crate::commands::generate::core::multisig_core_generate(theme, term, secp, rng, args)?;
     Ok(())

@@ -196,8 +196,12 @@ fn test_generate_open_singlesig() -> anyhow::Result<()> {
         send_line(&mut s, mypassword_reencoded)?;
         s.exp_eof()?;
         assert!(public_info_path_reencoded.exists());
-        let public_info_reencoded = SinglesigJsonWalletPublicExportV0::from_path(&public_info_path_reencoded)?;
-        assert_eq!(public_info_reencoded.to_string_pretty()?, info2.to_string_pretty()?);
+        let public_info_reencoded =
+            SinglesigJsonWalletPublicExportV0::from_path(&public_info_path_reencoded)?;
+        assert_eq!(
+            public_info_reencoded.to_string_pretty()?,
+            info2.to_string_pretty()?
+        );
     }
     Ok(())
 }

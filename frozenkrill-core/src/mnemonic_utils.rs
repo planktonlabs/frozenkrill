@@ -1,5 +1,3 @@
-use std::io::{Cursor, Write};
-
 use anyhow::Context;
 use bitcoin::bip158::{BitStreamReader, BitStreamWriter};
 use rand_core::CryptoRngCore;
@@ -34,7 +32,7 @@ pub fn complete_words_with_checksum(
     writer.flush()?;
     let checksum = calculate_checksum(&data).context("failure on calculate_checksum")?;
     data.extend_from_slice(&checksum);
-    let mut cursor = Cursor::new(&data[..]);
+    let mut cursor = bitcoin::io::Cursor::new(&data[..]);
     let mut reader = BitStreamReader::new(&mut cursor);
     let mut mnemonic = Vec::with_capacity(words.len() + 1);
     let mlen = data.len() * 3 / 4;
@@ -46,12 +44,14 @@ pub fn complete_words_with_checksum(
 }
 
 fn calculate_checksum(data: &[u8]) -> anyhow::Result<Vec<u8>> {
+    use std::io::Write;
+
     let mut checksum = Vec::new();
     let mut writer = BitStreamWriter::new(&mut checksum);
     let mut sha2 = Sha256::new();
     sha2.write_all(data)?;
     let hash = sha2.finalize();
-    let mut check_cursor = Cursor::new(&hash);
+    let mut check_cursor = bitcoin::io::Cursor::new(&hash);
     let mut check_reader = BitStreamReader::new(&mut check_cursor);
     for _ in 0..data.len() / 4 {
         writer.write(check_reader.read(1)?, 1)?;

@@ -321,7 +321,7 @@ mod tests {
             sigtype: "singlesig".into(),
             script_type: "segwit-native".into(),
             singlesig_xpub: "zpub6rFR7y4Q2AijBEqTUquhVz398htDFrtymD9xYYfG1m4wAcvPhXNfE3EfH1r1ADqtfSdVCToUG868RvUUkgDKf31mGDtKsAYz2oz2AGutZYs".into(),
-            singlesig_derivation_path: "m/84'/0'/0'".into(),
+            singlesig_derivation_path: "84'/0'/0'".into(),
             singlesig_receiving_output_descriptor: "wpkh([73c5da0a/84'/0'/0']xpub6CatWdiZiodmUeTDp8LT5or8nmbKNcuyvz7WyksVFkKB4RHwCD3XyuvPEbvqAQY3rAPshWcMLoP2fMFMKHPJ4ZeZXYVUhLv1VMrjPC7PW6V/0/*)#wc3n3van".into(),
             singlesig_change_output_descriptor: "wpkh([73c5da0a/84'/0'/0']xpub6CatWdiZiodmUeTDp8LT5or8nmbKNcuyvz7WyksVFkKB4RHwCD3XyuvPEbvqAQY3rAPshWcMLoP2fMFMKHPJ4ZeZXYVUhLv1VMrjPC7PW6V/1/*)#lv5jvedt".into(),
             multisig_receiving_output_descriptor_key: "[73c5da0a/48'/0'/0'/2']xpub6DkFAXWQ2dHxq2vatrt9qyA3bXYU4ToWQwCHbf5XB2mSTexcHZCeKS1VZYcPoBd5X8yVcbXFHJR9R8UCVpt82VX1VhR28mCyxUFL4r6KFrf/0/*".into(),
@@ -330,26 +330,26 @@ mod tests {
             receiving_addresses: vec![
                 JsonDerivedAddressInfo {
                     address: "bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu".into(),
-                    derivation_path: "m/84'/0'/0'/0/0".into(),
+                    derivation_path: "84'/0'/0'/0/0".into(),
                 },
                 JsonDerivedAddressInfo {
                     address: "bc1qnjg0jd8228aq7egyzacy8cys3knf9xvrerkf9g".into(),
-                    derivation_path: "m/84'/0'/0'/0/1".into(),
+                    derivation_path: "84'/0'/0'/0/1".into(),
                 },
             ],
             change_addresses: vec![
                 JsonDerivedAddressInfo {
                     address: "bc1q8c6fshw2dlwun7ekn9qwf37cu2rn755upcp6el".into(),
-                    derivation_path: "m/84'/0'/0'/1/0".into(),
+                    derivation_path: "84'/0'/0'/1/0".into(),
                 },
                 JsonDerivedAddressInfo {
                     address: "bc1qggnasd834t54yulsep6fta8lpjekv4zj6gv5rf".into(),
-                    derivation_path: "m/84'/0'/0'/1/1".into(),
+                    derivation_path: "84'/0'/0'/1/1".into(),
                 }
             ],
             master_fingerprint: "73c5da0a".into(),
             multisig_xpub: "Zpub74Jru6aftwwHxCUCWEvP6DgrfFsdA4U6ZRtQ5i8qJpMcC39yZGv3egBhQfV3MS9pZtH5z8iV5qWkJsK6ESs6mSzt4qvGhzJxPeeVS2e1zUG".into(),
-            multisig_derivation_path: "m/48'/0'/0'/2'".into(),
+            multisig_derivation_path: "48'/0'/0'/2'".into(),
         };
         assert_eq!(generated, expected);
         Ok(())
