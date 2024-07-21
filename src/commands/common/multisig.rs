@@ -115,7 +115,7 @@ pub(crate) fn multisig_core_open(
                 .map(Result::Ok)
                 .unwrap_or_else(|| ask_password(theme, term).map(Arc::new))?;
             let key = ui_derive_key(&password, &keyfiles, &input_wallet.salt, &difficulty)?;
-            let json_wallet = input_wallet.decrypt_multisig(&key)?;
+            let json_wallet = input_wallet.decrypt_multisig(&key, secp)?;
             let params = GetMultisigWalletDescriptionParams {
                 signers,
                 receiving_descriptor: json_wallet.expose_secret().receiving_output_descriptor()?,
@@ -245,7 +245,7 @@ struct ColdcardJsonExport {
 #[derive(serde::Deserialize)]
 struct ColdcardBipDetails {
     name: String,  // p2wsh
-    deriv: String, // m/48'/1'/0'/2'
+    deriv: String, // 48'/1'/0'/2'
     xpub: String, // tpubDFH9dgzveyD8zTbPUFuLrGmCydNvxehyNdUXKJAQN8x4aZ4j6UZqGfnqFrD4NqyaTVGKbvEW54tsvPTK2UoSbCC1PJY8iCNiwTL3RWZEheQ
 }
 

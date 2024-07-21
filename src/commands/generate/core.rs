@@ -74,10 +74,12 @@ pub(crate) struct MultisigCoreGenerateArgs<'a> {
     pub(crate) output_file_path_encrypted: PathBuf,
     pub(crate) output_file_path_json: Option<PathBuf>,
     pub(crate) keyfiles: &'a [PathBuf],
+    pub(crate) script_type: ScriptType,
     pub(crate) network: Network,
     pub(crate) difficulty: &'a KeyDerivationDifficulty,
     pub(crate) addresses_quantity: u32,
     pub(crate) padding_params: PaddingParams,
+    pub(crate) encrypted_wallet_version: EncryptedWalletVersion,
 }
 
 pub(crate) fn singlesig_core_generate(
@@ -203,7 +205,6 @@ pub(crate) fn multisig_core_generate(
     args: MultisigCoreGenerateArgs,
 ) -> anyhow::Result<()> {
     warn_difficulty_level(args.difficulty);
-    let script_type = ScriptType::SegwitNative;
     let output_file_path_encrypted = &args.output_file_path_encrypted;
     args.inputs.validate(&args.configuration)?;
     log::info!("Will generate a multisig wallet saving to {output_file_path_encrypted:?}");
@@ -226,10 +227,12 @@ pub(crate) fn multisig_core_generate(
         nonce,
         header_nonce,
         padder,
-        script_type,
+        args.script_type,
         args.network,
+        args.encrypted_wallet_version,
         secp,
     )?;
+
     // Write file
     create_file(&encrypted_wallet, output_file_path_encrypted).with_context(|| {
         format!("failure saving encrypted wallet to {output_file_path_encrypted:?}")
@@ -249,7 +252,7 @@ pub(crate) fn multisig_core_generate(
         .context("failure trying to derive the same key again")?;
         pb.finish_using_style();
         let read_json_wallet_description = read_encrypted_wallet
-            .decrypt_multisig(&key)
+            .decrypt_multisig(&key, secp)
             .context(CONTEXT_CORRUPTION_WARNING)?;
         let read_wallet_description = MultiSigWalletDescriptionV0::generate(
             vec![],
@@ -290,7 +293,7 @@ pub(crate) fn multisig_core_generate(
         // So we are delaying the key derivation to the future
         let read_encrypted_wallet = read_decode_wallet(output_file_path_encrypted)?;
         let read_json_wallet_description = read_encrypted_wallet
-            .decrypt_multisig(&key)
+            .decrypt_multisig(&key, secp)
             .context(CONTEXT_CORRUPTION_WARNING)?;
         let read_wallet_description = MultiSigWalletDescriptionV0::generate(
             vec![],

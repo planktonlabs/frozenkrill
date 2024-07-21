@@ -141,9 +141,9 @@ $ head -n 21 mywallet_pub.json
   "sigtype": "singlesig",
   "master_fingerprint": "84577e03",
   "singlesig_xpub": "zpub6rerbAfYxT86ZiHXkVYcJJLMFZzy5MF1gLmjuDFNxwN3NPZEC5PesEhzm5AYY7TJixkEAeFrNFRWEyRKLN9jLtNLeZkk2YchzaPkyL7eXqw",
-  "singlesig_derivation_path": "m/84'/0'/0'",
+  "singlesig_derivation_path": "84'/0'/0'",
   "multisig_xpub": "Zpub75EVv3vodU4dLT8VaR4eworLZJY1gnKyE1thSST7oQNMvPheFPLNfZhj9em55PyMtcju8A3DzTP3n8HCwgK7JbLJ6KKZf22f4Lw9ouMS2C2",
-  "multisig_derivation_path": "m/48'/0'/0'/2'",
+  "multisig_derivation_path": "48'/0'/0'/2'",
   "singlesig_receiving_output_descriptor": "wpkh([84577e03/84'/0'/0']xpub6CzKyqKif638s7uJ5myMt89Ludi5C7G1r7jJLRTcCvcHGBvmgm4Xd7PiifFNYJ9TugWcfh4jSviQUQCBtyKhkR18utMtriyjT8GUCAqCaC7/0/*)#x703tmpk",
   "singlesig_change_output_descriptor": "wpkh([84577e03/84'/0'/0']xpub6CzKyqKif638s7uJ5myMt89Ludi5C7G1r7jJLRTcCvcHGBvmgm4Xd7PiifFNYJ9TugWcfh4jSviQUQCBtyKhkR18utMtriyjT8GUCAqCaC7/1/*)#h22skw3w",
   "script_type": "segwit-native",
@@ -151,11 +151,11 @@ $ head -n 21 mywallet_pub.json
   "receiving_addresses": [
     {
       "address": "bc1qrmyaygpejj2kczmuxc29g4mtust8058xz5tuay",
-      "derivation_path": "m/84'/0'/0'/0/0"
+      "derivation_path": "84'/0'/0'/0/0"
     },
     {
       "address": "bc1q5shm02hkpexm6mwt695t5hmmsc7lkd4rl0af2n",
-      "derivation_path": "m/84'/0'/0'/0/1"
+      "derivation_path": "84'/0'/0'/0/1"
     },
 
 ```
@@ -254,10 +254,10 @@ $ frozenkrill singlesig-open mywallet --keyfile cuteimage.jpg show-secrets --ack
   "master_fingerprint": "84577e03",
   "singlesig_xpriv": "zprvAdfWBf8f85ZoMED4eU1bwAPchYAUftXAK7r96pqmQbq4VbE5eY5QKSPWuowHd69Z6oXcJBv7GXm2vYqGqFMybgC6akWgEmVLQrx2jVV4dFR",
   "singlesig_xpub": "zpub6rerbAfYxT86ZiHXkVYcJJLMFZzy5MF1gLmjuDFNxwN3NPZEC5PesEhzm5AYY7TJixkEAeFrNFRWEyRKLN9jLtNLeZkk2YchzaPkyL7eXqw",
-  "singlesig_derivation_path": "m/84'/0'/0'",
+  "singlesig_derivation_path": "84'/0'/0'",
   "multisig_xpriv": "ZprvArF9WYPuo6WL7y42UPXeafuc1GhXHKc7rny6e43WF4qP3bNVhr287mPFJNjjMh16wxYHhTPrwjbnFWWRYiMmVRdQHLbcHK5jLW9VKxR7hUT",
   "multisig_xpub": "Zpub75EVv3vodU4dLT8VaR4eworLZJY1gnKyE1thSST7oQNMvPheFPLNfZhj9em55PyMtcju8A3DzTP3n8HCwgK7JbLJ6KKZf22f4Lw9ouMS2C2",
-  "multisig_derivation_path": "m/48'/0'/0'/2'",
+  "multisig_derivation_path": "48'/0'/0'/2'",
   "singlesig_first_address": "bc1qrmyaygpejj2kczmuxc29g4mtust8058xz5tuay",
   "singlesig_receiving_output_descriptor": "wpkh([84577e03/84'/0'/0']xpub6CzKyqKif638s7uJ5myMt89Ludi5C7G1r7jJLRTcCvcHGBvmgm4Xd7PiifFNYJ9TugWcfh4jSviQUQCBtyKhkR18utMtriyjT8GUCAqCaC7/0/*)#x703tmpk",
   "singlesig_change_output_descriptor": "wpkh([84577e03/84'/0'/0']xpub6CzKyqKif638s7uJ5myMt89Ludi5C7G1r7jJLRTcCvcHGBvmgm4Xd7PiifFNYJ9TugWcfh4jSviQUQCBtyKhkR18utMtriyjT8GUCAqCaC7/1/*)#h22skw3w",

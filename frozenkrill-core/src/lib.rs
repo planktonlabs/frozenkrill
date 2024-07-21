@@ -6,13 +6,14 @@ use bitcoin::Network;
 use compression::compress;
 use encryption::default_encrypt;
 use itertools::Itertools;
+use log::debug;
 use miniscript::DescriptorPublicKey;
 use rand_core::CryptoRngCore;
 use secp256k1::{All, Secp256k1};
 use secrecy::{ExposeSecret, Secret, SecretString, SecretVec};
 use wallet_description::{
-    EncryptedWalletDescription, EncryptedWalletVersion, MultisigType, ScriptType,
-    SingleSigCompactWalletDescriptionV0, SingleSigWalletDescriptionV0,
+    EncryptedWalletDescription, EncryptedWalletVersion, MultiSigCompactWalletDescriptionV0,
+    MultisigType, ScriptType, SingleSigCompactWalletDescriptionV0, SingleSigWalletDescriptionV0,
     SinglesigJsonWalletDescriptionV0, KEY_SIZE, NONCE_SIZE, SALT_SIZE,
 };
 
@@ -23,6 +24,7 @@ use crate::wallet_description::{
 
 pub mod compression;
 pub mod custom_logger;
+pub mod encoding;
 pub mod encryption;
 pub mod key_derivation;
 pub mod mnemonic_utils;
@@ -263,6 +265,7 @@ pub fn generate_encrypted_encoded_multisig_wallet(
     padder: CiphertextPadder,
     script_type: ScriptType,
     network: Network,
+    encrypted_wallet_version: EncryptedWalletVersion,
     secp: &Secp256k1<All>,
 ) -> anyhow::Result<Vec<u8>> {
     let receiving_descriptor = match script_type {
@@ -285,31 +288,46 @@ pub fn generate_encrypted_encoded_multisig_wallet(
                 .collect(),
         )?,
     };
-    let compressed: SecretVec<u8> = {
-        let wallet_description = MultiSigWalletDescriptionV0::generate(
-            inputs.signers,
-            receiving_descriptor,
-            change_descriptor,
-            configuration,
-            network,
-            script_type,
-        )
-        .context("failure generating wallet")?;
-        let json: SecretVec<u8> = {
-            let json_wallet_description = MultisigJsonWalletDescriptionV0::from_wallet_description(
-                &wallet_description,
-                secp,
+    let serialized = match encrypted_wallet_version {
+        EncryptedWalletVersion::V0Standard => {
+            debug!("Creating standard wallet");
+            let wallet_description = MultiSigWalletDescriptionV0::generate(
+                inputs.signers,
+                receiving_descriptor,
+                change_descriptor,
+                configuration,
+                network,
+                script_type,
+            )
+            .context("failure generating wallet")?;
+            let json: SecretVec<u8> = {
+                let json_wallet_description =
+                    MultisigJsonWalletDescriptionV0::from_wallet_description(
+                        &wallet_description,
+                        secp,
+                    )?;
+                json_wallet_description.expose_secret().to_vec()?
+            };
+            compress(json.expose_secret()).context("failure compressing json")?
+        }
+        EncryptedWalletVersion::V0CompactMainnet | EncryptedWalletVersion::V0CompactTestnet => {
+            debug!("Creating compact wallet");
+            let wallet = MultiSigCompactWalletDescriptionV0::new(
+                configuration,
+                receiving_descriptor,
+                change_descriptor,
             )?;
-            json_wallet_description.expose_secret().to_vec()?
-        };
-        SecretVec::new(compress(json.expose_secret()).context("failure compressing json")?)
+            compress(&wallet.serialize()?).context("failure compressing compact wallet")?
+        }
     };
-    let mut ciphertext = default_encrypt(&header_key, &header_nonce, &compressed)
+    debug!("Serialized wallet with length {}", serialized.len());
+    let serialized = SecretVec::new(serialized);
+    let mut ciphertext = default_encrypt(&header_key, &header_nonce, &serialized)
         .context("failure encrypting compressed json")?;
     let header = DecodedHeaderV0::new(
         header_key,
         header_nonce,
-        EncryptedWalletVersion::V0Standard,
+        encrypted_wallet_version,
         ciphertext.len().try_into().with_context(|| {
             format!(
                 "resulting ciphertext is too big: {} bytes",
@@ -326,7 +344,14 @@ pub fn generate_encrypted_encoded_multisig_wallet(
         )
         .context("failure encrypting header")?,
     );
-    padder.pad(&mut ciphertext)?;
+    match encrypted_wallet_version {
+        EncryptedWalletVersion::V0Standard => {
+            padder.pad(&mut ciphertext)?;
+        }
+        EncryptedWalletVersion::V0CompactMainnet | EncryptedWalletVersion::V0CompactTestnet => {
+            debug!("Ignoring padder as we are are generating a compact wallet");
+        }
+    };
     EncryptedWalletDescription::new(nonce, salt, encrypted_header, ciphertext)
         .serialize()
         .context("failure encoding encrypted wallet")
@@ -424,7 +449,7 @@ pub fn get_padder(
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct MultisigInputs {
     pub receiving_descriptors: HashSet<DescriptorPublicKey>,
     pub change_descriptors: HashSet<DescriptorPublicKey>,

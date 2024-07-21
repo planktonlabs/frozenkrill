@@ -425,6 +425,7 @@ pub(crate) fn batch_generate_export(
             Some(args.common.max_additional_padding_bytes),
         )?,
         encrypted_wallet_version: args
+            .common
             .wallet_file_type
             .to_encrypted_wallet_version(network, script_type)?,
     };

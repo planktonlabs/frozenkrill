@@ -136,9 +136,6 @@ struct SinglesigGenerateArgs {
         help = PUBLIC_INFO_JSON_OUTPUT_HELP
     )]
     public_info_json_output: Option<String>,
-    #[clap(long, help = WALLET_FILE_TYPE_HELP,
-        default_value_t = WalletFileType::Standard)]
-    wallet_file_type: WalletFileType,
 }
 
 #[derive(clap::Args)]
@@ -178,6 +175,9 @@ struct GenerateCommon {
     difficulty: KeyDerivationDifficulty,
     #[clap(long, help = ADDRESSES_QUANTITY_HELP, default_value = "100")]
     addresses_quantity: u32,
+    #[clap(long, help = WALLET_FILE_TYPE_HELP,
+        default_value_t = WalletFileType::Standard)]
+    wallet_file_type: WalletFileType,
 }
 
 #[derive(Clone, Copy)]
@@ -333,9 +333,6 @@ struct ReencodeArgs {
         help = WALLET_OUTPUT_FILE_HELP
     )]
     wallet_output_file: Option<String>,
-    #[clap(long, help = WALLET_FILE_TYPE_HELP,
-        default_value_t = WalletFileType::Standard)]
-    wallet_file_type: WalletFileType,
 }
 
 #[derive(Subcommand)]
@@ -431,9 +428,6 @@ struct SinglesigBatchGenerateExportArgs {
     disable_public_info_export: bool,
     #[clap(long, help = "How many wallets to generate", default_value = "10")]
     wallets_quantity: usize,
-    #[clap(long, help = WALLET_FILE_TYPE_HELP,
-        default_value_t = WalletFileType::Standard)]
-    wallet_file_type: WalletFileType,
     #[clap(
         help = "Files names will be automatically generated based on this prefix",
         default_value = "wallet"

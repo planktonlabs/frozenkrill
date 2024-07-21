@@ -8,7 +8,7 @@ use std::{
     sync::Arc,
 };
 
-use anyhow::Context;
+use anyhow::{ensure, Context};
 use bip39::Mnemonic;
 use bitcoin::{
     bip32::{ChildNumber, DerivationPath, Fingerprint},
@@ -16,6 +16,7 @@ use bitcoin::{
     Address, Network,
 };
 use itertools::Itertools;
+use log::debug;
 use miniscript::{Descriptor, DescriptorPublicKey};
 use rand_core::CryptoRngCore;
 use regex::Regex;
@@ -26,6 +27,7 @@ use zeroize::{Zeroize, ZeroizeOnDrop};
 
 use crate::{
     compression::uncompress,
+    encoding::VarInt,
     encryption::{default_decrypt, MAC_LENGTH},
     psbt::sign_psbt,
     utils,
@@ -234,8 +236,9 @@ impl EncryptedWalletDescription {
     pub fn decrypt_multisig(
         &self,
         key: &Secret<[u8; KEY_SIZE]>,
+        secp: &Secp256k1<All>,
     ) -> anyhow::Result<Secret<MultisigJsonWalletDescriptionV0>> {
-        decrypt_wallet_multisig(&self.nonce, &self.encrypted_header, &self.ciphertext, key)
+        decrypt_wallet_multisig(&self.nonce, &self.encrypted_header, &self.ciphertext, key, secp)
             .context("failed to decrypt the wallet, check if you have used the correct password, keyfiles and difficulty parameter")
     }
 }
@@ -245,8 +248,8 @@ pub(super) fn get_singlesig_v0_derivation_path(
     network: &Network,
 ) -> DerivationPath {
     let s = match (script_type, network) {
-        (ScriptType::SegwitNative, Network::Bitcoin) => "m/84'/0'/0'",
-        (ScriptType::SegwitNative, _) => "m/84'/1'/0'",
+        (ScriptType::SegwitNative, Network::Bitcoin) => "84'/0'/0'",
+        (ScriptType::SegwitNative, _) => "84'/1'/0'",
     };
     DerivationPath::from_str(s).expect("code to be correct")
 }
@@ -256,8 +259,8 @@ pub(super) fn get_multisig_v0_derivation_path(
     network: &Network,
 ) -> DerivationPath {
     let s = match (script_type, network) {
-        (ScriptType::SegwitNative, Network::Bitcoin) => "m/48'/0'/0'/2'",
-        (ScriptType::SegwitNative, _) => "m/48'/1'/0'/2'",
+        (ScriptType::SegwitNative, Network::Bitcoin) => "48'/0'/0'/2'",
+        (ScriptType::SegwitNative, _) => "48'/1'/0'/2'",
     };
     DerivationPath::from_str(s).expect("code to be correct")
 }
@@ -406,9 +409,9 @@ impl SingleSigWalletDescriptionV0 {
                     .public_key;
                 let address = match self.script_type {
                     ScriptType::SegwitNative => bitcoin::Address::p2wpkh(
-                        &bitcoin::PublicKey::new(public_key),
+                        &bitcoin::PublicKey::new(public_key).try_into()?,
                         self.network,
-                    )?,
+                    ),
                 };
                 let full_path = self
                     .singlesig_derivation_path
@@ -706,8 +709,6 @@ impl SinglesigJsonWalletDescriptionV0 {
         if generated != source {
             if generated.seed_phrase != source.seed_phrase {
                 Ok(Err(SingleSigValidationError::SeedMismatch))
-            } else if generated.singlesig_derivation_path != source.singlesig_derivation_path {
-                Ok(Err(SingleSigValidationError::DerivationPathMismatch))
             } else if generated.singlesig_xpriv != source.singlesig_xpriv {
                 Ok(Err(SingleSigValidationError::PrivateKeyMismatch))
             } else if generated.singlesig_xpub != source.singlesig_xpub {
@@ -722,6 +723,16 @@ impl SinglesigJsonWalletDescriptionV0 {
                 Ok(Err(SingleSigValidationError::SigTypeMismatch))
             } else if generated.script_type != source.script_type {
                 Ok(Err(SingleSigValidationError::ScriptTypeMismatch))
+            } else if generated.singlesig_derivation_path != source.singlesig_derivation_path {
+                if generated.singlesig_derivation_path.replace("m/", "")
+                    != source.singlesig_derivation_path.replace("m/", "")
+                {
+                    Ok(Err(SingleSigValidationError::DerivationPathMismatch))
+                } else {
+                    debug!("Derivation paths are using different conventions for the m/ prefix, but that's ok: {} and {}",
+                        generated.singlesig_derivation_path, source.singlesig_derivation_path);
+                    Ok(Ok(()))
+                }
             } else {
                 unreachable!(
                     "Generated wallet is different from source but every field is the same!?"
@@ -925,12 +936,12 @@ impl MultiSigWalletDescriptionV0 {
                     miniscript::descriptor::WshInner::SortedMulti(v) => {
                         let required: usize = configuration.required.try_into()?;
                         anyhow::ensure!(
-                            v.k == required,
+                            v.k() == required,
                             "Different required on descriptor and configuration: {} and {}",
-                            v.k,
+                            v.k(),
                             configuration.required
                         );
-                        all_public_keys.extend(&v.pks);
+                        all_public_keys.extend(v.pks());
                     }
                     miniscript::descriptor::WshInner::Ms(_) => {
                         anyhow::bail!("A non sorted wsh descriptor isn't supported")
@@ -986,6 +997,84 @@ impl PsbtWallet for MultiSigWalletDescriptionV0 {
             .into_iter()
             .map(|i| i.address)
             .collect())
+    }
+}
+
+#[derive(Clone)]
+pub struct MultiSigCompactWalletDescriptionV0 {
+    configuration: MultisigType,
+    receiving_descriptor: miniscript::Descriptor<DescriptorPublicKey>,
+    change_descriptor: miniscript::Descriptor<DescriptorPublicKey>,
+}
+
+impl MultiSigCompactWalletDescriptionV0 {
+    pub fn new(
+        configuration: MultisigType,
+        receiving_descriptor: miniscript::Descriptor<DescriptorPublicKey>,
+        change_descriptor: miniscript::Descriptor<DescriptorPublicKey>,
+    ) -> anyhow::Result<Self> {
+        Ok(Self {
+            configuration,
+            receiving_descriptor,
+            change_descriptor,
+        })
+    }
+
+    pub fn serialize(&self) -> anyhow::Result<Vec<u8>> {
+        let mut w = BufWriter::new(Vec::new());
+        VarInt::from(self.configuration.required).serialize(&mut w)?;
+        VarInt::from(self.configuration.total).serialize(&mut w)?;
+        VarInt(2).serialize(&mut w)?; // two descriptors coming
+        for d in [&self.receiving_descriptor, &self.change_descriptor] {
+            crate::encoding::wallet::serialize_descriptor_descriptor_pk(d, &mut w)?;
+        }
+        Ok(w.into_inner()?)
+    }
+
+    pub fn deserialize(mut data: BufReader<impl Read>) -> anyhow::Result<Self> {
+        fn get_u32(data: &mut BufReader<impl Read>) -> anyhow::Result<u32> {
+            Ok(VarInt::deserialize(data)?.0.try_into()?)
+        }
+        let required = get_u32(&mut data)
+            .context("error decoding 'required' field from multisig configuration")?;
+        let total = get_u32(&mut data)
+            .context("error decoding 'total' field from multisig configuration")?;
+        fn get_descriptor(
+            data: &mut BufReader<impl Read>,
+        ) -> anyhow::Result<miniscript::Descriptor<DescriptorPublicKey>> {
+            let d = crate::encoding::wallet::deserialize_descriptor_descriptor_pk(data)?;
+            Ok(d)
+        }
+        let descriptors_len = VarInt::deserialize(&mut data)?;
+        ensure!(
+            descriptors_len == VarInt(2),
+            "Found unexpected number of descriptors: {descriptors_len:?}"
+        );
+        let receiving_descriptor = get_descriptor(&mut data)
+            .context("error decoding receiving descriptor from multisig")?;
+        let change_descriptor =
+            get_descriptor(&mut data).context("error decoding change descriptor from multisig")?;
+        Ok(Self {
+            configuration: MultisigType { required, total },
+            receiving_descriptor,
+            change_descriptor,
+        })
+    }
+
+    pub fn to_description(
+        self,
+        signers: Vec<SingleSigWalletDescriptionV0>,
+        network: bitcoin::Network,
+        script_type: ScriptType,
+    ) -> anyhow::Result<MultiSigWalletDescriptionV0> {
+        MultiSigWalletDescriptionV0::generate(
+            signers,
+            self.receiving_descriptor,
+            self.change_descriptor,
+            self.configuration,
+            network,
+            script_type,
+        )
     }
 }
 
@@ -1347,12 +1436,31 @@ fn decrypt_wallet_multisig(
     encrypted_header: &[u8; ENCRYPTED_HEADER_LENGTH],
     ciphertext: &[u8],
     key: &Secret<[u8; KEY_SIZE]>,
+    secp: &Secp256k1<All>,
 ) -> anyhow::Result<Secret<MultisigJsonWalletDescriptionV0>> {
-    let (decrypted_header, ciphertext) = decrypt_header(nonce, encrypted_header, ciphertext, key)?;
-    let uncompressed = get_uncompressed_wallet(&decrypted_header, ciphertext)?;
-    MultisigJsonWalletDescriptionV0::deserialize(BufReader::new(
-        uncompressed.expose_secret().as_slice(),
-    ))
+    let (header, ciphertext) = decrypt_header(nonce, encrypted_header, ciphertext, key)?;
+    match header.version {
+        EncryptedWalletVersion::V0Standard => {
+            let uncompressed = get_uncompressed_wallet(&header, ciphertext)?;
+            MultisigJsonWalletDescriptionV0::deserialize(BufReader::new(
+                uncompressed.expose_secret().as_slice(),
+            ))
+        }
+        EncryptedWalletVersion::V0CompactMainnet | EncryptedWalletVersion::V0CompactTestnet => {
+            let script_type = ScriptType::SegwitNative;
+            let network = if header.version == EncryptedWalletVersion::V0CompactMainnet {
+                Network::Bitcoin
+            } else {
+                Network::Testnet
+            };
+            let uncompressed = get_uncompressed_wallet(&header, ciphertext)?;
+            let reader = BufReader::new(uncompressed.expose_secret().as_slice());
+            let compact = MultiSigCompactWalletDescriptionV0::deserialize(reader)?;
+            // TODO: this intermediate wallet description is a bit unnecessary, try to optimize this whole process
+            let wallet = compact.to_description(vec![], network, script_type)?;
+            MultisigJsonWalletDescriptionV0::from_wallet_description(&wallet, secp)
+        }
+    }
 }
 
 type HeaderVersionType = u32;
@@ -1496,7 +1604,7 @@ mod tests {
     //     let root_key = get_root_key(&mnemonic, &SecretString::new("".into()), Network::Bitcoin)?;
     //     let mut rng = rand::thread_rng();
     //     let secp = get_secp(&mut rng);
-    //     let derivation_path = DerivationPath::from_str("m/48'/0'/0'/2'")?;
+    //     let derivation_path = DerivationPath::from_str("48'/0'/0'/2'")?;
     //     let xpriv = Secret::new(WExtendedPrivKey(
     //         root_key
     //             .expose_secret()
