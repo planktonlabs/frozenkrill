@@ -1,5 +1,7 @@
 use std::{path::PathBuf, sync::Arc};
 
+use frozenkrill_core::random_generation_utils::*;
+
 use dialoguer::{console::Term, theme::Theme};
 use frozenkrill_core::{
     anyhow::{self, Context},
@@ -9,7 +11,7 @@ use frozenkrill_core::{
         Network,
     },
     generate_encrypted_encoded_multisig_wallet, generate_encrypted_encoded_singlesig_wallet,
-    get_padder, get_random_key, get_random_nonce, get_random_salt,
+    get_padder,
     key_derivation::{default_derive_key, KeyDerivationDifficulty},
     log,
     rand_core::CryptoRngCore,

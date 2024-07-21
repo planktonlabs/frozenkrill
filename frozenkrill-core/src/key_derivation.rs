@@ -240,7 +240,7 @@ mod tests {
     use alkali::random;
     use rand_core::RngCore;
 
-    use crate::{get_random_salt, utils::create_file};
+    use crate::{random_generation_utils::get_random_salt, utils::create_file};
 
     use super::*;
 

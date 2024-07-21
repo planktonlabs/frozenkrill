@@ -1563,7 +1563,7 @@ impl DecodedHeaderV0 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{get_random_key, get_random_nonce, get_secp};
+    use crate::random_generation_utils::{get_random_key, get_random_nonce, get_secp};
 
     #[test]
     fn test_seed_address_generation() -> anyhow::Result<()> {

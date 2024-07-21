@@ -395,7 +395,8 @@ mod tests {
     use std::str::FromStr;
 
     use frozenkrill_core::{
-        anyhow, get_secp, miniscript::DescriptorPublicKey, rand, utils::create_file,
+        anyhow, miniscript::DescriptorPublicKey, rand, random_generation_utils::get_secp,
+        utils::create_file,
     };
 
     use crate::get_term_theme;

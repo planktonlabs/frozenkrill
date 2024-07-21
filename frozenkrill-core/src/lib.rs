@@ -2,7 +2,10 @@ use std::{collections::HashSet, path::PathBuf, sync::Arc};
 
 use anyhow::Context;
 use bip39::Mnemonic;
-use bitcoin::Network;
+use bitcoin::{
+    bip32::{DerivationPath, Fingerprint},
+    Network,
+};
 use compression::compress;
 use encryption::default_encrypt;
 use itertools::Itertools;
@@ -29,6 +32,7 @@ pub mod encryption;
 pub mod key_derivation;
 pub mod mnemonic_utils;
 pub mod psbt;
+pub mod random_generation_utils;
 pub mod slip132;
 pub mod utils;
 pub mod wallet_description;
@@ -38,12 +42,6 @@ pub use {
     anyhow, bip39, bitcoin, blake3, env_logger, hex, itertools, log, miniscript, rand, rand_core,
     rayon, secrecy, serde, serde_json,
 };
-
-pub fn get_secp<Rng: CryptoRngCore>(rng: &mut Rng) -> Secp256k1<All> {
-    let mut s = Secp256k1::new();
-    s.randomize(rng);
-    s
-}
 
 pub struct PaddingParams {
     disable_all_padding: bool,
@@ -384,53 +382,12 @@ pub fn parse_keyfiles_paths(keyfiles: &[String]) -> anyhow::Result<Vec<PathBuf>>
     }
 }
 
-pub fn get_random_salt(rng: &mut impl CryptoRngCore) -> anyhow::Result<[u8; SALT_SIZE]> {
-    let mut salt = [0u8; SALT_SIZE];
-    rng.try_fill_bytes(&mut salt)
-        .context("failure getting entropy for salt")?;
-    Ok(salt)
-}
-pub fn get_random_nonce(rng: &mut impl CryptoRngCore) -> anyhow::Result<[u8; NONCE_SIZE]> {
-    let mut nonce = [0u8; NONCE_SIZE];
-    rng.try_fill_bytes(&mut nonce)
-        .context("failure getting entropy for nonce")?;
-    Ok(nonce)
-}
-
-pub fn get_random_key(rng: &mut impl CryptoRngCore) -> anyhow::Result<[u8; KEY_SIZE]> {
-    let mut key = [0u8; KEY_SIZE];
-    rng.try_fill_bytes(&mut key)
-        .context("failure getting entropy for key")?;
-    Ok(key)
-}
-
 pub const MAX_BASE_PADDING_BYTES: usize = 2000;
 pub const MINIMUM_CIPHERTEXT_SIZE_BYTES: usize = 1200;
 
 pub const DEFAULT_MIN_ADDITIONAL_PADDING: u32 = 0;
 pub const DEFAULT_MAX_ADDITIONAL_PADDING: u32 = 1000;
 pub const MAX_ADDITIONAL_PADDING: u32 = 1_000_000_000;
-
-pub fn get_additional_random_padding_bytes(
-    rng: &mut impl CryptoRngCore,
-    params: &PaddingParams,
-) -> anyhow::Result<Vec<u8>> {
-    let padding_size = Ord::max(rng.next_u32() % (params.max + 1), params.min);
-    let padding_size = padding_size.try_into().expect("to be within usize");
-    let mut padding = vec![0; padding_size];
-    rng.try_fill_bytes(&mut padding)
-        .context("failure getting entropy for additional padding")?;
-    Ok(padding)
-}
-
-pub fn get_base_random_padding_bytes(
-    rng: &mut impl CryptoRngCore,
-) -> anyhow::Result<[u8; MAX_BASE_PADDING_BYTES]> {
-    let mut padding = [0u8; MAX_BASE_PADDING_BYTES];
-    rng.try_fill_bytes(&mut padding)
-        .context("failure getting entropy for base padding")?;
-    Ok(padding)
-}
 
 pub fn get_padder(
     rng: &mut impl CryptoRngCore,
@@ -443,8 +400,12 @@ pub fn get_padder(
         })
     } else {
         Ok(CiphertextPadder {
-            base_padding_bytes: Some(get_base_random_padding_bytes(rng)?),
-            additional_padding_bytes: Some(get_additional_random_padding_bytes(rng, params)?),
+            base_padding_bytes: Some(
+                crate::random_generation_utils::get_base_random_padding_bytes(rng)?,
+            ),
+            additional_padding_bytes: Some(
+                crate::random_generation_utils::get_additional_random_padding_bytes(rng, params)?,
+            ),
         })
     }
 }
@@ -494,6 +455,8 @@ impl MultisigInputs {
         Ok(receiving_added)
     }
 }
+
+pub type OptOrigin = Option<(Fingerprint, DerivationPath)>;
 
 #[cfg(test)]
 mod tests {

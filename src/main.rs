@@ -26,6 +26,7 @@ use frozenkrill_core::{
     key_derivation::{self, default_derive_key, KeyDerivationDifficulty},
     log, mnemonic_utils, rand,
     rand_core::CryptoRngCore,
+    random_generation_utils::get_secp,
     wallet_description::{EncryptedWalletVersion, MultisigType, ScriptType, KEY_SIZE, SALT_SIZE},
     DEFAULT_MAX_ADDITIONAL_PADDING, DEFAULT_MIN_ADDITIONAL_PADDING,
 };
@@ -541,7 +542,7 @@ fn main() -> anyhow::Result<()> {
 
 fn process(cli: Cli, theme: Box<dyn Theme>, term: &Term) -> Result<(), anyhow::Error> {
     let mut rng = rand::thread_rng();
-    let mut secp = frozenkrill_core::get_secp(&mut rng);
+    let mut secp = get_secp(&mut rng);
     let ic = InternetCheckerImpl::new(cli.disable_internet_check);
     match cli.command {
         Commands::SinglesigGenerate(args) => {

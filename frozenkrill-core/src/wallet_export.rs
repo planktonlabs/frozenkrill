@@ -293,8 +293,9 @@ mod tests {
 
     use secrecy::Secret;
 
+    use crate::random_generation_utils::get_secp;
+
     use super::*;
-    use crate::get_secp;
 
     #[test]
     fn test_json_public_export() -> anyhow::Result<()> {
