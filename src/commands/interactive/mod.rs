@@ -1,6 +1,7 @@
 use std::{
     fs,
     path::{Path, PathBuf},
+    sync::Arc,
 };
 
 use dialoguer::{console::Term, theme::Theme, Validator};
@@ -13,6 +14,7 @@ use frozenkrill_core::{
     key_derivation::{self, KeyDerivationDifficulty},
     parse_keyfiles_paths,
     rand_core::CryptoRngCore,
+    secrecy::SecretString,
     wallet_description::WordCount,
 };
 
@@ -81,6 +83,7 @@ pub(crate) fn interactive(
             return Ok(());
         }
     };
+    let password = args.password.clone().map(SecretString::new).map(Arc::new);
     match &actions[action] {
         MainActions::SinglesigCreateNewSingle => singlesig_interactive_generate_one(
             theme,
@@ -91,6 +94,7 @@ pub(crate) fn interactive(
             keyfiles,
             args.difficulty.to_owned(),
             args.enable_duress_wallet,
+            password,
         )?,
         MainActions::MultisigCreateNewSingle => multisig_interactive_generate_single(
             theme,
@@ -100,6 +104,7 @@ pub(crate) fn interactive(
             ic,
             keyfiles,
             args.difficulty.to_owned(),
+            password,
         )?,
         MainActions::CreateNewBatch => {
             interactive_generate_batch(
@@ -111,6 +116,7 @@ pub(crate) fn interactive(
                 keyfiles,
                 args.difficulty.to_owned(),
                 args.enable_duress_wallet,
+                password
             )?;
         }
         MainActions::OpenSinglesig => singlesig_interactive_open(
@@ -122,6 +128,7 @@ pub(crate) fn interactive(
             keyfiles,
             args.difficulty.to_owned(),
             args.enable_duress_wallet,
+            password
         )?,
         MainActions::OpenMultisig => {
             multisig_interactive_open(theme, term, secp, ic, keyfiles, args.difficulty.to_owned())?

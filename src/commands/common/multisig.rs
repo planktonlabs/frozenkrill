@@ -60,12 +60,20 @@ pub(crate) fn open_multisig_wallet_non_interactive(
     log::info!("Trying to open multisig wallet {wallet_input_file:?}",);
     let input_file_path = handle_input_path(wallet_input_file)?;
     let input_wallet = match try_open_as_json_input(&input_file_path) {
-        Ok(PublicInfoInput::MultisigJson(json)) => MultisigCoreOpenWalletParam::Json(Secret::new(json)),
-        Err(json_error) =>{
+        Ok(PublicInfoInput::MultisigJson(json)) => {
+            MultisigCoreOpenWalletParam::Json(Secret::new(json))
+        }
+        Err(json_error) => {
+            let password = args
+                .common
+                .password
+                .clone()
+                .map(SecretString::new)
+                .map(Arc::new);
             match read_decode_wallet(&input_file_path) {
                 Ok(encrypted_wallet) => MultisigCoreOpenWalletParam::Encrypted {
                     input_wallet: encrypted_wallet,
-                    password: None,
+                    password,
                     keyfiles: parse_keyfiles_paths(&args.common.keyfile)?,
                     difficulty: args.common.difficulty,
                 },

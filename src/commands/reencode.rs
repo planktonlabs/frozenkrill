@@ -51,8 +51,14 @@ pub(crate) fn singlesig_reencode_parse_args(
         Network::Bitcoin
     };
     let script_type = ScriptType::SegwitNative;
+    let password = args
+        .common
+        .password
+        .clone()
+        .map(SecretString::new)
+        .map(Arc::new);
     Ok(SinglesigCoreReencode {
-        password: None,
+        password,
         output_file_path,
         keyfiles,
         script_type,

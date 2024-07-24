@@ -11,6 +11,7 @@ use frozenkrill_core::{
     bitcoin::secp256k1::{All, Secp256k1},
     key_derivation::KeyDerivationDifficulty,
     rand_core::CryptoRngCore,
+    secrecy::SecretString,
     wallet_description::{MultisigType, ScriptType, MAX_TOTAL_SIGS_MULTISIG},
     MultisigInputs, PaddingParams,
 };
@@ -42,6 +43,7 @@ pub(super) fn singlesig_interactive_generate_one(
     keyfiles: Vec<PathBuf>,
     difficulty: Option<KeyDerivationDifficulty>,
     enable_duress_wallet: bool,
+    password: Option<Arc<SecretString>>,
 ) -> anyhow::Result<()> {
     let output_file_path = ask_generate_wallet_output_file(theme, term, rng)?;
     let keyfiles = if keyfiles.is_empty() {
@@ -76,7 +78,7 @@ pub(super) fn singlesig_interactive_generate_one(
     };
     let script_type = ScriptType::SegwitNative;
     let args = SinglesigCoreGenerateArgs {
-        password: None,
+        password,
         output_file_path,
         public_info_json_output,
         keyfiles: &keyfiles,
@@ -210,6 +212,7 @@ pub(super) fn multisig_interactive_generate_single(
     mut ic: impl InternetChecker,
     keyfiles: Vec<PathBuf>,
     difficulty: Option<KeyDerivationDifficulty>,
+    password: Option<Arc<SecretString>>,
 ) -> anyhow::Result<()> {
     let configuration = ask_multisig_configuration(theme, term)?;
     ic.check()?;
@@ -231,7 +234,7 @@ pub(super) fn multisig_interactive_generate_single(
     let wallet_file_type = ask_wallet_file_type(theme, term)?;
     let script_type = ScriptType::SegwitNative;
     let args = MultisigCoreGenerateArgs {
-        password: None,
+        password,
         keyfiles: &keyfiles,
         network,
         script_type,

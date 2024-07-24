@@ -1,4 +1,7 @@
-use std::path::{Path, PathBuf};
+use std::{
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 
 use dialoguer::{console::Term, theme::Theme};
 use frozenkrill_core::{
@@ -6,6 +9,7 @@ use frozenkrill_core::{
     bitcoin::secp256k1::{All, Secp256k1},
     key_derivation::KeyDerivationDifficulty,
     rand_core::CryptoRngCore,
+    secrecy::SecretString,
     wallet_description::ScriptType,
     PaddingParams,
 };
@@ -28,6 +32,7 @@ pub(super) fn interactive_generate_batch(
     keyfiles: Vec<PathBuf>,
     difficulty: Option<KeyDerivationDifficulty>,
     enable_duress_wallet: bool,
+    password: Option<Arc<SecretString>>,
 ) -> anyhow::Result<()> {
     let wallets_quantity = ask_batch_wallets_quantity(theme, term)?;
     let output_prefix = ask_batch_generate_wallet_prefix(theme, term)?;
@@ -48,6 +53,7 @@ pub(super) fn interactive_generate_batch(
     let network = ask_network(theme, term)?;
     let script_type = ScriptType::SegwitNative;
     let args = CoreBatchGenerateExportArgs {
+        password,
         keyfiles: &keyfiles,
         word_count,
         script_type,

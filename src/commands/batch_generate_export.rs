@@ -16,7 +16,7 @@ use frozenkrill_core::{
     key_derivation::{default_derive_key, KeyDerivationDifficulty},
     log, parse_keyfiles_paths,
     rand_core::CryptoRngCore,
-    secrecy::{ExposeSecret, Secret},
+    secrecy::{ExposeSecret, Secret, SecretString},
     utils::create_file,
     wallet_description::{
         calculate_seed_entropy_bytes, generate_entropy_for_seeds, generate_seeds_from_entropy,
@@ -45,6 +45,7 @@ use crate::{
 use super::generate::{generate_check_keyfiles, inform_custom_generate_params};
 
 pub(super) struct CoreBatchGenerateExportArgs<'a> {
+    pub(super) password: Option<Arc<SecretString>>,
     pub(super) keyfiles: &'a [PathBuf],
     pub(super) word_count: WordCount,
     pub(super) network: Network,
@@ -108,7 +109,12 @@ pub(super) fn core_batch_generate_export(
         fs::remove_file(path)
             .with_context(|| anyhow::anyhow!("failure deleting test file {path:?}"))?;
     }
-    let password = generate_ask_password(theme, term, Some(ic))?;
+    let password = args
+        .password
+        .clone()
+        .map(Result::Ok)
+        .unwrap_or_else(|| generate_ask_password(theme, term, Some(ic)))?;
+
     let non_duress_password = if args.enable_duress_wallet {
         Some(ask_non_duress_password(theme, term)?)
     } else {
@@ -210,6 +216,7 @@ pub(super) fn core_batch_generate_export(
         "Wallet files",
         "Encrypting...",
     ));
+    let seed_password = &None; // Not supported under batch mode
     let encrypted_wallets: anyhow::Result<Vec<_>> = seeds
         .into_par_iter()
         .zip(header_keys)
@@ -223,7 +230,7 @@ pub(super) fn core_batch_generate_export(
                     &key,
                     header_key,
                     Arc::new(mnemonic),
-                    &None,
+                    seed_password,
                     salt,
                     nonce,
                     header_nonce,
@@ -280,7 +287,6 @@ pub(super) fn core_batch_generate_export(
         "Wallet files",
         "Decrypting...",
     ));
-    let seed_password = &None;
     let decrypted_json_read_wallets = read_wallets
         .par_iter()
         .zip(derived_keys)
@@ -408,7 +414,14 @@ pub(crate) fn batch_generate_export(
         Network::Bitcoin
     };
     let script_type = ScriptType::SegwitNative;
+    let password = args
+        .common
+        .password
+        .clone()
+        .map(SecretString::new)
+        .map(Arc::new);
     let args = CoreBatchGenerateExportArgs {
+        password,
         keyfiles: &keyfiles,
         word_count,
         network,

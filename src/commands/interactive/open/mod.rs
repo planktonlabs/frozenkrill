@@ -1,4 +1,4 @@
-use std::{fs, path::PathBuf};
+use std::{fs, path::PathBuf, sync::Arc};
 
 use dialoguer::{console::Term, theme::Theme};
 use frozenkrill_core::{
@@ -8,7 +8,7 @@ use frozenkrill_core::{
     log::{self, debug},
     parse_keyfiles_paths,
     rand_core::CryptoRngCore,
-    secrecy::Secret,
+    secrecy::{Secret, SecretString},
     wallet_description::read_decode_wallet,
 };
 
@@ -94,6 +94,7 @@ pub(super) fn singlesig_interactive_open(
     keyfiles: Vec<PathBuf>,
     difficulty: Option<KeyDerivationDifficulty>,
     enable_duress_wallet: bool,
+    password: Option<Arc<SecretString>>,
 ) -> anyhow::Result<()> {
     let (input_file_path, wallet_input) = ask_wallet_input_file(theme, term)?;
     let ParsedWalletInputFile::Encrypted(encrypted_wallet) = wallet_input else {
@@ -114,7 +115,7 @@ pub(super) fn singlesig_interactive_open(
         &keyfiles,
         &difficulty,
         enable_duress_wallet || ask_to_open_duress(theme, term)?,
-        None,
+        password,
     )?;
     loop {
         match ask_interactive_open_action(theme, term)? {
