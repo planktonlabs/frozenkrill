@@ -4,14 +4,14 @@ use std::{
 };
 
 use dialoguer::{console::Term, theme::Theme};
+use frozenkrill_core::random_generation_utils::*;
 use frozenkrill_core::{
     anyhow::{self, Context},
     bitcoin::{
         secp256k1::{All, Secp256k1},
         Network,
     },
-    generate_encrypted_encoded_singlesig_wallet, get_padder, get_random_key, get_random_nonce,
-    get_random_salt,
+    generate_encrypted_encoded_singlesig_wallet, get_padder,
     key_derivation::KeyDerivationDifficulty,
     log, parse_keyfiles_paths,
     rand_core::CryptoRngCore,

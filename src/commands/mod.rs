@@ -42,10 +42,11 @@ mod tests {
     use frozenkrill_core::{
         bip39,
         bitcoin::Network,
-        custom_logger, get_secp, hex,
+        custom_logger, hex,
         key_derivation::KeyDerivationDifficulty,
         psbt::open_psbt_file,
         rand,
+        random_generation_utils::get_secp,
         secrecy::{ExposeSecret, Secret},
         utils::create_file,
         wallet_description::{

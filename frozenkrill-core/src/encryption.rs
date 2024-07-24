@@ -70,7 +70,7 @@ mod tests {
     use chacha20poly1305::{aead::Aead, KeyInit};
     use rand_core::RngCore;
 
-    use crate::get_random_nonce;
+    use crate::random_generation_utils::get_random_nonce;
 
     use super::*;
     fn rust_encrypt_xchacha20poly1305(

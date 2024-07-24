@@ -367,7 +367,7 @@ mod tests {
     use bitcoin::bip32::Xpriv;
 
     use super::*;
-    use crate::{custom_logger, get_secp, slip132::FromSlip132};
+    use crate::{custom_logger, random_generation_utils::get_secp, slip132::FromSlip132};
 
     #[test]
     fn test_sign() -> anyhow::Result<()> {
