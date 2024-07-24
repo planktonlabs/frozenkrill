@@ -52,7 +52,7 @@ pub fn serialize_descriptor_pk(
             // The extended key
             serialize_xpub(xkey, w)?;
             // The derivation path
-            serialize_derivation_path(&derivation_path, w)?;
+            serialize_derivation_path(derivation_path, w)?;
             // Whether the descriptor is wildcard
             serialize_wildcard(wildcard, w)?;
         }
@@ -171,7 +171,7 @@ pub fn serialize_opt_origin(
     origin: &OptOrigin,
     w: &mut BufWriter<impl Write>,
 ) -> anyhow::Result<()> {
-    Ok(match origin {
+    match origin {
         None => {
             VarInt::ZERO.serialize(w)?;
         }
@@ -180,7 +180,8 @@ pub fn serialize_opt_origin(
             serialize_fingerprint(fingerprint, w)?;
             serialize_derivation_path(derivation_path, w)?;
         }
-    })
+    };
+    Ok(())
 }
 
 pub fn deserialize_opt_origin(r: &mut BufReader<impl Read>) -> anyhow::Result<OptOrigin> {

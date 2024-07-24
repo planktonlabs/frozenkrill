@@ -51,6 +51,11 @@ mod progress_bar;
 
 const VERSION: &str = "0.0.0";
 
+const PASSWORD_ENV: &str = "PASSWORD";
+
+const PASSWORD_HELP: &str =
+    "Password used to encrypt the file. If not given, a prompt will ask for one";
+
 const KEYFILE_HELP: &str =
     "Files to be used for a complementary 'password'. Can be given multiple times. Multiple files and directories are allowed. Directories are followed recursively";
 const ENABLE_DURESS_WALLET: &str =
@@ -179,6 +184,13 @@ struct GenerateCommon {
     #[clap(long, help = WALLET_FILE_TYPE_HELP,
         default_value_t = WalletFileType::Standard)]
     wallet_file_type: WalletFileType,
+
+    #[clap(
+        long,
+        env = PASSWORD_ENV,
+        help = PASSWORD_HELP
+    )]
+    password: Option<String>,
 }
 
 #[derive(Clone, Copy)]
@@ -370,6 +382,13 @@ struct CommonOpenArgs {
         help = INPUT_WALLET_HELP
     )]
     wallet_input_file: String,
+
+    #[clap(
+        long,
+        env = PASSWORD_ENV,
+        help = PASSWORD_HELP
+    )]
+    password: Option<String>,
 }
 
 #[derive(clap::Args)]
@@ -455,6 +474,13 @@ struct InteractiveArgs {
         help = ENABLE_DURESS_WALLET
     )]
     enable_duress_wallet: bool,
+
+    #[clap(
+        long,
+        env = PASSWORD_ENV,
+        help = PASSWORD_HELP
+    )]
+    password: Option<String>,
 }
 
 #[derive(clap::Args)]

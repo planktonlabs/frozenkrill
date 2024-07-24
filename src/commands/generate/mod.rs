@@ -13,7 +13,7 @@ use frozenkrill_core::{
     key_derivation::{self, KeyDerivationDifficulty},
     log, parse_keyfiles_paths,
     rand_core::CryptoRngCore,
-    secrecy::Secret,
+    secrecy::{Secret, SecretString},
     utils::create_file,
     wallet_description::{MultiSigWalletDescriptionV0, SingleSigWalletDescriptionV0},
     wallet_export::MultisigJsonWalletPublicExportV0,
@@ -251,8 +251,9 @@ pub(crate) fn singlesig_generate(
         public_json_file_path: public_info_json_output.clone(),
     };
     let script_type = frozenkrill_core::wallet_description::ScriptType::SegwitNative;
+    let password = args.common.password.map(SecretString::new).map(Arc::new);
     let args = SinglesigCoreGenerateArgs {
-        password: None,
+        password,
         output_file_path,
         public_info_json_output,
         keyfiles: &keyfiles,
@@ -306,8 +307,14 @@ pub(crate) fn multisig_generate(
     };
     let inputs = parse_multisig_inputs(theme, term, secp, ic, &args.input_files)?;
     let script_type = frozenkrill_core::wallet_description::ScriptType::SegwitNative;
+    let password = args
+        .common
+        .password
+        .clone()
+        .map(SecretString::new)
+        .map(Arc::new);
     let args = MultisigCoreGenerateArgs {
-        password: None,
+        password,
         keyfiles: &keyfiles,
         network,
         script_type,
