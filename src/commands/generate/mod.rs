@@ -73,10 +73,6 @@ pub(super) fn export_singlesig_public_infos(
         anyhow::anyhow!("failure exporting public info to {public_info_json_output:?}")
     })?;
     log::info!("Exported public info to {public_info_json_output:?}");
-    log::info!(
-        "First generated address: {}",
-        wallet_description.first_receiving_address(secp)?
-    );
     if let Some(ref duress_params) = duress_params {
         let non_duress_wallet_description = wallet_description
             .change_seed_password(&Some(Arc::clone(&duress_params.non_duress_password)), secp)
@@ -99,10 +95,6 @@ pub(super) fn export_singlesig_public_infos(
         log::info!(
             "Exported non duress public info to {:?}",
             duress_params.non_duress_public_info_json_output
-        );
-        log::info!(
-            "First non duress generated address: {}",
-            non_duress_wallet_description.first_receiving_address(secp)?
         );
     };
     Ok(())
@@ -142,10 +134,6 @@ pub(super) fn export_multisig_public_infos(
         anyhow::anyhow!("failure exporting public info to {public_info_json_output:?}")
     })?;
     log::info!("Exported public info to {public_info_json_output:?}");
-    log::info!(
-        "First generated address: {}",
-        wallet_description.first_receiving_address(secp)?.address
-    );
     Ok(())
 }
 
