@@ -91,7 +91,7 @@ impl GetKey for SignerProvider {
     }
 }
 
-trait PsbtExt {
+pub trait PsbtExt {
     fn sign_partial<C, K>(&mut self, k: &K, secp: &Secp256k1<C>) -> SigningKeysMap
     where
         C: Signing,

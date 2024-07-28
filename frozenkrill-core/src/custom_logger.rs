@@ -3,7 +3,6 @@ use env_logger::{
     Builder,
 };
 use log::Level;
-use std::fmt;
 
 /// Custom pretty env logger
 
@@ -69,17 +68,6 @@ pub fn formatted_builder() -> Builder {
     });
 
     builder
-}
-
-struct Padded<T> {
-    value: T,
-    width: usize,
-}
-
-impl<T: fmt::Display> fmt::Display for Padded<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{: <width$}", self.value, width = self.width)
-    }
 }
 
 fn colored_level(style: &mut Style, level: Level) -> StyledValue<&'static str> {

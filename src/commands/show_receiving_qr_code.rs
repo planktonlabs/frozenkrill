@@ -43,7 +43,7 @@ fn ask_received_qr_code_non_duress(theme: &dyn Theme, term: &Term) -> anyhow::Re
         "Real receiving addresses for non duress wallet",
     ];
     let item = dialoguer::Select::with_theme(theme)
-        .items(&items)
+        .items(items)
         .default(1)
         .with_prompt("Pick an option")
         .interact_on(term)?;

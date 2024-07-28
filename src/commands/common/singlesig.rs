@@ -28,7 +28,12 @@ pub(crate) fn open_singlesig_wallet_non_interactive(
     let input_file_path = handle_input_path(&args.common.wallet_input_file)?;
     let encrypted_wallet = read_decode_wallet(&input_file_path)?;
     let keyfiles = parse_keyfiles_paths(&args.common.keyfile)?;
-    let password = args.common.password.clone().map(SecretString::new).map(Arc::new);
+    let password = args
+        .common
+        .password
+        .clone()
+        .map(SecretString::new)
+        .map(Arc::new);
     singlesig_core_open(
         theme,
         term,
