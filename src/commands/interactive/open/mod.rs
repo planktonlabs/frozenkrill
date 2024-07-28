@@ -40,16 +40,16 @@ enum InteractiveOpenActions {
     Reencode,
 }
 
-impl ToString for InteractiveOpenActions {
-    fn to_string(&self) -> String {
-        match self {
+impl std::fmt::Display for InteractiveOpenActions {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
             InteractiveOpenActions::ShowReceivingQrCode => "Show receiving QR code",
             InteractiveOpenActions::ExportPublicInfo => "Export public info json",
             InteractiveOpenActions::ShowSecrets => "Show secrets",
             InteractiveOpenActions::SignPsbt => "Sign a PSBT",
             InteractiveOpenActions::Reencode => "Reencode the wallet",
-        }
-        .into()
+        };
+        f.write_str(s)
     }
 }
 
@@ -67,7 +67,7 @@ fn ask_interactive_open_action(
 ) -> anyhow::Result<Option<InteractiveOpenActions>> {
     let action = dialoguer::Select::with_theme(theme)
         .with_prompt("Pick an option")
-        .items(&INTERACTIVE_OPEN_ACTIONS)
+        .items(INTERACTIVE_OPEN_ACTIONS)
         .default(0)
         .interact_on_opt(term)?;
     let action = match action {

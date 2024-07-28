@@ -1,6 +1,5 @@
 use std::{
     collections::HashSet,
-    fmt::Display,
     io::{BufReader, BufWriter, Read, Write},
     mem::size_of,
     path::Path,
@@ -99,7 +98,7 @@ impl FromStr for MultisigType {
     }
 }
 
-impl Display for MultisigType {
+impl std::fmt::Display for MultisigType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let m = self.required;
         let n = self.total;
@@ -152,10 +151,10 @@ impl FromStr for ScriptType {
     }
 }
 
-impl ToString for ScriptType {
-    fn to_string(&self) -> String {
+impl std::fmt::Display for ScriptType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ScriptType::SegwitNative => "segwit-native".into(),
+            ScriptType::SegwitNative => f.write_str("segwit-native"),
         }
     }
 }

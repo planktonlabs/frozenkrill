@@ -423,12 +423,12 @@ fn test_batch_generate_open_multisig() -> anyhow::Result<()> {
             "easy",
             multisig_path_reencoded.display().to_string().as_str(),
         ])?;
-        
+
         s.exp_string("Password:")?;
         send_line(&mut s, multisigpassword)?;
         s.exp_string("Confirm password:")?;
         send_line(&mut s, multisigpassword)?;
-    
+
         s.exp_string("Enter a new password to encrypt the wallet")?;
         s.exp_string("Password:")?;
         send_line(&mut s, multisigpassword_reencoded)?;

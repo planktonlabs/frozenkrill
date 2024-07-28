@@ -113,11 +113,11 @@ impl FromStr for MultisigConfigurationOptions {
     }
 }
 
-impl ToString for MultisigConfigurationOptions {
-    fn to_string(&self) -> String {
+impl std::fmt::Display for MultisigConfigurationOptions {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            MultisigConfigurationOptions::Some(o) => o.to_string(),
-            MultisigConfigurationOptions::Other => "Other".into(),
+            MultisigConfigurationOptions::Some(o) => f.write_str(&o.to_string()),
+            MultisigConfigurationOptions::Other => f.write_str("Other"),
         }
     }
 }

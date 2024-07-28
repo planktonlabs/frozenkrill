@@ -4,7 +4,7 @@ use std::{
     sync::Arc,
 };
 
-use dialoguer::{console::Term, theme::Theme, Validator};
+use dialoguer::{console::Term, theme::Theme};
 use frozenkrill_core::{
     anyhow::{self, bail},
     bitcoin::{
@@ -43,16 +43,16 @@ enum MainActions {
     OpenMultisig,
 }
 
-impl ToString for MainActions {
-    fn to_string(&self) -> String {
-        match self {
+impl std::fmt::Display for MainActions {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
             MainActions::SinglesigCreateNewSingle => "singlesig: create wallet",
             MainActions::MultisigCreateNewSingle => " multisig: create wallet",
             MainActions::OpenSinglesig => "singlesig: open wallet",
             MainActions::OpenMultisig => " multisig: open wallet",
             MainActions::CreateNewBatch => "singlesig: create multiple wallets (batch mode)",
-        }
-        .into()
+        };
+        f.write_str(s)
     }
 }
 
@@ -140,9 +140,10 @@ pub(crate) fn interactive(
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
 struct KeyDerivationDifficultyDisplay(KeyDerivationDifficulty);
 
-impl ToString for KeyDerivationDifficultyDisplay {
-    fn to_string(&self) -> String {
-        format!(
+impl std::fmt::Display for KeyDerivationDifficultyDisplay {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
             "{} ({}, {})",
             self.0,
             self.0.estimate_time(),
@@ -239,7 +240,7 @@ fn choose_keyfiles(theme: &dyn Theme, term: &Term, files: &[String]) -> anyhow::
 
 struct ValidateOutputFile;
 
-impl Validator<String> for ValidateOutputFile {
+impl dialoguer::InputValidator<String> for ValidateOutputFile {
     type Err = anyhow::Error;
     fn validate(&mut self, input: &String) -> Result<(), Self::Err> {
         if !input.is_empty() {
@@ -294,7 +295,7 @@ fn ask_non_duress_wallet_generate(theme: &dyn Theme, term: &Term) -> anyhow::Res
         "Duress Wallet (standard duress + non duress public info)",
     ];
     let item = dialoguer::Select::with_theme(theme)
-        .items(&items)
+        .items(items)
         .default(0)
         .with_prompt("Pick an option")
         .interact_on(term)?;
@@ -332,7 +333,7 @@ fn ask_public_info_json_output_required(
 fn ask_word_count(theme: &dyn Theme, term: &Term) -> anyhow::Result<WordCount> {
     let items = ["12 words", "24 words (recommended)"];
     let item = dialoguer::Select::with_theme(theme)
-        .items(&items)
+        .items(items)
         .default(1)
         .with_prompt("How many words for the seed?")
         .interact_on(term)?;
@@ -346,7 +347,7 @@ fn ask_word_count(theme: &dyn Theme, term: &Term) -> anyhow::Result<WordCount> {
 fn ask_wallet_file_type(theme: &dyn Theme, term: &Term) -> anyhow::Result<WalletFileType> {
     let items = ["Standard (recommended)", "Compact"];
     let item = dialoguer::Select::with_theme(theme)
-        .items(&items)
+        .items(items)
         .default(0)
         .with_prompt(
             r#"What's the type of the encrypted file?
@@ -367,7 +368,7 @@ fn ask_user_generated_seed(theme: &dyn Theme, term: &Term) -> anyhow::Result<boo
     ];
     Ok(dialoguer::Select::with_theme(theme)
         .with_prompt("Pick an option")
-        .items(&items)
+        .items(items)
         .default(0)
         .interact_on(term)?
         == 1)
@@ -377,7 +378,7 @@ fn ask_network(theme: &dyn Theme, term: &Term) -> anyhow::Result<Network> {
     let items = ["Bitcoin mainnet (recommended)", "Bitcoin testnet"];
     if dialoguer::Select::with_theme(theme)
         .with_prompt("Pick a network")
-        .items(&items)
+        .items(items)
         .default(0)
         .interact_on(term)?
         == 0

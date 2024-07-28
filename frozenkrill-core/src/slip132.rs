@@ -23,6 +23,7 @@ use anyhow::{bail, Context};
 use bitcoin::base58::{self};
 use bitcoin::bip32::{ChildNumber, DerivationPath, Xpriv, Xpub};
 use bitcoin::NetworkKind;
+use serde::{Deserialize, Serialize};
 
 /// Magical version bytes for xpub: bitcoin mainnet public key for P2PKH or P2SH
 pub const VERSION_MAGIC_XPUB: [u8; 4] = [0x04, 0x88, 0xB2, 0x1E];
@@ -213,42 +214,36 @@ pub struct DefaultResolver;
 
 /// SLIP 132-defined key applications defining types of scriptPubkey descriptors
 /// in which they can be used
-#[cfg_attr(
-    feature = "serde",
-    derive(Serialize, Deserialize),
-    serde(crate = "serde_crate")
-)]
-#[cfg_attr(feature = "strict_encoding", derive(StrictEncode, StrictDecode))]
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Serialize, Deserialize)]
 #[non_exhaustive]
 pub enum KeyApplication {
     /// xprv/xpub: keys that can be used for P2PKH and multisig P2SH
     /// scriptPubkey descriptors.
     // #[display("BIP44")]
-    #[cfg_attr(feature = "serde", serde(rename = "bip44"))]
+    #[serde(rename = "bip44")]
     Hashed,
 
     /// zprv/zpub: keys that can be used for P2WPKH scriptPubkey descriptors
     // #[display("BIP84")]
-    #[cfg_attr(feature = "serde", serde(rename = "bip84"))]
+    #[serde(rename = "bip84")]
     SegWit,
 
     /// Zprv/Zpub: keys that can be used for multisig P2WSH scriptPubkey
     /// descriptors
     // #[display("BIP48-native")]
-    #[cfg_attr(feature = "serde", serde(rename = "bip48-native"))]
+    #[serde(rename = "bip48-native")]
     SegWitMultisig,
 
     /// yprv/ypub: keys that can be used for P2WPKH-in-P2SH scriptPubkey
     /// descriptors
     // #[display("BIP49")]
-    #[cfg_attr(feature = "serde", serde(rename = "bip49"))]
+    #[serde(rename = "bip49")]
     Nested,
 
     /// Yprv/Ypub: keys that can be used for multisig P2WSH-in-P2SH
     /// scriptPubkey descriptors
     // #[display("BIP48-nested")]
-    #[cfg_attr(feature = "serde", serde(rename = "bip48-nested"))]
+    #[serde(rename = "bip48-nested")]
     NestedMultisig,
 }
 

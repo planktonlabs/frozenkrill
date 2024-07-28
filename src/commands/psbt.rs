@@ -37,7 +37,7 @@ pub(super) fn ask_sign_non_duress(theme: &dyn Theme, term: &Term) -> anyhow::Res
         "Sign using non duress (real) wallet",
     ];
     let item = dialoguer::Select::with_theme(theme)
-        .items(&items)
+        .items(items)
         .default(1)
         .with_prompt("Pick an option")
         .interact_on(term)?;

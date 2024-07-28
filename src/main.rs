@@ -1021,8 +1021,7 @@ fn ui_ask_manually_seed_input(
     let english = ENGLISH;
     let show_seeds_history = will_fill_everything && !always_hide_typed_seed;
     let word_list = english.word_list();
-    let mut fuzzy_select = dialoguer::FuzzySelect::with_theme(theme);
-    fuzzy_select
+    let fuzzy_select = dialoguer::FuzzySelect::with_theme(theme)
         .items(word_list)
         .default(0)
         .report(show_seeds_history)
@@ -1031,6 +1030,7 @@ fn ui_ask_manually_seed_input(
         let mut words = Vec::with_capacity(total_words.into());
         for i in 1..=words_to_ask {
             let word_index = fuzzy_select
+                .clone()
                 .with_prompt(format!("Start typing... (word {i} of {words_to_ask})"))
                 .interact_on(term)?;
             let word = word_list[word_index];
