@@ -5,7 +5,7 @@ use std::{
 
 use dialoguer::{console::Term, theme::Theme};
 use frozenkrill_core::{
-    anyhow::{self, Context},
+    anyhow::{self, bail, Context},
     bitcoin::{
         secp256k1::{All, Secp256k1},
         Network,
@@ -239,7 +239,7 @@ pub(crate) fn singlesig_generate(
             args.always_hide_typed_seed,
         )?))
     } else if args.always_hide_typed_seed {
-        anyhow::bail!(
+        bail!(
             "The --always-hide-typed-seed flag only makes sense when used with --user-generated-seed"
         );
     } else {

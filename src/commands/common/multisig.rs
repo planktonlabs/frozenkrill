@@ -177,9 +177,9 @@ pub(crate) fn parse_multisig_input(
                 change_descriptors.insert(v.change_multisig_public_descriptor()?);
             }
             (Some(_), Some(SigType::Multisig(_))) => {
-                anyhow::bail!("A multisig export isn't a valid input file")
+                bail!("A multisig export isn't a valid input file")
             }
-            _ => anyhow::bail!("Unrecognized json file {i:?}"),
+            _ => bail!("Unrecognized json file {i:?}"),
         },
         Err(e) => {
             debug!("Failed to parse {i:?} as public info export json: {e:?}");
@@ -206,7 +206,7 @@ pub(crate) fn parse_multisig_input(
                                         if !ask_try_open_again_multisig_parse_multisig_input(
                                             theme, term,
                                         )? {
-                                            anyhow::bail!(
+                                            bail!(
                                                 "Aborting because we couldn't open all desired signers"
                                             )
                                         }
@@ -326,7 +326,7 @@ fn ui_get_multisig_wallet_description(
         .signers
         .map(Result::Ok)
         .unwrap_or_else(|| ask_open_signers(theme, term, &params.configuration, secp))?;
-    let w = MultiSigWalletDescriptionV0::generate(
+    let w = MultiSigWalletDescriptionV0::generate_from_ddpks(
         signers,
         params.receiving_descriptor,
         params.change_descriptor,
@@ -387,7 +387,7 @@ fn ask_open_signers(
                 Err(e) => {
                     eprintln!("{e:?}");
                     if !ask_try_open_again_multisig_parse_multisig_input(theme, term)? {
-                        anyhow::bail!("Aborting because we couldn't open all desired signers")
+                        bail!("Aborting because we couldn't open all desired signers")
                     }
                 }
             }

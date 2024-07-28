@@ -19,7 +19,7 @@
 use std::fmt::Debug;
 use std::str::FromStr;
 
-use anyhow::Context;
+use anyhow::{bail, Context};
 use bitcoin::base58::{self};
 use bitcoin::bip32::{ChildNumber, DerivationPath, Xpriv, Xpub};
 use bitcoin::NetworkKind;
@@ -657,7 +657,7 @@ impl FromSlip132 for Xpub {
             | VERSION_MAGIC_UPUB_MULTISIG
             | VERSION_MAGIC_VPUB_MULTISIG => VERSION_MAGIC_TPUB,
 
-            _ => anyhow::bail!("UnknownSlip32Prefix"),
+            _ => bail!("UnknownSlip32Prefix"),
         };
         data[0..4].copy_from_slice(&slice);
 
@@ -686,7 +686,7 @@ impl FromSlip132 for Xpriv {
             | VERSION_MAGIC_UPRV_MULTISIG
             | VERSION_MAGIC_VPRV_MULTISIG => VERSION_MAGIC_TPRV,
 
-            _ => anyhow::bail!("UnknownSlip32Prefix"),
+            _ => bail!("UnknownSlip32Prefix"),
         };
         data[0..4].copy_from_slice(&slice);
 

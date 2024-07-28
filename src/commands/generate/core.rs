@@ -256,7 +256,7 @@ pub(crate) fn multisig_core_generate(
         let read_json_wallet_description = read_encrypted_wallet
             .decrypt_multisig(&key, secp)
             .context(CONTEXT_CORRUPTION_WARNING)?;
-        let read_wallet_description = MultiSigWalletDescriptionV0::generate(
+        let read_wallet_description = MultiSigWalletDescriptionV0::generate_from_ddpks(
             vec![],
             read_json_wallet_description
                 .expose_secret()
@@ -297,7 +297,7 @@ pub(crate) fn multisig_core_generate(
         let read_json_wallet_description = read_encrypted_wallet
             .decrypt_multisig(&key, secp)
             .context(CONTEXT_CORRUPTION_WARNING)?;
-        let read_wallet_description = MultiSigWalletDescriptionV0::generate(
+        let read_wallet_description = MultiSigWalletDescriptionV0::generate_from_ddpks(
             vec![],
             read_json_wallet_description
                 .expose_secret()

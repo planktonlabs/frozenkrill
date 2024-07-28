@@ -8,7 +8,7 @@ use std::{
     sync::Arc,
 };
 
-use anyhow::{ensure, Context};
+use anyhow::{bail, ensure, Context};
 use bip39::Mnemonic;
 use bitcoin::{
     bip32::{ChildNumber, DerivationPath, Fingerprint},
@@ -29,8 +29,9 @@ use crate::{
     compression::uncompress,
     encoding::VarInt,
     encryption::{default_decrypt, MAC_LENGTH},
+    ms_ddpk_to_dpks, ms_dpks_to_ddpk,
     psbt::sign_psbt,
-    utils,
+    utils, MultisigInputs,
 };
 use once_cell::sync::Lazy;
 
@@ -128,7 +129,7 @@ impl FromStr for SigType {
         match s.to_lowercase().as_str() {
             "singlesig" => Ok(Self::Singlesig),
             multi if multi.contains("of") => Ok(Self::Multisig(MultisigType::from_str(multi)?)),
-            _ => anyhow::bail!("Invalid sigtype: {s}"),
+            _ => bail!("Invalid sigtype: {s}"),
         }
     }
 }
@@ -146,7 +147,7 @@ impl FromStr for ScriptType {
         match s.to_lowercase().as_str() {
             "segwit-native" => Ok(Self::SegwitNative),
             // "taproot" => Ok(Self::Taproot),
-            _ => anyhow::bail!("Got unknown script type: {s}"),
+            _ => bail!("Got unknown script type: {s}"),
         }
     }
 }
@@ -814,16 +815,48 @@ impl SingleSigCompactWalletDescriptionV0 {
 }
 
 pub struct MultiSigWalletDescriptionV0 {
-    signers: Vec<SingleSigWalletDescriptionV0>,
-    pub(crate) receiving_descriptor: miniscript::Descriptor<DescriptorPublicKey>,
-    pub(crate) change_descriptor: miniscript::Descriptor<DescriptorPublicKey>,
+    pub inputs: MultisigInputs,
+    pub receiving_descriptor: miniscript::Descriptor<DescriptorPublicKey>,
+    pub change_descriptor: miniscript::Descriptor<DescriptorPublicKey>,
     pub configuration: MultisigType,
     pub network: Network,
     pub script_type: ScriptType,
 }
 
 impl MultiSigWalletDescriptionV0 {
-    pub fn generate(
+    pub fn generate_from_dpks(
+        inputs: MultisigInputs,
+        configuration: MultisigType,
+        network: bitcoin::Network,
+        script_type: ScriptType,
+    ) -> anyhow::Result<Self> {
+        let receiving_descriptor = ms_dpks_to_ddpk(
+            inputs.receiving_descriptors.clone(),
+            &configuration,
+            script_type,
+        )?;
+        let change_descriptor = ms_dpks_to_ddpk(
+            inputs.change_descriptors.clone(),
+            &configuration,
+            script_type,
+        )?;
+        Self::validate_descriptors(
+            &[&change_descriptor, &receiving_descriptor],
+            &configuration,
+            &inputs.signers,
+            &script_type,
+        )?;
+        Ok(Self {
+            inputs,
+            receiving_descriptor,
+            change_descriptor,
+            configuration,
+            network,
+            script_type,
+        })
+    }
+
+    pub fn generate_from_ddpks(
         signers: Vec<SingleSigWalletDescriptionV0>,
         receiving_descriptor: miniscript::Descriptor<DescriptorPublicKey>,
         change_descriptor: miniscript::Descriptor<DescriptorPublicKey>,
@@ -831,6 +864,9 @@ impl MultiSigWalletDescriptionV0 {
         network: bitcoin::Network,
         script_type: ScriptType,
     ) -> anyhow::Result<Self> {
+        let receiving_descriptors =
+            ms_ddpk_to_dpks(&receiving_descriptor, &configuration, &script_type)?;
+        let change_descriptors = ms_ddpk_to_dpks(&change_descriptor, &configuration, &script_type)?;
         Self::validate_descriptors(
             &[&change_descriptor, &receiving_descriptor],
             &configuration,
@@ -838,7 +874,11 @@ impl MultiSigWalletDescriptionV0 {
             &script_type,
         )?;
         Ok(Self {
-            signers,
+            inputs: MultisigInputs {
+                receiving_descriptors,
+                change_descriptors,
+                signers,
+            },
             receiving_descriptor,
             change_descriptor,
             configuration,
@@ -905,7 +945,7 @@ impl MultiSigWalletDescriptionV0 {
     }
 
     pub fn has_signers(&self) -> bool {
-        !self.signers.is_empty()
+        !self.inputs.signers.is_empty()
     }
 
     fn validate_descriptors(
@@ -930,7 +970,7 @@ impl MultiSigWalletDescriptionV0 {
                     | miniscript::Descriptor::Wpkh(_)
                     | miniscript::Descriptor::Sh(_)),
                 ) => {
-                    anyhow::bail!("Descriptor type {:?} isn't supported", d.desc_type())
+                    bail!("Descriptor type {:?} isn't supported", d.desc_type())
                 }
                 (ScriptType::SegwitNative, miniscript::Descriptor::Wsh(v)) => match v.as_inner() {
                     miniscript::descriptor::WshInner::SortedMulti(v) => {
@@ -944,11 +984,11 @@ impl MultiSigWalletDescriptionV0 {
                         all_public_keys.extend(v.pks());
                     }
                     miniscript::descriptor::WshInner::Ms(_) => {
-                        anyhow::bail!("A non sorted wsh descriptor isn't supported")
+                        bail!("A non sorted wsh descriptor isn't supported")
                     }
                 },
                 (ScriptType::SegwitNative, miniscript::Descriptor::Tr(_)) => {
-                    anyhow::bail!("Taproot isn't currently supported")
+                    bail!("Taproot isn't currently supported")
                 }
             };
         }
@@ -971,6 +1011,7 @@ impl MultiSigWalletDescriptionV0 {
 impl PsbtWallet for MultiSigWalletDescriptionV0 {
     fn sign_psbt(&self, psbt: &mut Psbt, secp: &Secp256k1<All>) -> anyhow::Result<usize> {
         let keys = self
+            .inputs
             .signers
             .iter()
             .flat_map(|s| s.get_psbt_multisig_keys())
@@ -980,7 +1021,8 @@ impl PsbtWallet for MultiSigWalletDescriptionV0 {
     }
 
     fn get_pub_fingerprints(&self) -> Vec<Fingerprint> {
-        self.signers
+        self.inputs
+            .signers
             .iter()
             .map(|s| s.get_multisig_pub_fingerprint())
             .collect()
@@ -1003,20 +1045,20 @@ impl PsbtWallet for MultiSigWalletDescriptionV0 {
 #[derive(Clone)]
 pub struct MultiSigCompactWalletDescriptionV0 {
     configuration: MultisigType,
-    receiving_descriptor: miniscript::Descriptor<DescriptorPublicKey>,
-    change_descriptor: miniscript::Descriptor<DescriptorPublicKey>,
+    receiving_descriptors: HashSet<DescriptorPublicKey>,
+    change_descriptors: HashSet<DescriptorPublicKey>,
 }
 
 impl MultiSigCompactWalletDescriptionV0 {
     pub fn new(
         configuration: MultisigType,
-        receiving_descriptor: miniscript::Descriptor<DescriptorPublicKey>,
-        change_descriptor: miniscript::Descriptor<DescriptorPublicKey>,
+        receiving_descriptor: HashSet<DescriptorPublicKey>,
+        change_descriptor: HashSet<DescriptorPublicKey>,
     ) -> anyhow::Result<Self> {
         Ok(Self {
             configuration,
-            receiving_descriptor,
-            change_descriptor,
+            receiving_descriptors: receiving_descriptor,
+            change_descriptors: change_descriptor,
         })
     }
 
@@ -1025,8 +1067,14 @@ impl MultiSigCompactWalletDescriptionV0 {
         VarInt::from(self.configuration.required).serialize(&mut w)?;
         VarInt::from(self.configuration.total).serialize(&mut w)?;
         VarInt(2).serialize(&mut w)?; // two descriptors coming
-        for d in [&self.receiving_descriptor, &self.change_descriptor] {
-            crate::encoding::wallet::serialize_descriptor_descriptor_pk(d, &mut w)?;
+        for descriptor_set in [&self.receiving_descriptors, &self.change_descriptors] {
+            assert_eq!(
+                descriptor_set.len(),
+                usize::try_from(self.configuration.total)?
+            );
+            for d in descriptor_set {
+                crate::encoding::wallet::serialize_descriptor_pk(d, &mut w)?;
+            }
         }
         Ok(w.into_inner()?)
     }
@@ -1039,25 +1087,29 @@ impl MultiSigCompactWalletDescriptionV0 {
             .context("error decoding 'required' field from multisig configuration")?;
         let total = get_u32(&mut data)
             .context("error decoding 'total' field from multisig configuration")?;
-        fn get_descriptor(
+        fn get_descriptors(
+            n: u32,
             data: &mut BufReader<impl Read>,
-        ) -> anyhow::Result<miniscript::Descriptor<DescriptorPublicKey>> {
-            let d = crate::encoding::wallet::deserialize_descriptor_descriptor_pk(data)?;
-            Ok(d)
+        ) -> anyhow::Result<HashSet<DescriptorPublicKey>> {
+            let mut descriptors = HashSet::with_capacity(n.try_into()?);
+            for _ in 0..n {
+                descriptors.insert(crate::encoding::wallet::deserialize_descriptor_pk(data)?);
+            }
+            Ok(descriptors)
         }
         let descriptors_len = VarInt::deserialize(&mut data)?;
         ensure!(
             descriptors_len == VarInt(2),
             "Found unexpected number of descriptors: {descriptors_len:?}"
         );
-        let receiving_descriptor = get_descriptor(&mut data)
+        let receiving_descriptors = get_descriptors(total, &mut data)
             .context("error decoding receiving descriptor from multisig")?;
-        let change_descriptor =
-            get_descriptor(&mut data).context("error decoding change descriptor from multisig")?;
+        let change_descriptors = get_descriptors(total, &mut data)
+            .context("error decoding change descriptor from multisig")?;
         Ok(Self {
             configuration: MultisigType { required, total },
-            receiving_descriptor,
-            change_descriptor,
+            receiving_descriptors,
+            change_descriptors,
         })
     }
 
@@ -1067,10 +1119,12 @@ impl MultiSigCompactWalletDescriptionV0 {
         network: bitcoin::Network,
         script_type: ScriptType,
     ) -> anyhow::Result<MultiSigWalletDescriptionV0> {
-        MultiSigWalletDescriptionV0::generate(
-            signers,
-            self.receiving_descriptor,
-            self.change_descriptor,
+        MultiSigWalletDescriptionV0::generate_from_dpks(
+            MultisigInputs {
+                receiving_descriptors: self.receiving_descriptors,
+                change_descriptors: self.change_descriptors,
+                signers,
+            },
             self.configuration,
             network,
             script_type,
@@ -1485,7 +1539,7 @@ impl EncryptedWalletVersion {
             STANDARD_ENCRYPTED_WALLET_VERSION => Ok(Self::V0Standard),
             COMPACT_ENCRYPTED_MAINNET_WALLET_VERSION => Ok(Self::V0CompactMainnet),
             COMPACT_ENCRYPTED_TESTNET_WALLET_VERSION => Ok(Self::V0CompactTestnet),
-            other => anyhow::bail!("Got header version {other}, which isn't supported"),
+            other => bail!("Got header version {other}, which isn't supported"),
         }
     }
 

@@ -256,7 +256,7 @@ pub(crate) fn ask_for_keyfiles_open(
         files.sort();
         if files.is_empty() {
             eprintln!("You can't pick a keyfile because there are no files or directories in the current directory");
-            anyhow::bail!("Copy the keyfiles or directories to current directory or change the current directory or use the --keyfile argument on command line to load keyfiles from other places");
+            bail!("Copy the keyfiles or directories to current directory or change the current directory or use the --keyfile argument on command line to load keyfiles from other places");
         }
         loop {
             let chosen_files = choose_keyfiles(theme, term, &files)?;
@@ -295,7 +295,7 @@ pub(crate) fn ask_wallet_input_file(
     files.sort();
     if files.is_empty() {
         eprintln!("You can't pick a wallet file because there are no files in current directory");
-        anyhow::bail!("Copy some files or directories to current directory or change the current directory so you can load a wallet");
+        bail!("Copy some files or directories to current directory or change the current directory so you can load a wallet");
     }
     loop {
         let file = dialoguer::Select::with_theme(theme)
@@ -318,7 +318,7 @@ pub(crate) fn ask_wallet_input_file(
                         .default(true)
                         .interact_on(term)?
                     {
-                        anyhow::bail!("No valid wallet file selected");
+                        bail!("No valid wallet file selected");
                     }
                 }
             },

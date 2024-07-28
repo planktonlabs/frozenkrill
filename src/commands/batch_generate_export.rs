@@ -7,7 +7,7 @@ use std::{
 
 use dialoguer::{console::Term, theme::Theme};
 use frozenkrill_core::{
-    anyhow::{self, Context},
+    anyhow::{self, bail, Context},
     bitcoin::{
         secp256k1::{All, Secp256k1},
         Network,
@@ -69,7 +69,7 @@ pub(super) fn core_batch_generate_export(
     args: CoreBatchGenerateExportArgs,
 ) -> anyhow::Result<()> {
     if args.enable_duress_wallet && args.disable_public_info_export {
-        anyhow::bail!("--enable-duress-wallet is incompatible with --disable-public-info-export")
+        bail!("--enable-duress-wallet is incompatible with --disable-public-info-export")
     }
     warn_difficulty_level(args.difficulty);
     let output_prefix = args.output_prefix;

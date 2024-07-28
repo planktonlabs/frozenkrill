@@ -16,7 +16,7 @@ use std::{
 };
 
 use frozenkrill_core::{
-    anyhow::{self, Context},
+    anyhow::{self, bail, Context},
     bip39::{self, Language, Mnemonic},
     bitcoin::{
         secp256k1::{All, Secp256k1},
@@ -214,7 +214,7 @@ impl WalletFileType {
                     Ok(EncryptedWalletVersion::V0CompactTestnet)
                 }
                 (other, ScriptType::SegwitNative) => {
-                    anyhow::bail!("Unsupported bitcoin network: {other:?}")
+                    bail!("Unsupported bitcoin network: {other:?}")
                 }
             },
         }
@@ -227,7 +227,7 @@ impl FromStr for WalletFileType {
         match s.trim().to_lowercase().as_str() {
             "standard" => Ok(Self::Standard),
             "compact" => Ok(Self::Compact),
-            other => anyhow::bail!("Got '{other}', it should be either 'standard' or 'compact'"),
+            other => bail!("Got '{other}', it should be either 'standard' or 'compact'"),
         }
     }
 }
@@ -339,7 +339,7 @@ struct SignPsbtArgs {
 
 #[derive(clap::Args)]
 #[command(about = "Reencode the wallet with new password and other parameters")]
-struct ReencodeArgs {
+struct SinglesigReencodeArgs {
     #[clap(flatten)]
     common: GenerateCommon,
     #[clap(
@@ -354,7 +354,18 @@ enum SinglesigOpenCommands {
     ShowReceivingQrCode(ShowReceivingQrCodeArgs),
     ExportPublicInfo(SinglesigExportPublicInfoArgs),
     SignPsbt(SignPsbtArgs),
-    Reencode(ReencodeArgs),
+    Reencode(SinglesigReencodeArgs),
+}
+
+#[derive(clap::Args)]
+#[command(about = "Reencode the wallet with new password and other parameters")]
+struct MultisigReencodeArgs {
+    #[clap(flatten)]
+    common: GenerateCommon,
+    #[clap(
+        help = WALLET_OUTPUT_FILE_HELP
+    )]
+    wallet_output_file: Option<String>,
 }
 
 #[derive(Subcommand)]
@@ -363,6 +374,7 @@ enum MultisigOpenCommands {
     ShowReceivingQrCode(ShowReceivingQrCodeArgs),
     ExportPublicInfo(MultisigExportPublicInfoArgs),
     SignPsbt(SignPsbtArgs),
+    Reencode(MultisigReencodeArgs),
 }
 
 #[derive(clap::Args)]
@@ -485,11 +497,11 @@ struct InteractiveArgs {
 
 #[derive(clap::Args)]
 #[command(about = "Run the key derivation for different difficulty levels and print the duration")]
-struct BenchmarkArgs {}
+struct BenchmarkArgs;
 
 #[derive(clap::Args)]
 #[command(about = "Shows the version")]
-struct VersionArgs {}
+struct VersionArgs;
 
 #[derive(Subcommand)]
 enum Commands {
@@ -553,10 +565,10 @@ fn main() -> anyhow::Result<()> {
     #[cfg(windows)]
     {
         log::error!("You're using Windows");
-        anyhow::bail!("Don't be reckless, use a safer operating system")
+        bail!("Don't be reckless, use a safer operating system")
     };
     #[cfg(not(unix))]
-    anyhow::bail!("This isn't a Unix-like operating system. As this is a untested setup, better contact the developers");
+    bail!("This isn't a Unix-like operating system. As this is a untested setup, better contact the developers");
     match process(cli, theme, &term) {
         Ok(()) => Ok(()),
         Err(e) => {
@@ -763,6 +775,25 @@ fn process(cli: Cli, theme: Box<dyn Theme>, term: &Term) -> Result<(), anyhow::E
                     args,
                 )?;
             }
+            MultisigOpenCommands::Reencode(args) => {
+                let core_args = commands::reencode::multisig_reencode_parse_args(&open_args, args)?;
+                let wallet = open_multisig_wallet_non_interactive(
+                    theme.as_ref(),
+                    term,
+                    &secp,
+                    ic.clone(),
+                    &open_args,
+                )?;
+                commands::reencode::multisig_core_reencode(
+                    theme.as_ref(),
+                    term,
+                    &mut secp,
+                    &mut rng,
+                    ic,
+                    wallet,
+                    core_args,
+                )?;
+            }
         },
         Commands::SinglesigBatchGenerateExport(args) => {
             commands::batch_generate_export::batch_generate_export(
@@ -861,12 +892,12 @@ impl InternetChecker for InternetCheckerImpl {
                 eprintln!(
                     "Or use `frozenkrill --disable-internet-check` if you know what you're doing"
                 );
-                anyhow::bail!("Internet is reachable")
+                bail!("Internet is reachable")
             } else {
                 Ok(())
             }
         } else if self.is_connected.unwrap_or_default() {
-            anyhow::bail!("Internet is reachable")
+            bail!("Internet is reachable")
         } else {
             Ok(())
         }
@@ -1015,7 +1046,7 @@ fn ui_ask_manually_seed_input(
                     .with_prompt("The checksum is invalid. A word must be incorrect. Try again?")
                     .interact_on(term)?
                 {
-                    anyhow::bail!("Aborting because of invalid seed");
+                    bail!("Aborting because of invalid seed");
                 }
             }
             Err(e) => Err(e)?,
@@ -1034,6 +1065,6 @@ fn ui_get_singlesig_wallet_description(
         .context("failure parsing generated wallet")?;
     match SinglesigJsonWalletDescriptionV0::validate_same(json_wallet_description, &w, secp)? {
         Ok(()) => Ok(w),
-        Err(e) => anyhow::bail!("Validation error: {e:?}"),
+        Err(e) => bail!("Validation error: {e:?}"),
     }
 }

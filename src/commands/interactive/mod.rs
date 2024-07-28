@@ -6,7 +6,7 @@ use std::{
 
 use dialoguer::{console::Term, theme::Theme, Validator};
 use frozenkrill_core::{
-    anyhow,
+    anyhow::{self, bail},
     bitcoin::{
         secp256k1::{All, Secp256k1},
         Network,
@@ -116,7 +116,7 @@ pub(crate) fn interactive(
                 keyfiles,
                 args.difficulty.to_owned(),
                 args.enable_duress_wallet,
-                password
+                password,
             )?;
         }
         MainActions::OpenSinglesig => singlesig_interactive_open(
@@ -128,7 +128,7 @@ pub(crate) fn interactive(
             keyfiles,
             args.difficulty.to_owned(),
             args.enable_duress_wallet,
-            password
+            password,
         )?,
         MainActions::OpenMultisig => {
             multisig_interactive_open(theme, term, secp, ic, keyfiles, args.difficulty.to_owned())?
@@ -199,7 +199,7 @@ pub(crate) fn ask_for_keyfiles_generate(
             .with_prompt("You can't pick a keyfile because there are no files in current directory, continue without keyfiles?").interact_on(term)? {
                 return Ok(Vec::new())
             } else {
-                anyhow::bail!("Copy some files or directories to current directory or change the current directory so you can load a keyfile or give a --keyfile as argument on the command line");
+                bail!("Copy some files or directories to current directory or change the current directory so you can load a keyfile or give a --keyfile as argument on the command line");
             }
     }
     if !dialoguer::Confirm::with_theme(theme)
