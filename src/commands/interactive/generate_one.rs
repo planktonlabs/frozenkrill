@@ -7,7 +7,7 @@ use std::{
 
 use dialoguer::{console::Term, theme::Theme};
 use frozenkrill_core::{
-    anyhow::{self},
+    anyhow::{self, bail},
     bitcoin::secp256k1::{All, Secp256k1},
     key_derivation::KeyDerivationDifficulty,
     rand_core::CryptoRngCore,
@@ -185,7 +185,7 @@ pub(crate) fn ask_create_multisig_inputs(
             let parsed = parsed.and_then(|input| {
                     let descriptors_added = result.merge(input)?;
                     if descriptors_added != 1 {
-                        anyhow::bail!("Expected to read one new descriptor but got {descriptors_added} new descriptors, perhaps a duplicated file was selected?")
+                        bail!("Expected to read one new descriptor but got {descriptors_added} new descriptors, perhaps a duplicated file was selected?")
                     }
                     Ok(())
                 });
@@ -194,7 +194,7 @@ pub(crate) fn ask_create_multisig_inputs(
                 Err(e) => {
                     eprintln!("{e:?}");
                     if !ask_try_open_again_multisig_parse_multisig_input(theme, term)? {
-                        anyhow::bail!("You need valid encrypted singlesig wallets or a json with the public keys to create a multisig")
+                        bail!("You need valid encrypted singlesig wallets or a json with the public keys to create a multisig")
                     }
                 }
             }

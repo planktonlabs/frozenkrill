@@ -17,7 +17,7 @@ use crate::{
             ask_for_keyfiles_generate, ask_network, ask_wallet_file_type, get_ask_difficulty,
             ValidateOutputFile,
         },
-        reencode::SinglesigCoreReencode,
+        reencode::SinglesigCoreReencodeArgs,
     },
     handle_output_path, InternetChecker,
 };
@@ -38,7 +38,7 @@ pub(super) fn singlesig_reencode(
     let difficulty = get_ask_difficulty(theme, term, None)?;
     let network = ask_network(theme, term)?;
     let script_type = frozenkrill_core::wallet_description::ScriptType::SegwitNative;
-    let args = SinglesigCoreReencode {
+    let args = SinglesigCoreReencodeArgs {
         password: None,
         output_file_path,
         keyfiles,

@@ -1,6 +1,6 @@
 use std::{collections::HashSet, path::PathBuf, sync::Arc};
 
-use anyhow::Context;
+use anyhow::{bail, ensure, Context};
 use bip39::Mnemonic;
 use bitcoin::{
     bip32::{DerivationPath, Fingerprint},
@@ -10,7 +10,7 @@ use compression::compress;
 use encryption::default_encrypt;
 use itertools::Itertools;
 use log::debug;
-use miniscript::DescriptorPublicKey;
+use miniscript::{Descriptor, DescriptorPublicKey};
 use rand_core::CryptoRngCore;
 use secp256k1::{All, Secp256k1};
 use secrecy::{ExposeSecret, Secret, SecretString, SecretVec};
@@ -251,6 +251,46 @@ pub fn generate_encrypted_encoded_singlesig_wallet_compact(
         .context("failure encoding encrypted wallet")
 }
 
+pub fn ms_dpks_to_ddpk(
+    descriptors: HashSet<DescriptorPublicKey>,
+    configuration: &MultisigType,
+    script_type: ScriptType,
+) -> anyhow::Result<Descriptor<DescriptorPublicKey>> {
+    match script_type {
+        ScriptType::SegwitNative => Ok(miniscript::Descriptor::new_wsh_sortedmulti(
+            configuration.required.try_into()?,
+            descriptors.into_iter().sorted_by(Ord::cmp).collect(),
+        )?),
+    }
+}
+
+pub fn ms_ddpk_to_dpks(
+    descriptors: &Descriptor<DescriptorPublicKey>,
+    configuration: &MultisigType,
+    script_type: &ScriptType,
+) -> anyhow::Result<HashSet<DescriptorPublicKey>> {
+    match script_type {
+        ScriptType::SegwitNative => match descriptors {
+            Descriptor::Wsh(d) => match d.as_inner() {
+                miniscript::descriptor::WshInner::SortedMulti(dpks) => {
+                    let k = dpks.k();
+                    let required = usize::try_from(configuration.required)?;
+                    ensure!(
+                        k == required,
+                        "expected required keys to be {required} but got {k}"
+                    );
+                    let n = dpks.n();
+                    let total = usize::try_from(configuration.total)?;
+                    ensure!(n == total, "expected total keys to be {total} but got {n}");
+                    Ok(dpks.pks().iter().cloned().collect())
+                }
+                _other => bail!("Expected sorted multi Wsh, got {descriptors:?}"),
+            },
+            other => bail!("Expected Wsh script type, got {other:?}"),
+        },
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 pub fn generate_encrypted_encoded_multisig_wallet(
     configuration: MultisigType,
@@ -266,33 +306,11 @@ pub fn generate_encrypted_encoded_multisig_wallet(
     encrypted_wallet_version: EncryptedWalletVersion,
     secp: &Secp256k1<All>,
 ) -> anyhow::Result<Vec<u8>> {
-    let receiving_descriptor = match script_type {
-        ScriptType::SegwitNative => miniscript::Descriptor::new_wsh_sortedmulti(
-            configuration.required.try_into()?,
-            inputs
-                .receiving_descriptors
-                .into_iter()
-                .sorted_by(Ord::cmp)
-                .collect(),
-        )?,
-    };
-    let change_descriptor = match script_type {
-        ScriptType::SegwitNative => miniscript::Descriptor::new_wsh_sortedmulti(
-            configuration.required.try_into()?,
-            inputs
-                .change_descriptors
-                .into_iter()
-                .sorted_by(Ord::cmp)
-                .collect(),
-        )?,
-    };
     let serialized = match encrypted_wallet_version {
         EncryptedWalletVersion::V0Standard => {
             debug!("Creating standard wallet");
-            let wallet_description = MultiSigWalletDescriptionV0::generate(
-                inputs.signers,
-                receiving_descriptor,
-                change_descriptor,
+            let wallet_description = MultiSigWalletDescriptionV0::generate_from_dpks(
+                inputs,
                 configuration,
                 network,
                 script_type,
@@ -312,8 +330,8 @@ pub fn generate_encrypted_encoded_multisig_wallet(
             debug!("Creating compact wallet");
             let wallet = MultiSigCompactWalletDescriptionV0::new(
                 configuration,
-                receiving_descriptor,
-                change_descriptor,
+                inputs.receiving_descriptors,
+                inputs.change_descriptors,
             )?;
             compress(&wallet.serialize()?).context("failure compressing compact wallet")?
         }

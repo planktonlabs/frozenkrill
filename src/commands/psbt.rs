@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use dialoguer::{console::Term, theme::Theme};
 use frozenkrill_core::{
-    anyhow,
+    anyhow::{self, bail},
     bitcoin::{
         secp256k1::{All, Secp256k1},
         Address, Network, Psbt,
@@ -56,7 +56,7 @@ pub(super) fn sign_core(
     validated_input_psbt_sign(&psbt)?;
     let partial_sigs_count_before: usize = psbt.inputs.iter().map(|i| i.partial_sigs.len()).sum();
     if wallet.sign_psbt(&mut psbt, secp)? == 0 {
-        anyhow::bail!(
+        bail!(
             "This PSBT file has not input matching our fingerprints {}",
             wallet.get_pub_fingerprints().iter().join(" ")
         )

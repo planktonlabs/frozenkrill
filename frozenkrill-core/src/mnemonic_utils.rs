@@ -1,4 +1,4 @@
-use anyhow::Context;
+use anyhow::{bail, Context};
 use bitcoin::bip158::{BitStreamReader, BitStreamWriter};
 use rand_core::CryptoRngCore;
 use sha2::{Digest, Sha256};
@@ -20,7 +20,7 @@ pub fn complete_words_with_checksum(
             mnemonic.push(idx);
             writer.write(idx as u64, 11)?;
         } else {
-            anyhow::bail!("Mnemonic contains an unknown word")
+            bail!("Mnemonic contains an unknown word")
         }
     }
     if words.len() == 11 {

@@ -6,7 +6,7 @@ use std::{
     str::FromStr,
 };
 
-use anyhow::Context;
+use anyhow::{bail, Context};
 use secrecy::{ExposeSecret, Secret, SecretString, SecretVec};
 
 use crate::wallet_description::{KEY_SIZE, SALT_SIZE};
@@ -42,7 +42,7 @@ impl FromStr for KeyDerivationDifficulty {
             "normal" => Ok(Self::Normal),
             "hard" => Ok(Self::Hard),
             "veryhard" => Ok(Self::VeryHard),
-            other => anyhow::bail!(
+            other => bail!(
                 "Invalid difficulty: {other}, valid options are: easy, normal, hard, veryhard"
             ),
         }

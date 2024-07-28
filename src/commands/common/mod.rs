@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use base32::Alphabet;
 use dialoguer::{console::Term, theme::Theme};
 use frozenkrill_core::{
-    anyhow::{self, Context},
+    anyhow::{self, bail, Context},
     bitcoin::secp256k1::{All, Secp256k1},
     blake3,
     log::{self, debug},
@@ -177,7 +177,7 @@ pub(crate) fn calculate_non_duress_output(
             .into_owned(),
         ),
         (true, None, None) => {
-            anyhow::bail!("If duress wallet is enabled a public json must be specified")
+            bail!("If duress wallet is enabled a public json must be specified")
         }
         (false, None, _) => None,
     };
@@ -204,7 +204,7 @@ pub fn try_open_as_json_input(file: &Path) -> anyhow::Result<PublicInfoInput> {
                 let _v = SinglesigJsonWalletPublicExportV0::from_path(file)?;
                 let message = "Using a singlesig json pub export isn't supported right now";
                 debug!("{message}");
-                anyhow::bail!("{message}")
+                bail!("{message}")
             }
             (
                 Some(wallet_description::ZERO_MULTISIG_WALLET_VERSION),
@@ -217,7 +217,7 @@ pub fn try_open_as_json_input(file: &Path) -> anyhow::Result<PublicInfoInput> {
             _ => {
                 let message = format!("Unrecognized json file {file:?}");
                 debug!("{message}");
-                anyhow::bail!("{message}")
+                bail!("{message}")
             }
         },
         Err(e) => Err(e),

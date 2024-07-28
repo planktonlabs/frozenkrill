@@ -2,7 +2,7 @@ use std::{fs, path::PathBuf, sync::Arc};
 
 use dialoguer::{console::Term, theme::Theme};
 use frozenkrill_core::{
-    anyhow,
+    anyhow::{self, bail},
     bitcoin::{
         psbt::Psbt,
         secp256k1::{All, Secp256k1},
@@ -88,7 +88,7 @@ fn ask_psbt_input_file(theme: &dyn Theme, term: &Term) -> anyhow::Result<(PathBu
         eprintln!(
             "You can't pick a PSBT file because there are no .psbt files in current directory"
         );
-        anyhow::bail!("Copy some .psbt file to current directory or change the current directory so you can load the PSBT");
+        bail!("Copy some .psbt file to current directory or change the current directory so you can load the PSBT");
     }
     loop {
         let file = dialoguer::Select::with_theme(theme)
@@ -106,7 +106,7 @@ fn ask_psbt_input_file(theme: &dyn Theme, term: &Term) -> anyhow::Result<(PathBu
                     .default(true)
                     .interact_on(term)?
                 {
-                    anyhow::bail!("No valid PSBT file selected");
+                    bail!("No valid PSBT file selected");
                 }
             }
         }
