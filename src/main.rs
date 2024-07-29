@@ -790,7 +790,7 @@ fn process(cli: Cli, theme: Box<dyn Theme>, term: &Term) -> Result<(), anyhow::E
                     &mut secp,
                     &mut rng,
                     ic,
-                    wallet,
+                    &wallet,
                     core_args,
                 )?;
             }

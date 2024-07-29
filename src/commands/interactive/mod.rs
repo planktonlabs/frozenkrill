@@ -130,9 +130,15 @@ pub(crate) fn interactive(
             args.enable_duress_wallet,
             password,
         )?,
-        MainActions::OpenMultisig => {
-            multisig_interactive_open(theme, term, secp, ic, keyfiles, args.difficulty.to_owned())?
-        }
+        MainActions::OpenMultisig => multisig_interactive_open(
+            theme,
+            term,
+            secp,
+            rng,
+            ic,
+            keyfiles,
+            args.difficulty.to_owned(),
+        )?,
     };
     Ok(())
 }

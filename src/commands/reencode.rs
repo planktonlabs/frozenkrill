@@ -212,7 +212,7 @@ pub(crate) fn multisig_core_reencode(
     secp: &mut Secp256k1<All>,
     mut rng: &mut impl CryptoRngCore,
     ic: impl InternetChecker,
-    wallet: MultiSigWalletDescriptionV0,
+    wallet: &MultiSigWalletDescriptionV0,
     args: MultisigCoreReencodeArgs,
 ) -> anyhow::Result<()> {
     warn_difficulty_level(&args.difficulty);
@@ -230,7 +230,7 @@ pub(crate) fn multisig_core_reencode(
     let padder = get_padder(&mut rng, &args.padding_params)?;
     let encrypted_wallet = frozenkrill_core::generate_encrypted_encoded_multisig_wallet(
         wallet.configuration,
-        wallet.inputs,
+        wallet.inputs.clone(),
         &key,
         header_key,
         salt,
