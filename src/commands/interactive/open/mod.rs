@@ -169,6 +169,7 @@ pub(super) fn multisig_interactive_open(
     theme: &dyn Theme,
     term: &Term,
     secp: &mut Secp256k1<All>,
+    rng: &mut impl CryptoRngCore,
     mut ic: impl InternetChecker,
     keyfiles: Vec<PathBuf>,
     difficulty: Option<KeyDerivationDifficulty>,
@@ -222,7 +223,15 @@ pub(super) fn multisig_interactive_open(
                 }
             }
             Some(InteractiveOpenActions::Reencode) => {
-                unimplemented!("Reencode for multisig is not implemented yet")
+                reencode::multisig_reencode(
+                    theme,
+                    term,
+                    secp,
+                    rng,
+                    ic.clone(),
+                    &wallet,
+                    &input_file_path,
+                )?;
             }
             None => break,
         };
