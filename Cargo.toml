@@ -7,7 +7,7 @@ edition = "2021"
 members = ["frozenkrill-core"]
 
 [dependencies]
-base32 = "0.4"
+base32 = "0.5"
 clap = { version = "4", features = ["derive", "env"] }
 const_format = "0.2"
 current_platform = "0.2"
@@ -16,12 +16,12 @@ dialoguer = { git = "https://github.com/galtland/dialoguer", branch = "master", 
 ] }
 frozenkrill-core = { path = "./frozenkrill-core" }
 indicatif = "0.17"
-mockall = "0.11"
+mockall = "0.13"
 path-absolutize = "3"
 qr2term = "0.3"
 serde = { version = "1", features = ["derive"] }
 termimad = "0.26"
-zxcvbn = "2"
+zxcvbn = "3"
 rexpect = { git = "https://github.com/galtland/rexpect", branch = "verbose", optional = true }
 
 [features]
