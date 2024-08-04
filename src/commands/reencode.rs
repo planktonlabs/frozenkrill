@@ -4,7 +4,6 @@ use std::{
 };
 
 use dialoguer::{console::Term, theme::Theme};
-use frozenkrill_core::random_generation_utils::*;
 use frozenkrill_core::{
     anyhow::{self, Context},
     bitcoin::{
@@ -24,14 +23,16 @@ use frozenkrill_core::{
     },
     PaddingParams,
 };
+use frozenkrill_core::{key_derivation::default_derive_key, random_generation_utils::*};
 
 use crate::{
     commands::{
         common::CONTEXT_CORRUPTION_WARNING,
         generate::{core::generate_ask_password, inform_custom_generate_params},
     },
-    handle_output_path, ui_derive_key, warn_difficulty_level, InternetChecker, MultisigOpenArgs,
-    MultisigReencodeArgs, SinglesigOpenArgs, SinglesigReencodeArgs,
+    get_derivation_key_spinner, handle_output_path, ui_derive_key, warn_difficulty_level,
+    InternetChecker, MultisigOpenArgs, MultisigReencodeArgs, SinglesigOpenArgs,
+    SinglesigReencodeArgs,
 };
 
 use super::common::from_input_to_reencoded;
@@ -131,9 +132,17 @@ pub(crate) fn singlesig_core_reencode(
         .with_context(|| format!("failure saving encrypted wallet to {output_file_path:?}"))?;
     log::info!("Wallet saved to {output_file_path:?}");
     secp.randomize(&mut rng);
-    // If no public info will be exported right now, then we can just check using the existing key because additional commands will be required to export the public info later
-    // So we are delaying the key derivation to the future
     let encrypted_wallet = read_decode_wallet(output_file_path)?;
+    log::info!("Will derive the key again to double check against bit flips...");
+    let pb = get_derivation_key_spinner();
+    let key = default_derive_key(
+        &password,
+        &args.keyfiles,
+        &encrypted_wallet.salt,
+        &args.difficulty,
+    )
+    .context("failure trying to derive the same key again")?;
+    pb.finish_using_style();
     let read_json_wallet_description = encrypted_wallet
         .decrypt_singlesig(&key, seed_password, secp)
         .context(CONTEXT_CORRUPTION_WARNING)?;
@@ -150,7 +159,6 @@ pub(crate) fn singlesig_core_reencode(
     .context("failure checking generated wallet")?;
     inform_custom_generate_params(&args.keyfiles, &args.difficulty, false);
     log::info!("Finished successfully!");
-    log::info!("Now run again with the other commands to retrieve the receiving addresses and/or public keys");
     Ok(())
 }
 
@@ -250,9 +258,17 @@ pub(crate) fn multisig_core_reencode(
     log::info!("Wallet saved to {output_file_path_encrypted:?}");
     secp.randomize(&mut rng);
 
-    // If no public info will be exported right now, then we can just check using the existing key because additional commands will be required to export the public info later
-    // So we are delaying the key derivation to the future
     let read_encrypted_wallet = read_decode_wallet(output_file_path_encrypted)?;
+    log::info!("Will derive the key again to double check against bit flips...");
+    let pb = get_derivation_key_spinner();
+    let key = default_derive_key(
+        &password,
+        &args.keyfiles,
+        &read_encrypted_wallet.salt,
+        &args.difficulty,
+    )
+    .context("failure trying to derive the same key again")?;
+    pb.finish_using_style();
     let read_json_wallet_description = read_encrypted_wallet
         .decrypt_multisig(&key, secp)
         .context(CONTEXT_CORRUPTION_WARNING)?;
@@ -280,6 +296,5 @@ pub(crate) fn multisig_core_reencode(
     .context("failure checking generated wallet")?;
     inform_custom_generate_params(&args.keyfiles, &args.difficulty, false);
     log::info!("Finished successfully!");
-    log::info!("Now run again with the other commands to retrieve the receiving addresses and/or public keys");
     Ok(())
 }
