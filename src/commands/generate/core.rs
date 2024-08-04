@@ -354,8 +354,8 @@ pub(crate) fn generate_ask_password(
     log::info!("Enter a new password to encrypt the wallet:");
     loop {
         let password = Arc::new(ask_password(theme, term)?);
-        let password_strength = zxcvbn::zxcvbn(password.expose_secret(), &[])?;
-        if password_strength.score() < 3 {
+        let password_strength = zxcvbn::zxcvbn(password.expose_secret(), &[]);
+        if password_strength.score() < zxcvbn::Score::Three {
             if let Some(feedback) = password_strength.feedback() {
                 for suggestion in feedback.suggestions() {
                     log::info!("Suggestion: {suggestion}");
