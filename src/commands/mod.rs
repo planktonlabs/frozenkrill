@@ -245,10 +245,10 @@ mod tests {
             EncryptedWalletVersion::V0Standard,
             EncryptedWalletVersion::V0CompactTestnet,
         ] {
-            let output_file_path_encrypted = tempdir.path().join(&format!(
+            let output_file_path_encrypted = tempdir.path().join(format!(
                 "output_file_path_encrypted_{encrypted_wallet_version:?}"
             ));
-            let output_file_path_json = tempdir.path().join(&format!(
+            let output_file_path_json = tempdir.path().join(format!(
                 "output_file_path_json_{encrypted_wallet_version:?}"
             ));
             let receiving_descriptors = signers
@@ -413,10 +413,10 @@ mod tests {
             EncryptedWalletVersion::V0Standard,
             EncryptedWalletVersion::V0CompactTestnet,
         ] {
-            let output_file_path_encrypted = tempdir.path().join(&format!(
+            let output_file_path_encrypted = tempdir.path().join(format!(
                 "output_file_path_encrypted_{encrypted_wallet_version:?}"
             ));
-            let output_file_path_json = tempdir.path().join(&format!(
+            let output_file_path_json = tempdir.path().join(format!(
                 "output_file_path_json_{encrypted_wallet_version:?}"
             ));
             let args = MultisigCoreGenerateArgs {

@@ -112,6 +112,8 @@ pub trait PsbtExt {
         C: Signing,
         T: Borrow<Transaction>,
         K: GetKey;
+        
+    #[allow(clippy::result_large_err)]
     fn internal_extract_tx_with_fee_rate_limit(
         self,
         max_fee_rate: FeeRate,

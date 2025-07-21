@@ -4,7 +4,7 @@ use env_logger::{
 };
 use log::Level;
 
-/// Custom pretty env logger
+// Custom pretty env logger
 
 /// Initializes the global logger with a pretty env logger.
 ///
