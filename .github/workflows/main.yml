@@ -16,6 +16,13 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+      - name: Install Nix
+        uses: cachix/install-nix-action@v24
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+      - name: Setup Magic Nix Cache
+        uses: DeterminateSystems/magic-nix-cache-action@main
       - name: rustup update
         run: rustup update
       - name: Show cargo version
@@ -38,12 +45,12 @@ jobs:
       - name: Test x86_64-unknown-linux-gnu including cli
         run: |
           cargo test --target=x86_64-unknown-linux-gnu --release --frozen --workspace --features cli_tests -- --nocapture --test-threads 1
-      - name: Build x86_64-unknown-linux-musl
+      - name: Build x86_64-unknown-linux-musl using Nix
         run: |
-          cargo clean && cross build --target=x86_64-unknown-linux-musl --release --frozen
-      - name: Test x86_64-unknown-linux-musl including cli
+          cargo clean && nix develop -c cargo build --target=x86_64-unknown-linux-musl --release --frozen
+      - name: Test x86_64-unknown-linux-musl using Nix
         run: |
-          cross test --target=x86_64-unknown-linux-musl --release --frozen --workspace --features cli_tests -- --nocapture --test-threads 1
+          nix develop -c cargo test --target=x86_64-unknown-linux-musl --release --frozen --workspace --features cli_tests -- --nocapture --test-threads 1
       - name: Build armv7-unknown-linux-musleabihf
         if: ${{ github.event.pull_request }} # only required to detect big issues, not required on merge queue etc
         run: |
