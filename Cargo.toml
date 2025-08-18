@@ -2,6 +2,7 @@
 name = "frozenkrill"
 version = "0.0.0"
 edition = "2021"
+license = "MIT"
 
 [workspace]
 members = ["frozenkrill-core"]
@@ -30,7 +31,7 @@ cli_tests = ["rexpect"]
 
 [dev-dependencies]
 pretty_assertions = "1"
-tempdir = "0.3"
+tempfile = "3.20"
 
 [profile.release]
 strip = true

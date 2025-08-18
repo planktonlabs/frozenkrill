@@ -77,7 +77,7 @@ mod tests {
         let mut secp = get_secp(&mut rng);
         let network = Network::Bitcoin;
         let difficulty = KeyDerivationDifficulty::Easy;
-        let tempdir = tempdir::TempDir::new("test-singlesig")?;
+        let tempdir = tempfile::tempdir()?;
         let output_file_path = tempdir.path().join("output_file_path");
         let public_info_json_output = tempdir.path().join("public_info_json_output");
         let keyfile1 = tempdir.path().join("keyfile1");
@@ -187,7 +187,7 @@ mod tests {
         let network = Network::Testnet;
         let script_type = ScriptType::SegwitNative;
         let difficulty = KeyDerivationDifficulty::Easy;
-        let tempdir = tempdir::TempDir::new("test-multisig")?;
+        let tempdir = tempfile::tempdir()?;
         let keyfile1 = tempdir.path().join("keyfile1");
         create_file("stuff".as_bytes(), keyfile1.as_path())?;
         let keyfiles = vec![keyfile1];
@@ -384,7 +384,7 @@ mod tests {
         let network = Network::Testnet;
         let script_type = ScriptType::SegwitNative;
         let difficulty = KeyDerivationDifficulty::Easy;
-        let tempdir = tempdir::TempDir::new("test-public-keys-multisig")?;
+        let tempdir = tempfile::tempdir()?;
         let keyfile1 = tempdir.path().join("keyfile1");
         create_file("stuff".as_bytes(), keyfile1.as_path())?;
         let keyfiles = vec![keyfile1];

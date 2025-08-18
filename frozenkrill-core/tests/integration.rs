@@ -19,10 +19,10 @@ use frozenkrill_core::{
 use miniscript::DescriptorPublicKey;
 use rand_core::RngCore;
 use secrecy::{ExposeSecret, Secret, SecretString};
-use tempdir::TempDir;
+use tempfile::TempDir;
 
 fn create_keyfiles_directory() -> anyhow::Result<TempDir> {
-    let tempdir = tempdir::TempDir::new("integration-test")?;
+    let tempdir = tempfile::tempdir()?;
     let i: u32 = rand::random();
     let keyfile1 = tempdir.path().join(format!("namedoesntmatter{i}"));
     let i: u32 = rand::random();

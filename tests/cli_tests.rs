@@ -54,7 +54,7 @@ fn test_generate_open_singlesig() -> anyhow::Result<()> {
     use pretty_assertions::{assert_eq, assert_ne};
 
     for wallet_type in ["standard", "compact"] {
-        let temp = tempdir::TempDir::new(&format!("cli-generate-singlesig-{wallet_type}"))?;
+        let temp = tempfile::tempdir()?;
         let keyfile1 = temp.path().join("keyfile1");
         create_file("keyfile1".as_bytes(), &keyfile1)?;
         let wallet_path = temp.path().join("mywallet");
@@ -213,7 +213,7 @@ fn test_batch_generate_open_multisig() -> anyhow::Result<()> {
 
     for wallet_type in ["standard", "compact"] {
         let temp =
-            tempdir::TempDir::new(&format!("cli-batch-generate-open-multisig-{wallet_type}"))?;
+            tempfile::tempdir()?;
         let wallet_path_prefix = temp.path().join("mywallet");
         let mypassword = "Super11Ultra&SAASD*()";
         let mynonduresspassword = "seedpass";
@@ -466,7 +466,7 @@ fn test_batch_generate_open_multisig() -> anyhow::Result<()> {
 fn test_batch_generate_open_multisig_pub_json_descriptors() -> anyhow::Result<()> {
     use pretty_assertions::assert_eq;
 
-    let temp = tempdir::TempDir::new("cli-batch-generate-open-multisig-pub-json-descriptors")?;
+    let temp = tempfile::tempdir()?;
     let wallet_path_prefix = temp.path().join("mywallet");
     let mypassword = "Super11Ultra&SAASD*()";
     let mynonduresspassword = "seedpass";
