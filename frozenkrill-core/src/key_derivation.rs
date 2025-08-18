@@ -278,7 +278,7 @@ mod tests {
     #[test]
     fn generate_password_with_keyfiles_test() -> anyhow::Result<()> {
         // very simple test for quick regression discover. more tests are present as integration tests
-        let tempdir = tempdir::TempDir::new("keyfiles-test")?;
+        let tempdir = tempfile::tempdir()?;
         let password = "abc123";
         let keyfile = tempdir
             .path()

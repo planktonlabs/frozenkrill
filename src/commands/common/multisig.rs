@@ -414,7 +414,7 @@ mod tests {
     #[test]
     fn test_parse_multisig_inputs() -> anyhow::Result<()> {
         use pretty_assertions::assert_eq;
-        let tempdir = tempdir::TempDir::new("test-parse-multisig-inputs")?;
+        let tempdir = tempfile::tempdir()?;
         let mut rng = rand::thread_rng();
         let secp = get_secp(&mut rng);
         let (term, theme) = get_term_theme(true);
