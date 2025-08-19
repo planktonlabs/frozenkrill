@@ -23,11 +23,11 @@ qr2term = "0.3"
 serde = { version = "1", features = ["derive"] }
 termimad = "0.26"
 zxcvbn = "3"
-rexpect = { git = "https://github.com/galtland/rexpect", branch = "verbose", optional = true }
+expectrl = { version = "0.7", optional = true }
 
 [features]
 default = []
-cli_tests = ["rexpect"]
+cli_tests = ["expectrl"]
 
 [dev-dependencies]
 pretty_assertions = "1"
