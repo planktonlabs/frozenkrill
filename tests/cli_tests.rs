@@ -1,5 +1,5 @@
 #[cfg(feature = "cli_tests")]
-use std::{fs, io::Write, process::Command};
+use std::{fs, time::Duration};
 
 #[cfg(feature = "cli_tests")]
 use frozenkrill_core::{
@@ -9,42 +9,42 @@ use frozenkrill_core::{
 };
 
 #[cfg(feature = "cli_tests")]
-use rexpect::session::{spawn_command, PtySession};
+use expectrl::{spawn, Eof, Session};
 
 #[cfg(feature = "cli_tests")]
-fn run_cli(args: &[&str]) -> anyhow::Result<PtySession> {
-    let cmd = {
-        let mut c = Command::new("cargo");
-        c.args([
-            "run",
-            "--release",
-            "--target",
-            current_platform::CURRENT_PLATFORM,
-            "--",
-        ]);
-        c.args(args);
-        c
-    };
+fn run_cli(args: &[&str]) -> anyhow::Result<Session> {
+    let mut cmd_args = vec![
+        "cargo",
+        "run",
+        "--release",
+        "--target",
+        current_platform::CURRENT_PLATFORM,
+        "--",
+    ];
+    cmd_args.extend(args);
+
+    let cmd_str = cmd_args.join(" ");
     log::info!("Running with args: {args:?}");
-    Ok(spawn_command(cmd, Some(600_000))?)
+    let mut session = spawn(&cmd_str)?;
+    session.set_expect_timeout(Some(Duration::from_secs(600)));
+    Ok(session)
 }
 
 #[cfg(feature = "cli_tests")]
-fn dialoguer_up_enter(p: &mut PtySession) -> anyhow::Result<()> {
+fn dialoguer_up_enter(p: &mut Session) -> anyhow::Result<()> {
     send_line(p, "k")?;
     Ok(())
 }
 
 #[cfg(feature = "cli_tests")]
-fn send(p: &mut PtySession, s: &str) -> anyhow::Result<()> {
-    p.writer.write_all(s.as_bytes())?;
-    p.flush()?;
+fn send(p: &mut Session, s: &str) -> anyhow::Result<()> {
+    p.send(s)?;
     Ok(())
 }
 
 #[cfg(feature = "cli_tests")]
-fn send_line(p: &mut PtySession, s: &str) -> anyhow::Result<()> {
-    send(p, &format!("{s}\n"))?;
+fn send_line(p: &mut Session, s: &str) -> anyhow::Result<()> {
+    p.send_line(s)?;
     Ok(())
 }
 
@@ -77,21 +77,21 @@ fn test_generate_open_singlesig() -> anyhow::Result<()> {
             wallet_path.display().to_string().as_str(),
             public_info_path.display().to_string().as_str(),
         ])?;
-        s.exp_string("Password:")?;
+        s.expect("Password:")?;
         send_line(&mut s, mypassword)?;
-        s.exp_string("Confirm password:")?;
+        s.expect("Confirm password:")?;
         send_line(&mut s, mypassword)?;
-        s.exp_string("Enter a non duress seed password")?;
+        s.expect("Enter a non duress seed password")?;
         send_line(&mut s, mynonduresspassword)?;
-        s.exp_string("Confirm password:")?;
+        s.expect("Confirm password:")?;
         send_line(&mut s, mynonduresspassword)?;
-        s.exp_string("Wallet saved to")?;
-        s.exp_string("Enter the non duress seed password again")?;
+        s.expect("Wallet saved to")?;
+        s.expect("Enter the non duress seed password again")?;
         send_line(&mut s, mynonduresspassword)?;
-        s.exp_string("Exported public info to")?;
-        s.exp_string("Exported non duress public info to")?;
-        s.exp_string("Finished successfully!")?;
-        s.exp_eof()?;
+        s.expect("Exported public info to")?;
+        s.expect("Exported non duress public info to")?;
+        s.expect("Finished successfully!")?;
+        s.expect(Eof)?;
         assert!(wallet_path.exists());
         assert!(public_info_path.exists());
         assert!(nonduress_public_info_path.exists());
@@ -118,17 +118,17 @@ fn test_generate_open_singlesig() -> anyhow::Result<()> {
             public_info_path2.display().to_string().as_str(),
             nonduress_public_info_path2.display().to_string().as_str(),
         ])?;
-        s.exp_string("Password:")?;
+        s.expect("Password:")?;
         send_line(&mut s, mypassword)?;
-        s.exp_string("Confirm password:")?;
+        s.expect("Confirm password:")?;
         send_line(&mut s, mypassword)?;
-        s.exp_string("Enter a non duress seed password")?;
+        s.expect("Enter a non duress seed password")?;
         send_line(&mut s, mynonduresspassword)?;
-        s.exp_string("Confirm password:")?;
+        s.expect("Confirm password:")?;
         send_line(&mut s, mynonduresspassword)?;
-        s.exp_string("Enter the non duress seed password again")?;
+        s.expect("Enter the non duress seed password again")?;
         send_line(&mut s, mynonduresspassword)?;
-        s.exp_eof()?;
+        s.expect(Eof)?;
         assert!(public_info_path2.exists());
         assert!(nonduress_public_info_path2.exists());
         let info2 = SinglesigJsonWalletPublicExportV0::from_path(&public_info_path2)?;
@@ -164,18 +164,18 @@ fn test_generate_open_singlesig() -> anyhow::Result<()> {
             wallet_reencoded_path.display().to_string().as_str(),
         ])?;
 
-        s.exp_string("Password:")?;
+        s.expect("Password:")?;
         send_line(&mut s, mypassword)?;
-        s.exp_string("Confirm password:")?;
+        s.expect("Confirm password:")?;
         send_line(&mut s, mypassword)?;
 
-        s.exp_string("Enter a new password to encrypt the wallet")?;
-        s.exp_string("Password:")?;
+        s.expect("Enter a new password to encrypt the wallet")?;
+        s.expect("Password:")?;
         send_line(&mut s, mypassword_reencoded)?;
-        s.exp_string("Confirm password:")?;
+        s.expect("Confirm password:")?;
         send_line(&mut s, mypassword_reencoded)?;
-        s.exp_string("Wallet saved to")?;
-        s.exp_eof()?;
+        s.expect("Wallet saved to")?;
+        s.expect(Eof)?;
         assert!(wallet_reencoded_path.exists());
 
         let mut s = run_cli(&[
@@ -190,11 +190,11 @@ fn test_generate_open_singlesig() -> anyhow::Result<()> {
             "export-public-info",
             public_info_path_reencoded.display().to_string().as_str(),
         ])?;
-        s.exp_string("Password:")?;
+        s.expect("Password:")?;
         send_line(&mut s, mypassword_reencoded)?;
-        s.exp_string("Confirm password:")?;
+        s.expect("Confirm password:")?;
         send_line(&mut s, mypassword_reencoded)?;
-        s.exp_eof()?;
+        s.expect(Eof)?;
         assert!(public_info_path_reencoded.exists());
         let public_info_reencoded =
             SinglesigJsonWalletPublicExportV0::from_path(&public_info_path_reencoded)?;
@@ -212,8 +212,7 @@ fn test_batch_generate_open_multisig() -> anyhow::Result<()> {
     use pretty_assertions::assert_eq;
 
     for wallet_type in ["standard", "compact"] {
-        let temp =
-            tempfile::tempdir()?;
+        let temp = tempfile::tempdir()?;
         let wallet_path_prefix = temp.path().join("mywallet");
         let mypassword = "Super11Ultra&SAASD*()";
         let mynonduresspassword = "seedpass";
@@ -232,21 +231,21 @@ fn test_batch_generate_open_multisig() -> anyhow::Result<()> {
             "3",
             wallet_path_prefix.display().to_string().as_str(),
         ])?;
-        s.exp_string("Do you want to pick one or more keyfiles?")?;
+        s.expect("Do you want to pick one or more keyfiles?")?;
         send(&mut s, "n")?;
-        s.exp_string("Continue without a keyfile?")?;
+        s.expect("Continue without a keyfile?")?;
         send(&mut s, "y")?;
-        s.exp_string("Password:")?;
+        s.expect("Password:")?;
         send_line(&mut s, mypassword)?;
-        s.exp_string("Confirm password:")?;
+        s.expect("Confirm password:")?;
         send_line(&mut s, mypassword)?;
-        s.exp_string("Enter a non duress seed password")?;
+        s.expect("Enter a non duress seed password")?;
         send_line(&mut s, mynonduresspassword)?;
-        s.exp_string("Confirm password:")?;
+        s.expect("Confirm password:")?;
         send_line(&mut s, mynonduresspassword)?;
-        s.exp_string("Enter the non duress seed password again")?;
+        s.expect("Enter the non duress seed password again")?;
         send_line(&mut s, mynonduresspassword)?;
-        s.exp_eof()?;
+        s.expect(Eof)?;
         let wallets = fs::read_dir(temp.path())?
             .collect::<Result<Vec<_>, _>>()?
             .into_iter()
@@ -283,42 +282,42 @@ fn test_batch_generate_open_multisig() -> anyhow::Result<()> {
         ])?;
         // try once with wrong password
         println!("---> Trying with wrong password on first wallet");
-        s.exp_string("Have you used a keyfile when generating this wallet?")?;
+        s.expect("Have you used a keyfile when generating this wallet?")?;
         send(&mut s, "n")?;
-        s.exp_string("Select one (leave the default if unsure)")?;
+        s.expect("Select one (leave the default if unsure)")?;
         dialoguer_up_enter(&mut s)?;
-        s.exp_string("Password:")?;
+        s.expect("Password:")?;
         let wrongpassword = "wrongpassword";
         send_line(&mut s, wrongpassword)?;
-        s.exp_string("Confirm password:")?;
+        s.expect("Confirm password:")?;
         send_line(&mut s, wrongpassword)?;
-        s.exp_string("Enable duress feature for this wallet?")?;
+        s.expect("Enable duress feature for this wallet?")?;
         send(&mut s, "n")?;
-        s.exp_string("Got an error, try to open another file?")?;
+        s.expect("Got an error, try to open another file?")?;
         send(&mut s, "y")?;
         for i in 0..3 {
             println!("---> Opening singlesig wallet {i} for multisig generation");
-            s.exp_string("Have you used a keyfile when generating this wallet?")?;
+            s.expect("Have you used a keyfile when generating this wallet?")?;
             send(&mut s, "n")?;
-            s.exp_string("Select one (leave the default if unsure)")?;
+            s.expect("Select one (leave the default if unsure)")?;
             dialoguer_up_enter(&mut s)?;
-            s.exp_string("Password:")?;
+            s.expect("Password:")?;
             send_line(&mut s, mypassword)?;
-            s.exp_string("Confirm password:")?;
+            s.expect("Confirm password:")?;
             send_line(&mut s, mypassword)?;
-            s.exp_string("Enable duress feature for this wallet?")?;
+            s.expect("Enable duress feature for this wallet?")?;
             send(&mut s, "y")?;
-            s.exp_string("Enter a non duress seed password")?;
+            s.expect("Enter a non duress seed password")?;
             send_line(&mut s, mynonduresspassword)?;
-            s.exp_string("Confirm password:")?;
+            s.expect("Confirm password:")?;
             send_line(&mut s, mynonduresspassword)?;
         }
         let multisigpassword = "Super11Ultra!!!X";
-        s.exp_string("Password:")?;
+        s.expect("Password:")?;
         send_line(&mut s, multisigpassword)?;
-        s.exp_string("Confirm password:")?;
+        s.expect("Confirm password:")?;
         send_line(&mut s, multisigpassword)?;
-        s.exp_eof()?;
+        s.expect(Eof)?;
         assert!(multisig_path.exists());
         assert!(multisig_pub_path.exists());
         let info = MultisigJsonWalletPublicExportV0::from_path(&multisig_pub_path)?;
@@ -344,26 +343,26 @@ fn test_batch_generate_open_multisig() -> anyhow::Result<()> {
         ])?;
         for i in 0..3 {
             println!("---> Opening signer wallet {i} for multisig operation");
-            s.exp_string("Have you used a keyfile when generating this wallet?")?;
+            s.expect("Have you used a keyfile when generating this wallet?")?;
             send(&mut s, "n")?;
-            s.exp_string("Select one (leave the default if unsure)")?;
+            s.expect("Select one (leave the default if unsure)")?;
             dialoguer_up_enter(&mut s)?;
-            s.exp_string("Password:")?;
+            s.expect("Password:")?;
             send_line(&mut s, mypassword)?;
-            s.exp_string("Confirm password:")?;
+            s.expect("Confirm password:")?;
             send_line(&mut s, mypassword)?;
-            s.exp_string("Enable duress feature for this wallet?")?;
+            s.expect("Enable duress feature for this wallet?")?;
             send(&mut s, "y")?;
-            s.exp_string("Enter a non duress seed password")?;
+            s.expect("Enter a non duress seed password")?;
             send_line(&mut s, mynonduresspassword)?;
-            s.exp_string("Confirm password:")?;
+            s.expect("Confirm password:")?;
             send_line(&mut s, mynonduresspassword)?;
         }
-        s.exp_string("Password:")?;
+        s.expect("Password:")?;
         send_line(&mut s, multisigpassword)?;
-        s.exp_string("Confirm password:")?;
+        s.expect("Confirm password:")?;
         send_line(&mut s, multisigpassword)?;
-        s.exp_eof()?;
+        s.expect(Eof)?;
         assert!(multisig_pub_path2.exists());
         let multisig_pub_path3 = temp.path().join("multisigwalletpub3.json");
         println!("---> Opening pub json multisig wallet");
@@ -383,22 +382,22 @@ fn test_batch_generate_open_multisig() -> anyhow::Result<()> {
         ])?;
         for i in 0..3 {
             println!("---> Opening signer wallet {i} for multisig operation");
-            s.exp_string("Have you used a keyfile when generating this wallet?")?;
+            s.expect("Have you used a keyfile when generating this wallet?")?;
             send(&mut s, "n")?;
-            s.exp_string("Select one (leave the default if unsure)")?;
+            s.expect("Select one (leave the default if unsure)")?;
             dialoguer_up_enter(&mut s)?;
-            s.exp_string("Password:")?;
+            s.expect("Password:")?;
             send_line(&mut s, mypassword)?;
-            s.exp_string("Confirm password:")?;
+            s.expect("Confirm password:")?;
             send_line(&mut s, mypassword)?;
-            s.exp_string("Enable duress feature for this wallet?")?;
+            s.expect("Enable duress feature for this wallet?")?;
             send(&mut s, "y")?;
-            s.exp_string("Enter a non duress seed password")?;
+            s.expect("Enter a non duress seed password")?;
             send_line(&mut s, mynonduresspassword)?;
-            s.exp_string("Confirm password:")?;
+            s.expect("Confirm password:")?;
             send_line(&mut s, mynonduresspassword)?;
         }
-        s.exp_eof()?;
+        s.expect(Eof)?;
         assert!(multisig_pub_path3.exists());
         let info3 = MultisigJsonWalletPublicExportV0::from_path(&multisig_pub_path3)?;
         assert_eq!(info.to_string_pretty()?, info3.to_string_pretty()?);
@@ -424,17 +423,17 @@ fn test_batch_generate_open_multisig() -> anyhow::Result<()> {
             multisig_path_reencoded.display().to_string().as_str(),
         ])?;
 
-        s.exp_string("Password:")?;
+        s.expect("Password:")?;
         send_line(&mut s, multisigpassword)?;
-        s.exp_string("Confirm password:")?;
+        s.expect("Confirm password:")?;
         send_line(&mut s, multisigpassword)?;
 
-        s.exp_string("Enter a new password to encrypt the wallet")?;
-        s.exp_string("Password:")?;
+        s.expect("Enter a new password to encrypt the wallet")?;
+        s.expect("Password:")?;
         send_line(&mut s, multisigpassword_reencoded)?;
-        s.exp_string("Confirm password:")?;
+        s.expect("Confirm password:")?;
         send_line(&mut s, multisigpassword_reencoded)?;
-        s.exp_eof()?;
+        s.expect(Eof)?;
         assert!(multisig_path_reencoded.exists());
         let multisig_pub_path_reencoded = temp.path().join("multisigwalletpubreencoded.json");
         println!("---> Generating pub json for reencoded multisig wallet");
@@ -448,11 +447,11 @@ fn test_batch_generate_open_multisig() -> anyhow::Result<()> {
             "export-public-info",
             multisig_pub_path_reencoded.display().to_string().as_str(),
         ])?;
-        s.exp_string("Password:")?;
+        s.expect("Password:")?;
         send_line(&mut s, multisigpassword_reencoded)?;
-        s.exp_string("Confirm password:")?;
+        s.expect("Confirm password:")?;
         send_line(&mut s, multisigpassword_reencoded)?;
-        s.exp_eof()?;
+        s.expect(Eof)?;
         assert!(multisig_pub_path_reencoded.exists());
         let info_reencoded =
             MultisigJsonWalletPublicExportV0::from_path(&multisig_pub_path_reencoded)?;
@@ -483,21 +482,21 @@ fn test_batch_generate_open_multisig_pub_json_descriptors() -> anyhow::Result<()
         "3",
         wallet_path_prefix.display().to_string().as_str(),
     ])?;
-    s.exp_string("Do you want to pick one or more keyfiles?")?;
+    s.expect("Do you want to pick one or more keyfiles?")?;
     send(&mut s, "n")?;
-    s.exp_string("Continue without a keyfile?")?;
+    s.expect("Continue without a keyfile?")?;
     send(&mut s, "y")?;
-    s.exp_string("Password:")?;
+    s.expect("Password:")?;
     send_line(&mut s, mypassword)?;
-    s.exp_string("Confirm password:")?;
+    s.expect("Confirm password:")?;
     send_line(&mut s, mypassword)?;
-    s.exp_string("Enter a non duress seed password")?;
+    s.expect("Enter a non duress seed password")?;
     send_line(&mut s, mynonduresspassword)?;
-    s.exp_string("Confirm password:")?;
+    s.expect("Confirm password:")?;
     send_line(&mut s, mynonduresspassword)?;
-    s.exp_string("Enter the non duress seed password again")?;
+    s.expect("Enter the non duress seed password again")?;
     send_line(&mut s, mynonduresspassword)?;
-    s.exp_eof()?;
+    s.expect(Eof)?;
     // In this test we use the singlesig public json as input for the multisig creation
     let pub_json_wallets = fs::read_dir(temp.path())?
         .collect::<Result<Vec<_>, _>>()?
@@ -532,11 +531,11 @@ fn test_batch_generate_open_multisig_pub_json_descriptors() -> anyhow::Result<()
         multisig_pub_path.display().to_string().as_str(),
     ])?;
     let multisigpassword = "Super11Ultra!!!X";
-    s.exp_string("Password:")?;
+    s.expect("Password:")?;
     send_line(&mut s, multisigpassword)?;
-    s.exp_string("Confirm password:")?;
+    s.expect("Confirm password:")?;
     send_line(&mut s, multisigpassword)?;
-    s.exp_eof()?;
+    s.expect(Eof)?;
     assert!(multisig_path.exists());
     assert!(multisig_pub_path.exists());
     let info = MultisigJsonWalletPublicExportV0::from_path(&multisig_pub_path)?;
@@ -574,23 +573,23 @@ fn test_batch_generate_open_multisig_pub_json_descriptors() -> anyhow::Result<()
     ])?;
     for i in 0..3 {
         println!("---> Opening signer wallet {i} for multisig operation");
-        s.exp_string("Have you used a keyfile when generating this wallet?")?;
+        s.expect("Have you used a keyfile when generating this wallet?")?;
         send(&mut s, "n")?;
-        s.exp_string("Select one (leave the default if unsure)")?;
+        s.expect("Select one (leave the default if unsure)")?;
         dialoguer_up_enter(&mut s)?;
-        s.exp_string("Password:")?;
+        s.expect("Password:")?;
         send_line(&mut s, mypassword)?;
-        s.exp_string("Confirm password:")?;
+        s.expect("Confirm password:")?;
         send_line(&mut s, mypassword)?;
         // As we are using the public json, they are for the non-duress wallet (the one with an empty password)
-        s.exp_string("Enable duress feature for this wallet?")?;
+        s.expect("Enable duress feature for this wallet?")?;
         send(&mut s, "n")?;
     }
-    s.exp_string("Password:")?;
+    s.expect("Password:")?;
     send_line(&mut s, multisigpassword)?;
-    s.exp_string("Confirm password:")?;
+    s.expect("Confirm password:")?;
     send_line(&mut s, multisigpassword)?;
-    s.exp_eof()?;
+    s.expect(Eof)?;
     assert!(multisig_pub_path2.exists());
     let info2 = MultisigJsonWalletPublicExportV0::from_path(&multisig_pub_path2)?;
     assert_eq!(info.to_string_pretty()?, info2.to_string_pretty()?);
@@ -613,19 +612,19 @@ fn test_batch_generate_open_multisig_pub_json_descriptors() -> anyhow::Result<()
     ])?;
     for i in 0..3 {
         println!("---> Opening signer wallet {i} for multisig operation");
-        s.exp_string("Have you used a keyfile when generating this wallet?")?;
+        s.expect("Have you used a keyfile when generating this wallet?")?;
         send(&mut s, "n")?;
-        s.exp_string("Select one (leave the default if unsure)")?;
+        s.expect("Select one (leave the default if unsure)")?;
         dialoguer_up_enter(&mut s)?;
-        s.exp_string("Password:")?;
+        s.expect("Password:")?;
         send_line(&mut s, mypassword)?;
-        s.exp_string("Confirm password:")?;
+        s.expect("Confirm password:")?;
         send_line(&mut s, mypassword)?;
         // As we are using the public json, they are for the non-duress wallet (the one with an empty password)
-        s.exp_string("Enable duress feature for this wallet?")?;
+        s.expect("Enable duress feature for this wallet?")?;
         send(&mut s, "n")?;
     }
-    s.exp_eof()?;
+    s.expect(Eof)?;
     assert!(multisig_pub_path3.exists());
     let info3 = MultisigJsonWalletPublicExportV0::from_path(&multisig_pub_path3)?;
     assert_eq!(info.to_string_pretty()?, info3.to_string_pretty()?);
