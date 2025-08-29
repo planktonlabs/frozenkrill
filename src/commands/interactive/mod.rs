@@ -8,8 +8,8 @@ use dialoguer::{console::Term, theme::Theme};
 use frozenkrill_core::{
     anyhow::{self, bail},
     bitcoin::{
-        secp256k1::{All, Secp256k1},
         Network,
+        secp256k1::{All, Secp256k1},
     },
     key_derivation::{self, KeyDerivationDifficulty},
     parse_keyfiles_paths,
@@ -18,7 +18,7 @@ use frozenkrill_core::{
     wallet_description::WordCount,
 };
 
-use crate::{handle_output_path, InteractiveArgs, InternetChecker, WalletFileType};
+use crate::{InteractiveArgs, InternetChecker, WalletFileType, handle_output_path};
 
 use self::{
     generate_batch::interactive_generate_batch,

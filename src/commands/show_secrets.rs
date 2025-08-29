@@ -14,12 +14,15 @@ use frozenkrill_core::wallet_description::{
     SingleSigWalletDescriptionV0, SinglesigJsonWalletDescriptionV0,
 };
 
-use crate::{commands::common::double_check_non_duress_password, SinglesigShowSecretsArgs};
+use crate::{SinglesigShowSecretsArgs, commands::common::double_check_non_duress_password};
 
 pub(crate) fn singlesig_show_secrets_parse_args(
     args: &SinglesigShowSecretsArgs,
 ) -> anyhow::Result<()> {
-    anyhow::ensure!(args.acknowledge_dangerous_operation, "This operation will expose secrets in plaintext, run the command again adding the --acknowledge-dangerous-operation flag if you know what you're doing");
+    anyhow::ensure!(
+        args.acknowledge_dangerous_operation,
+        "This operation will expose secrets in plaintext, run the command again adding the --acknowledge-dangerous-operation flag if you know what you're doing"
+    );
     Ok(())
 }
 

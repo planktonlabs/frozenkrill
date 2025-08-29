@@ -1,4 +1,4 @@
-use anyhow::{bail, Context};
+use anyhow::{Context, bail};
 use bitcoin::bip158::{BitStreamReader, BitStreamWriter};
 use rand_core::{CryptoRng, RngCore};
 use sha2::{Digest, Sha256};

@@ -7,30 +7,31 @@ use std::{
 
 use dialoguer::{console::Term, theme::Theme};
 use frozenkrill_core::{
+    MultisigInputs, PaddingParams,
     anyhow::{self, bail},
     bitcoin::secp256k1::{All, Secp256k1},
     key_derivation::KeyDerivationDifficulty,
     rand_core::{CryptoRng, RngCore},
     secrecy::SecretString,
-    wallet_description::{MultisigType, ScriptType, MAX_TOTAL_SIGS_MULTISIG},
-    MultisigInputs, PaddingParams,
+    wallet_description::{MAX_TOTAL_SIGS_MULTISIG, MultisigType, ScriptType},
 };
 use path_absolutize::Absolutize;
 
 use crate::commands::common::{generate_random_name, multisig::parse_multisig_input};
 
 use crate::{
+    InternetChecker,
     commands::{
         common::ask_try_open_again_multisig_parse_multisig_input,
         generate::core::{DuressInputArgs, MultisigCoreGenerateArgs, SinglesigCoreGenerateArgs},
     },
-    handle_input_path, handle_output_path, ui_ask_manually_seed_input, InternetChecker,
+    handle_input_path, handle_output_path, ui_ask_manually_seed_input,
 };
 
 use super::{
-    ask_addresses_quantity, ask_for_keyfiles_generate, ask_network, ask_non_duress_wallet_generate,
-    ask_public_info_json_output, ask_user_generated_seed, ask_wallet_file_type, ask_word_count,
-    get_ask_difficulty, ValidateOutputFile,
+    ValidateOutputFile, ask_addresses_quantity, ask_for_keyfiles_generate, ask_network,
+    ask_non_duress_wallet_generate, ask_public_info_json_output, ask_user_generated_seed,
+    ask_wallet_file_type, ask_word_count, get_ask_difficulty,
 };
 
 #[allow(clippy::too_many_arguments)]
@@ -166,11 +167,14 @@ pub(crate) fn ask_create_multisig_inputs(
         .map(|i| i.map(|i| i.path().display().to_string()))
         .collect::<Result<Vec<_>, _>>()?;
     files.sort();
-    anyhow::ensure!(!files.is_empty(),
+    anyhow::ensure!(
+        !files.is_empty(),
         "You can't pick a wallet or pub key from a json file because there are no files in current directory. Copy some files or change the current directory and try again"
     );
     let total = configuration.total;
-    eprintln!("We are going to open {total} files to get the public keys for the {configuration} multisig");
+    eprintln!(
+        "We are going to open {total} files to get the public keys for the {configuration} multisig"
+    );
     let mut result = MultisigInputs::default();
     for i in 1..=total {
         loop {
@@ -194,7 +198,9 @@ pub(crate) fn ask_create_multisig_inputs(
                 Err(e) => {
                     eprintln!("{e:?}");
                     if !ask_try_open_again_multisig_parse_multisig_input(theme, term)? {
-                        bail!("You need valid encrypted singlesig wallets or a json with the public keys to create a multisig")
+                        bail!(
+                            "You need valid encrypted singlesig wallets or a json with the public keys to create a multisig"
+                        )
                     }
                 }
             }

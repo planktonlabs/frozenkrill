@@ -3,14 +3,14 @@ use anyhow::Context;
 use bitcoin::bip32::{ChildNumber, DerivationPath, Fingerprint, Xpub};
 use bitcoin::secp256k1::{All, Secp256k1};
 use miniscript::{
-    descriptor::{DerivPaths, Wildcard},
     Descriptor, DescriptorPublicKey,
+    descriptor::{DerivPaths, Wildcard},
 };
 use rand_core::{CryptoRng, RngCore};
 
 use crate::{
+    MAX_BASE_PADDING_BYTES, OptOrigin, PaddingParams,
     wallet_description::{KEY_SIZE, NONCE_SIZE, SALT_SIZE},
-    OptOrigin, PaddingParams, MAX_BASE_PADDING_BYTES,
 };
 
 pub fn get_random_salt(rng: &mut (impl CryptoRng + RngCore)) -> anyhow::Result<[u8; SALT_SIZE]> {

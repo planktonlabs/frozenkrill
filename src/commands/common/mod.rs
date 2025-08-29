@@ -3,13 +3,13 @@ use std::path::{Path, PathBuf};
 use base32::Alphabet;
 use dialoguer::{console::Term, theme::Theme};
 use frozenkrill_core::{
-    anyhow::{self, bail, Context},
+    anyhow::{self, Context, bail},
     bitcoin::secp256k1::{All, Secp256k1},
     blake3,
     log::{self, debug},
     rand_core::{CryptoRng, RngCore},
     utils,
-    wallet_description::{self, EncryptedWalletDescription, SigType, KEY_SIZE},
+    wallet_description::{self, EncryptedWalletDescription, KEY_SIZE, SigType},
     wallet_export::{
         GenericOutputExportJson, MultisigJsonWalletPublicExportV0,
         SinglesigJsonWalletPublicExportV0,

@@ -5,10 +5,11 @@ use std::{
 
 use dialoguer::{console::Term, theme::Theme};
 use frozenkrill_core::{
-    anyhow::{self, bail, Context},
+    PaddingParams,
+    anyhow::{self, Context, bail},
     bitcoin::{
-        secp256k1::{All, Secp256k1},
         Network,
+        secp256k1::{All, Secp256k1},
     },
     key_derivation::{self, KeyDerivationDifficulty},
     log, parse_keyfiles_paths,
@@ -17,7 +18,6 @@ use frozenkrill_core::{
     utils::create_file,
     wallet_description::{MultiSigWalletDescriptionV0, SingleSigWalletDescriptionV0},
     wallet_export::MultisigJsonWalletPublicExportV0,
-    PaddingParams,
 };
 
 use crate::commands::common::{
@@ -31,17 +31,17 @@ use crate::commands::common::generate_random_name;
 type Secret<T> = SecretBox<T>;
 
 use crate::{
-    commands::common::double_check_non_duress_password, handle_output_path,
-    ui_ask_manually_seed_input, InternetChecker, SinglesigGenerateArgs,
+    InternetChecker, SinglesigGenerateArgs, commands::common::double_check_non_duress_password,
+    handle_output_path, ui_ask_manually_seed_input,
 };
 
 use self::core::{
-    multisig_core_generate, singlesig_core_generate, DuressInputArgs, MultisigCoreGenerateArgs,
-    SinglesigCoreGenerateArgs,
+    DuressInputArgs, MultisigCoreGenerateArgs, SinglesigCoreGenerateArgs, multisig_core_generate,
+    singlesig_core_generate,
 };
 
 use super::{
-    common::{from_wallet_to_public_info_json_path, AddressGenerationParams},
+    common::{AddressGenerationParams, from_wallet_to_public_info_json_path},
     interactive::ask_for_keyfiles_generate,
 };
 
@@ -68,14 +68,14 @@ pub(super) fn export_singlesig_public_infos(
         params.quantity,
     )
     .context("failure exporting public info")?;
-    if let Some(ref duress_params) = duress_params {
+    if let Some(duress_params) = duress_params {
         double_check_non_duress_password(theme, term, &duress_params.non_duress_password)?;
     }
     create_file(&json, public_info_json_output).with_context(|| {
         anyhow::anyhow!("failure exporting public info to {public_info_json_output:?}")
     })?;
     log::info!("Exported public info to {public_info_json_output:?}");
-    if let Some(ref duress_params) = duress_params {
+    if let Some(duress_params) = duress_params {
         let non_duress_wallet_description = wallet_description
             .change_seed_password(&Some(Arc::clone(&duress_params.non_duress_password)), secp)
             .context("failure generating non duress wallet")?;

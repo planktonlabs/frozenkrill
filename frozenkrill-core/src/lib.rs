@@ -1,11 +1,11 @@
 use std::{collections::HashSet, path::PathBuf, sync::Arc};
 
-use anyhow::{bail, ensure, Context};
+use anyhow::{Context, bail, ensure};
 use bip39::Mnemonic;
 use bitcoin::secp256k1::{All, Secp256k1};
 use bitcoin::{
-    bip32::{DerivationPath, Fingerprint},
     Network,
+    bip32::{DerivationPath, Fingerprint},
 };
 use compression::compress;
 use encryption::default_encrypt;
@@ -17,14 +17,15 @@ use secrecy::{ExposeSecret, SecretBox, SecretString};
 type Secret<T> = SecretBox<T>;
 type SecretVec<T> = SecretBox<Vec<T>>;
 use wallet_description::{
-    EncryptedWalletDescription, EncryptedWalletVersion, MultiSigCompactWalletDescriptionV0,
-    MultisigType, ScriptType, SingleSigCompactWalletDescriptionV0, SingleSigWalletDescriptionV0,
-    SinglesigJsonWalletDescriptionV0, KEY_SIZE, NONCE_SIZE, SALT_SIZE,
+    EncryptedWalletDescription, EncryptedWalletVersion, KEY_SIZE,
+    MultiSigCompactWalletDescriptionV0, MultisigType, NONCE_SIZE, SALT_SIZE, ScriptType,
+    SingleSigCompactWalletDescriptionV0, SingleSigWalletDescriptionV0,
+    SinglesigJsonWalletDescriptionV0,
 };
 
 use crate::wallet_description::{
-    DecodedHeaderV0, MultiSigWalletDescriptionV0, MultisigJsonWalletDescriptionV0,
-    ENCRYPTED_HEADER_LENGTH,
+    DecodedHeaderV0, ENCRYPTED_HEADER_LENGTH, MultiSigWalletDescriptionV0,
+    MultisigJsonWalletDescriptionV0,
 };
 
 pub mod compression;
@@ -471,7 +472,8 @@ impl MultisigInputs {
             }
         }
         self.signers.extend(other.signers);
-        anyhow::ensure!(change_added == receiving_added,
+        anyhow::ensure!(
+            change_added == receiving_added,
             "Expected change descriptor added {change_added} to be the same as receiving descriptor added {receiving_added}"
         );
         Ok(receiving_added)

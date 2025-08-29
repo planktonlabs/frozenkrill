@@ -10,13 +10,13 @@ use frozenkrill_core::{
 use frozenkrill_core::wallet_description::SingleSigWalletDescriptionV0;
 
 use crate::{
-    commands::generate::export_singlesig_public_infos, handle_input_path, handle_output_path,
-    CommonExportPublicInfoArgs, CommonOpenArgs,
+    CommonExportPublicInfoArgs, CommonOpenArgs, commands::generate::export_singlesig_public_infos,
+    handle_input_path, handle_output_path,
 };
 
 use super::{
-    common::{from_wallet_to_public_info_json_path, AddressGenerationParams},
-    generate::{export_multisig_public_infos, DuressPublicInfoParams},
+    common::{AddressGenerationParams, from_wallet_to_public_info_json_path},
+    generate::{DuressPublicInfoParams, export_multisig_public_infos},
 };
 
 pub(crate) fn export_public_info_parse_args(

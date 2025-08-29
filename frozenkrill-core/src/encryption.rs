@@ -64,7 +64,7 @@ fn libsodium_decrypt_xchacha20poly1305(
 
 #[cfg(test)]
 mod tests {
-    use chacha20poly1305::{aead::Aead, KeyInit};
+    use chacha20poly1305::{KeyInit, aead::Aead};
     use rand_core::RngCore;
 
     use crate::random_generation_utils::get_random_nonce;

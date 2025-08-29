@@ -2,13 +2,14 @@ use std::{
     collections::HashSet,
     io::Read,
     path::{Path, PathBuf},
-    str::{from_utf8, FromStr},
+    str::{FromStr, from_utf8},
     sync::Arc,
 };
 
 use dialoguer::{console::Term, theme::Theme};
 use frozenkrill_core::{
-    anyhow::{self, bail, ensure, Context},
+    MultisigInputs,
+    anyhow::{self, Context, bail, ensure},
     bitcoin::{
         self,
         secp256k1::{All, Secp256k1},
@@ -21,30 +22,30 @@ use frozenkrill_core::{
     serde_json,
     utils::{self, buf_open_file},
     wallet_description::{
-        self, read_decode_wallet, EncryptedWalletDescription, MultiSigWalletDescriptionV0,
+        self, EncryptedWalletDescription, MultiSigWalletDescriptionV0,
         MultisigJsonWalletDescriptionV0, MultisigType, ScriptType, SigType,
-        SingleSigWalletDescriptionV0,
+        SingleSigWalletDescriptionV0, read_decode_wallet,
     },
     wallet_export::{
         GenericOutputExportJson, MultisigJsonWalletPublicExportV0,
         SinglesigJsonWalletPublicExportV0,
     },
-    MultisigInputs,
 };
 
 use crate::{
-    ask_password,
+    InternetChecker, InternetCheckerImpl, MultisigOpenArgs, ask_password,
     commands::{
         common::{
+            ParsedWalletInputFile, PublicInfoInput,
             ask_try_open_again_multisig_parse_multisig_input, singlesig::singlesig_core_open,
-            try_open_as_json_input, ParsedWalletInputFile, PublicInfoInput,
+            try_open_as_json_input,
         },
         interactive::{
             get_ask_difficulty,
             open::{ask_for_keyfiles_open, ask_to_open_duress, ask_wallet_input_file},
         },
     },
-    handle_input_path, ui_derive_key, InternetChecker, InternetCheckerImpl, MultisigOpenArgs,
+    handle_input_path, ui_derive_key,
 };
 
 use super::ask_try_decrypt;
@@ -79,10 +80,9 @@ pub(crate) fn open_multisig_wallet_non_interactive(
                     keyfiles: parse_keyfiles_paths(&args.common.keyfile)?,
                     difficulty: args.common.difficulty,
                 },
-                Err(encrypted_error) =>
-                    bail!(
-                        "Got {encrypted_error} while opening as encrypted wallet and {json_error} while opening as pub json"
-                    )
+                Err(encrypted_error) => bail!(
+                    "Got {encrypted_error} while opening as encrypted wallet and {json_error} while opening as pub json"
+                ),
             }
         }
     };
