@@ -7,8 +7,8 @@ use std::{
 use anyhow::{bail, Context};
 use bitcoin::bip32::{ChildNumber, DerivationPath, Fingerprint, Xpub};
 use miniscript::DescriptorPublicKey;
-use zeroize::Zeroize;
 use serde::{Deserialize, Serialize};
+use zeroize::Zeroize;
 use zeroize::ZeroizeOnDrop;
 
 use crate::wallet_description::{

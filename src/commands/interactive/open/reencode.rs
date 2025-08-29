@@ -4,7 +4,7 @@ use dialoguer::{console::Term, theme::Theme};
 use frozenkrill_core::{
     anyhow,
     bitcoin::secp256k1::{All, Secp256k1},
-    rand_core::CryptoRngCore,
+    rand_core::{CryptoRng, RngCore},
     wallet_description::{MultiSigWalletDescriptionV0, SingleSigWalletDescriptionV0},
     PaddingParams,
 };
@@ -26,7 +26,7 @@ pub(super) fn singlesig_reencode(
     theme: &dyn Theme,
     term: &Term,
     secp: &mut Secp256k1<All>,
-    rng: &mut impl CryptoRngCore,
+    rng: &mut (impl CryptoRng + RngCore),
     ic: impl InternetChecker,
     wallet: &SingleSigWalletDescriptionV0,
     input_path: &Path,
@@ -57,7 +57,7 @@ pub(super) fn multisig_reencode(
     theme: &dyn Theme,
     term: &Term,
     secp: &mut Secp256k1<All>,
-    rng: &mut impl CryptoRngCore,
+    rng: &mut (impl CryptoRng + RngCore),
     ic: impl InternetChecker,
     wallet: &MultiSigWalletDescriptionV0,
     input_path: &Path,

@@ -8,6 +8,7 @@ use std::{
 
 use anyhow::{bail, Context};
 use secrecy::{ExposeSecret, SecretBox, SecretString};
+type Secret<T> = SecretBox<T>;
 
 use crate::wallet_description::{KEY_SIZE, SALT_SIZE};
 
@@ -133,12 +134,13 @@ fn _default_derive_key(
     // note that if keyfiles is empty the resulting password will be the original password
     let password = generate_password_with_keyfiles(password, salt, keyfiles)?;
     let argon2_difficulty_params = difficulty.argon2_difficulty_params();
-    let key = Secret::new(libsodium_argon2id_derive_key(
+    let key_array = libsodium_argon2id_derive_key(
         password.expose_secret(),
         salt,
         argon2_difficulty_params.ops_limit.try_into()?,
         argon2_difficulty_params.mem_limit_kbytes.try_into()?,
-    )?);
+    )?;
+    let key = Secret::from(Box::new(key_array));
     Ok(key)
 }
 
@@ -190,7 +192,7 @@ fn generate_password_with_keyfiles(
     hashes.sort();
     let mut concatenated_hashes = hashes.concat();
     concatenated_hashes.extend(password.expose_secret().as_bytes());
-    Ok(SecretBox::from(concatenated_hashes))
+    Ok(SecretBox::from(Box::new(concatenated_hashes)))
 }
 
 #[cfg(test)]
@@ -249,7 +251,7 @@ mod tests {
         use pretty_assertions::assert_eq;
         let mut rng = rand::thread_rng();
         let mut password = [1u8; 1024 * 1024];
-        rng.try_fill_bytes(&mut password)?;
+        rng.fill_bytes(&mut password);
         let salt = get_random_salt(&mut rng)?;
         let difficulty = KeyDerivationDifficulty::Easy.argon2_difficulty_params();
         let ops_limit = difficulty.ops_limit;

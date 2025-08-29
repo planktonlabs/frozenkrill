@@ -13,8 +13,8 @@ use frozenkrill_core::{
     generate_encrypted_encoded_singlesig_wallet, get_padder,
     key_derivation::KeyDerivationDifficulty,
     log, parse_keyfiles_paths,
-    rand_core::CryptoRngCore,
-    secrecy::{ExposeSecret, Secret, SecretString},
+    rand_core::{CryptoRng, RngCore},
+    secrecy::{ExposeSecret, SecretBox, SecretString},
     utils::create_file,
     wallet_description::{
         read_decode_wallet, EncryptedWalletVersion, MultiSigWalletDescriptionV0,
@@ -37,6 +37,8 @@ use crate::{
 
 use super::common::from_input_to_reencoded;
 
+type Secret<T> = SecretBox<T>;
+
 pub(crate) fn singlesig_reencode_parse_args(
     open_args: &SinglesigOpenArgs,
     args: &SinglesigReencodeArgs,
@@ -57,7 +59,7 @@ pub(crate) fn singlesig_reencode_parse_args(
         .common
         .password
         .clone()
-        .map(SecretString::new)
+        .map(|s| SecretString::new(s.into()))
         .map(Arc::new);
     Ok(SinglesigCoreReencodeArgs {
         password,
@@ -93,7 +95,7 @@ pub(crate) fn singlesig_core_reencode(
     theme: &dyn Theme,
     term: &Term,
     secp: &mut Secp256k1<All>,
-    mut rng: &mut impl CryptoRngCore,
+    mut rng: &mut (impl CryptoRng + RngCore),
     ic: impl InternetChecker,
     wallet: &SingleSigWalletDescriptionV0,
     args: SinglesigCoreReencodeArgs,
@@ -109,7 +111,7 @@ pub(crate) fn singlesig_core_reencode(
     let key = ui_derive_key(&password, &args.keyfiles, &salt, &args.difficulty)?;
     let nonce = get_random_nonce(&mut rng)?;
     let header_nonce = get_random_nonce(&mut rng)?;
-    let header_key = Secret::new(get_random_key(&mut rng)?);
+    let header_key = Secret::from(Box::new(get_random_key(&mut rng)?));
     let padder = get_padder(&mut rng, &args.padding_params)?;
     let mnemonic = Arc::clone(&wallet.mnemonic);
     let seed_password = &None;
@@ -131,7 +133,9 @@ pub(crate) fn singlesig_core_reencode(
     create_file(&encrypted_wallet, output_file_path)
         .with_context(|| format!("failure saving encrypted wallet to {output_file_path:?}"))?;
     log::info!("Wallet saved to {output_file_path:?}");
-    secp.randomize(&mut rng);
+    let mut seed = [0u8; 32];
+    rng.fill_bytes(&mut seed);
+    secp.seeded_randomize(&seed);
     let encrypted_wallet = read_decode_wallet(output_file_path)?;
     log::info!("Will derive the key again to double check against bit flips...");
     let pb = get_derivation_key_spinner();
@@ -193,7 +197,7 @@ pub(crate) fn multisig_reencode_parse_args(
         .common
         .password
         .clone()
-        .map(SecretString::new)
+        .map(|s| SecretString::new(s.into()))
         .map(Arc::new);
     Ok(MultisigCoreReencodeArgs {
         password,
@@ -218,7 +222,7 @@ pub(crate) fn multisig_core_reencode(
     theme: &dyn Theme,
     term: &Term,
     secp: &mut Secp256k1<All>,
-    mut rng: &mut impl CryptoRngCore,
+    mut rng: &mut (impl CryptoRng + RngCore),
     ic: impl InternetChecker,
     wallet: &MultiSigWalletDescriptionV0,
     args: MultisigCoreReencodeArgs,
@@ -234,7 +238,7 @@ pub(crate) fn multisig_core_reencode(
     let key = ui_derive_key(&password, &args.keyfiles, &salt, &args.difficulty)?;
     let nonce = get_random_nonce(&mut rng)?;
     let header_nonce = get_random_nonce(&mut rng)?;
-    let header_key = Secret::new(get_random_key(&mut rng)?);
+    let header_key = Secret::from(Box::new(get_random_key(&mut rng)?));
     let padder = get_padder(&mut rng, &args.padding_params)?;
     let encrypted_wallet = frozenkrill_core::generate_encrypted_encoded_multisig_wallet(
         wallet.configuration,
@@ -256,7 +260,9 @@ pub(crate) fn multisig_core_reencode(
         format!("failure saving encrypted wallet to {output_file_path_encrypted:?}")
     })?;
     log::info!("Wallet saved to {output_file_path_encrypted:?}");
-    secp.randomize(&mut rng);
+    let mut seed = [0u8; 32];
+    rng.fill_bytes(&mut seed);
+    secp.seeded_randomize(&seed);
 
     let read_encrypted_wallet = read_decode_wallet(output_file_path_encrypted)?;
     log::info!("Will derive the key again to double check against bit flips...");

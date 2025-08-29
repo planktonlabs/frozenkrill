@@ -2,6 +2,7 @@ use std::{collections::HashSet, path::PathBuf, sync::Arc};
 
 use anyhow::{bail, ensure, Context};
 use bip39::Mnemonic;
+use bitcoin::secp256k1::{All, Secp256k1};
 use bitcoin::{
     bip32::{DerivationPath, Fingerprint},
     Network,
@@ -12,7 +13,6 @@ use itertools::Itertools;
 use log::debug;
 use miniscript::{Descriptor, DescriptorPublicKey};
 use rand_core::{CryptoRng, RngCore};
-use secp256k1::{All, Secp256k1};
 use secrecy::{ExposeSecret, SecretBox, SecretString};
 type Secret<T> = SecretBox<T>;
 type SecretVec<T> = SecretBox<Vec<T>>;
@@ -184,7 +184,9 @@ pub fn generate_encrypted_encoded_singlesig_wallet_standard(
                 )?;
             json_wallet_description.expose_secret().to_vec()?
         };
-        SecretBox::from(compress(json.expose_secret()).context("failure compressing json")?)
+        SecretBox::from(Box::new(
+            compress(json.expose_secret()).context("failure compressing json")?,
+        ))
     };
     let mut ciphertext = default_encrypt(&header_key, &header_nonce, &compressed)
         .context("failure encrypting compressed json")?;
@@ -339,7 +341,7 @@ pub fn generate_encrypted_encoded_multisig_wallet(
         }
     };
     debug!("Serialized wallet with length {}", serialized.len());
-    let serialized = SecretBox::from(serialized);
+    let serialized = SecretBox::from(Box::new(serialized));
     let mut ciphertext = default_encrypt(&header_key, &header_nonce, &serialized)
         .context("failure encrypting compressed json")?;
     let header = DecodedHeaderV0::new(

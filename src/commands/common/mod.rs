@@ -7,7 +7,7 @@ use frozenkrill_core::{
     bitcoin::secp256k1::{All, Secp256k1},
     blake3,
     log::{self, debug},
-    rand_core::CryptoRngCore,
+    rand_core::{CryptoRng, RngCore},
     utils,
     wallet_description::{self, EncryptedWalletDescription, SigType, KEY_SIZE},
     wallet_export::{
@@ -59,10 +59,10 @@ pub(crate) struct AddressGenerationParams {
 pub(crate) fn generate_random_name(
     prefix: &str,
     suffix: &str,
-    rng: &mut impl CryptoRngCore,
+    rng: &mut (impl CryptoRng + RngCore),
 ) -> anyhow::Result<String> {
     let mut name_salt = [0u8; KEY_SIZE];
-    rng.try_fill_bytes(&mut name_salt)?;
+    rng.fill_bytes(&mut name_salt);
     Ok(generate_name(prefix, &name_salt, 0, suffix))
 }
 

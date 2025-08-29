@@ -9,6 +9,7 @@ use std::{
 
 use anyhow::{bail, ensure, Context};
 use bip39::Mnemonic;
+use bitcoin::secp256k1::{All, Secp256k1};
 use bitcoin::{
     bip32::{ChildNumber, DerivationPath, Fingerprint},
     psbt::Psbt,
@@ -19,7 +20,6 @@ use log::debug;
 use miniscript::{Descriptor, DescriptorPublicKey};
 use rand_core::{CryptoRng, RngCore};
 use regex::Regex;
-use secp256k1::{All, Secp256k1};
 use secrecy::{CloneableSecret, ExposeSecret, SecretBox, SecretString};
 type Secret<T> = SecretBox<T>;
 use serde::{Deserialize, Serialize};
@@ -345,21 +345,21 @@ impl SingleSigWalletDescriptionV0 {
         let seed_password = seed_password.as_ref().unwrap_or(&empty_password);
         let root_key = get_root_key(&mnemonic, seed_password, network)?;
         let singlesig_derivation_path = get_singlesig_v0_derivation_path(&script_type, &network);
-        let singlesig_xpriv = Secret::new(WExtendedPrivKey(
+        let singlesig_xpriv = Secret::from(Box::new(WExtendedPrivKey(
             root_key
                 .expose_secret()
                 .0
                 .derive_priv(secp, &singlesig_derivation_path)?,
-        ));
+        )));
         let singlesig_xpub =
             bitcoin::bip32::Xpub::from_priv(secp, &singlesig_xpriv.expose_secret().0);
         let multisig_derivation_path = get_multisig_v0_derivation_path(&script_type, &network);
-        let multisig_xpriv = Secret::new(WExtendedPrivKey(
+        let multisig_xpriv = Secret::from(Box::new(WExtendedPrivKey(
             root_key
                 .expose_secret()
                 .0
                 .derive_priv(secp, &multisig_derivation_path)?,
-        ));
+        )));
         let multisig_xpub =
             bitcoin::bip32::Xpub::from_priv(secp, &multisig_xpriv.expose_secret().0);
         let master_fingerprint = root_key.expose_secret().0.fingerprint(secp);
@@ -478,7 +478,7 @@ impl SingleSigWalletDescriptionV0 {
     fn encoded_singlesig_xpriv(&self) -> SecretString {
         match self.script_type {
             ScriptType::SegwitNative => {
-                SecretString::new(m84_slip132_encode_priv(&self.singlesig_xpriv))
+                SecretString::new(m84_slip132_encode_priv(&self.singlesig_xpriv).into())
             }
         }
     }
@@ -492,7 +492,7 @@ impl SingleSigWalletDescriptionV0 {
     fn encoded_multisig_xpriv(&self) -> SecretString {
         match self.script_type {
             ScriptType::SegwitNative => {
-                SecretString::new(m48_slip132_encode_priv(&self.multisig_xpriv))
+                SecretString::new(m48_slip132_encode_priv(&self.multisig_xpriv).into())
             }
         }
     }
@@ -661,7 +661,7 @@ impl SinglesigJsonWalletDescriptionV0 {
         w: &SingleSigWalletDescriptionV0,
         secp: &Secp256k1<All>,
     ) -> anyhow::Result<Secret<Self>> {
-        Ok(Secret::new(Self {
+        Ok(Secret::from(Box::new(Self {
             version: ZERO_SINGLESIG_WALLET_VERSION,
             sigtype: SigType::Singlesig.to_string(),
             seed_phrase: w.mnemonic.expose_secret().to_string(),
@@ -679,7 +679,7 @@ impl SinglesigJsonWalletDescriptionV0 {
             singlesig_change_output_descriptor: w.change_singlesig_output_descriptor()?.to_string(),
             network: w.network.to_string(),
             script_type: w.script_type.to_string(),
-        }))
+        })))
     }
 
     pub fn to(
@@ -687,7 +687,7 @@ impl SinglesigJsonWalletDescriptionV0 {
         seed_password: &Option<Arc<SecretString>>,
         secp: &Secp256k1<All>,
     ) -> anyhow::Result<SingleSigWalletDescriptionV0> {
-        let mnemonic = Secret::new(bip39::Mnemonic::from_str(&self.seed_phrase)?);
+        let mnemonic = Secret::from(Box::new(bip39::Mnemonic::from_str(&self.seed_phrase)?));
         let network = Network::from_str(&self.network)?;
         let script_type = ScriptType::from_str(&self.script_type)?;
         SingleSigWalletDescriptionV0::generate(
@@ -751,24 +751,26 @@ impl SinglesigJsonWalletDescriptionV0 {
             "Version {} isn't {ZERO_SINGLESIG_WALLET_VERSION}",
             w.version
         );
-        Ok(Secret::new(w))
+        Ok(Secret::from(Box::new(w)))
     }
 
     pub fn to_vec(&self) -> anyhow::Result<SecretBox<Vec<u8>>> {
-        Ok(SecretBox::from(
+        Ok(SecretBox::from(Box::new(
             serde_json::to_vec(self).context("failure serializing json")?,
-        ))
+        )))
     }
 
     pub fn to_vec_pretty(&self) -> anyhow::Result<SecretBox<Vec<u8>>> {
-        Ok(SecretBox::from(
+        Ok(SecretBox::from(Box::new(
             serde_json::to_vec_pretty(self).context("failure serializing json")?,
-        ))
+        )))
     }
 
     pub fn to_string_pretty(&self) -> anyhow::Result<SecretString> {
         Ok(SecretString::new(
-            serde_json::to_string_pretty(self).context("failure serializing json")?,
+            serde_json::to_string_pretty(self)
+                .context("failure serializing json")?
+                .into(),
         ))
     }
 }
@@ -785,7 +787,7 @@ impl SingleSigCompactWalletDescriptionV0 {
 
     pub fn serialize(&self) -> SecretBox<Vec<u8>> {
         let entropy = self.mnemonic.expose_secret().to_entropy();
-        SecretBox::from(entropy)
+        SecretBox::from(Box::new(entropy))
     }
 
     pub fn deserialize(mut data: BufReader<impl Read>) -> anyhow::Result<Self> {
@@ -793,7 +795,7 @@ impl SingleSigCompactWalletDescriptionV0 {
         data.read_to_end(&mut entropy)?;
         let mnemonic = Mnemonic::from_entropy(&entropy)?;
         Ok(Self {
-            mnemonic: Arc::new(Secret::new(mnemonic)),
+            mnemonic: Arc::new(Secret::from(Box::new(mnemonic))),
         })
     }
 
@@ -1148,7 +1150,7 @@ impl MultisigJsonWalletDescriptionV0 {
         w: &MultiSigWalletDescriptionV0,
         secp: &Secp256k1<All>,
     ) -> anyhow::Result<Secret<Self>> {
-        Ok(Secret::new(Self {
+        Ok(Secret::from(Box::new(Self {
             version: ZERO_MULTISIG_WALLET_VERSION,
             sigtype: SigType::Multisig(w.configuration).to_string(),
             receiving_output_descriptor: w.receiving_descriptor.to_string(),
@@ -1156,7 +1158,7 @@ impl MultisigJsonWalletDescriptionV0 {
             first_address: w.first_receiving_address(secp)?.address.to_string(),
             network: w.network.to_string(),
             script_type: w.script_type.to_string(),
-        }))
+        })))
     }
 
     pub fn network_from_str(s: &str) -> anyhow::Result<Network> {
@@ -1233,24 +1235,26 @@ impl MultisigJsonWalletDescriptionV0 {
             "Version {} isn't {ZERO_MULTISIG_WALLET_VERSION}",
             w.version
         );
-        Ok(Secret::new(w))
+        Ok(Secret::from(Box::new(w)))
     }
 
     pub fn to_vec(&self) -> anyhow::Result<SecretBox<Vec<u8>>> {
-        Ok(SecretBox::from(
+        Ok(SecretBox::from(Box::new(
             serde_json::to_vec(self).context("failure serializing json")?,
-        ))
+        )))
     }
 
     pub fn to_vec_pretty(&self) -> anyhow::Result<SecretBox<Vec<u8>>> {
-        Ok(SecretBox::from(
+        Ok(SecretBox::from(Box::new(
             serde_json::to_vec_pretty(self).context("failure serializing json")?,
-        ))
+        )))
     }
 
     pub fn to_string_pretty(&self) -> anyhow::Result<SecretString> {
         Ok(SecretString::new(
-            serde_json::to_string_pretty(self).context("failure serializing json")?,
+            serde_json::to_string_pretty(self)
+                .context("failure serializing json")?
+                .into(),
         ))
     }
 }
@@ -1296,12 +1300,12 @@ impl WordCount {
     }
 }
 
-pub fn generate_entropy_for_seeds<Rng: (CryptoRng + RngCore)>(
+pub fn generate_entropy_for_seeds<Rng: CryptoRng + RngCore>(
     entropy_bytes: usize,
     rng: &mut Rng,
 ) -> Result<[u8; (MAX_NB_WORDS / 3) * 4], anyhow::Error> {
     let mut entropy = [0u8; (MAX_NB_WORDS / 3) * 4];
-    rng.try_fill_bytes(&mut entropy[0..entropy_bytes])?;
+    rng.fill_bytes(&mut entropy[0..entropy_bytes]);
     Ok(entropy)
 }
 
@@ -1316,10 +1320,10 @@ pub fn generate_seeds_from_entropy(
     language: bip39::Language,
 ) -> anyhow::Result<Secret<bip39::Mnemonic>> {
     let mnemonic = bip39::Mnemonic::from_entropy_in(language, &entropy[0..entropy_bytes])?;
-    Ok(Secret::new(mnemonic))
+    Ok(Secret::from(Box::new(mnemonic)))
 }
 
-pub fn generate_seeds<Rng: (CryptoRng + RngCore)>(
+pub fn generate_seeds<Rng: CryptoRng + RngCore>(
     rng: &mut Rng,
     word_count: WordCount,
     language: bip39::Language,
@@ -1334,11 +1338,12 @@ fn get_root_key(
     passphrase: &SecretString,
     network: bitcoin::Network,
 ) -> anyhow::Result<Secret<WExtendedPrivKey>> {
-    let seed = Secret::new(mnemonic.expose_secret().to_seed(passphrase.expose_secret()));
-    let root = Secret::new(WExtendedPrivKey(bitcoin::bip32::Xpriv::new_master(
-        network,
-        seed.expose_secret(),
-    )?));
+    let seed = Secret::from(Box::new(
+        mnemonic.expose_secret().to_seed(passphrase.expose_secret()),
+    ));
+    let root = Secret::from(Box::new(WExtendedPrivKey(
+        bitcoin::bip32::Xpriv::new_master(network, seed.expose_secret())?,
+    )));
     Ok(root)
 }
 
@@ -1436,9 +1441,9 @@ fn get_uncompressed_wallet(
 ) -> anyhow::Result<SecretBox<Vec<u8>>> {
     let compressed = default_decrypt(&header.key, &header.nonce, ciphertext)
         .context("failure decrypting data")?;
-    let uncompressed = SecretBox::from(
+    let uncompressed = SecretBox::from(Box::new(
         uncompress(compressed.expose_secret()).context("failure uncompressing decrypted data")?,
-    );
+    ));
     Ok(uncompressed)
 }
 
@@ -1596,7 +1601,7 @@ impl DecodedHeaderV0 {
         anyhow::ensure!(length > 0, "Got zero on header length");
         Ok(Self {
             nonce,
-            key: Secret::new(key),
+            key: Secret::from(Box::new(key)),
             version,
             length,
         })
@@ -1610,7 +1615,7 @@ impl DecodedHeaderV0 {
         writer.write_all(&self.length.to_le_bytes())?;
         let secret = writer.into_inner()?;
         assert_eq!(secret.len(), HEADER_LENGTH);
-        Ok(Secret::new(secret))
+        Ok(Secret::from(Box::new(secret)))
     }
 }
 
@@ -1624,7 +1629,7 @@ mod tests {
         use pretty_assertions::assert_eq;
         // BIP 84 test vectors
         let seed_phrase = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
-        let mnemonic = Secret::new(bip39::Mnemonic::from_str(seed_phrase)?);
+        let mnemonic = Secret::from(Box::new(bip39::Mnemonic::from_str(seed_phrase)?));
         let mut rng = rand::thread_rng();
         let secp = get_secp(&mut rng);
         let w = SingleSigWalletDescriptionV0::generate(
@@ -1713,7 +1718,7 @@ mod tests {
         println!("header length: {ENCRYPTED_HEADER_LENGTH}");
         let mut rng = rand::thread_rng();
 
-        let key = Secret::new(get_random_key(&mut rng)?);
+        let key = Secret::from(Box::new(get_random_key(&mut rng)?));
         let nonce = get_random_nonce(&mut rng)?;
 
         let original =

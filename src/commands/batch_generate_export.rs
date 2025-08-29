@@ -15,8 +15,8 @@ use frozenkrill_core::{
     generate_encrypted_encoded_singlesig_wallet, get_padder, itertools,
     key_derivation::{default_derive_key, KeyDerivationDifficulty},
     log, parse_keyfiles_paths,
-    rand_core::CryptoRngCore,
-    secrecy::{ExposeSecret, Secret, SecretString},
+    rand_core::{CryptoRng, RngCore},
+    secrecy::{ExposeSecret, SecretBox, SecretString},
     utils::create_file,
     wallet_description::{
         calculate_seed_entropy_bytes, generate_entropy_for_seeds, generate_seeds_from_entropy,
@@ -44,6 +44,8 @@ use crate::{
 
 use super::generate::{generate_check_keyfiles, inform_custom_generate_params};
 
+type Secret<T> = SecretBox<T>;
+
 pub(super) struct CoreBatchGenerateExportArgs<'a> {
     pub(super) password: Option<Arc<SecretString>>,
     pub(super) keyfiles: &'a [PathBuf],
@@ -64,7 +66,7 @@ pub(super) fn core_batch_generate_export(
     theme: &dyn Theme,
     term: &Term,
     secp: &mut Secp256k1<All>,
-    rng: &mut impl CryptoRngCore,
+    rng: &mut (impl CryptoRng + RngCore),
     ic: impl InternetChecker,
     args: CoreBatchGenerateExportArgs,
 ) -> anyhow::Result<()> {
@@ -77,7 +79,7 @@ pub(super) fn core_batch_generate_export(
     let keyfiles = args.keyfiles;
     let difficulty = args.difficulty;
     let mut name_salt = [0u8; KEY_SIZE];
-    rng.try_fill_bytes(&mut name_salt)?;
+    rng.fill_bytes(&mut name_salt);
     let output_prefix = match output_prefix.trim() {
         "" => "".into(),
         other => {
@@ -124,14 +126,8 @@ pub(super) fn core_batch_generate_export(
     let mut nonces = HashSet::with_capacity(wallets_quantity * 2);
     while nonces.len() < wallets_quantity * 2 {
         let mut nonce = [0u8; NONCE_SIZE];
-        match rng.try_fill_bytes(&mut nonce) {
-            Ok(()) => {
-                nonces.insert(nonce);
-            }
-            Err(e) => {
-                log::warn!("While getting entropy for a nonce got {e:?}, try to generate more entropy for the operating system (nonces generated: {})", nonces.len())
-            }
-        }
+        rng.fill_bytes(&mut nonce);
+        nonces.insert(nonce);
         pb.set_position(nonces.len().try_into()?);
     }
     let nonces: Vec<(_, _)> = itertools::Itertools::tuples(nonces.into_iter()).collect();
@@ -140,14 +136,8 @@ pub(super) fn core_batch_generate_export(
     let mut salts = HashSet::with_capacity(wallets_quantity);
     while salts.len() < wallets_quantity {
         let mut salt = [0u8; SALT_SIZE];
-        match rng.try_fill_bytes(&mut salt) {
-            Ok(()) => {
-                salts.insert(salt);
-            }
-            Err(e) => {
-                log::warn!("While getting entropy for a salt got {e:?}, try to generate more entropy for the operating system (salts generated: {})", salts.len())
-            }
-        }
+        rng.fill_bytes(&mut salt);
+        salts.insert(salt);
         pb.set_position(salts.len().try_into()?);
     }
     let salts: Vec<_> = salts.into_iter().collect();
@@ -156,17 +146,14 @@ pub(super) fn core_batch_generate_export(
     let mut header_keys = HashSet::with_capacity(wallets_quantity);
     while header_keys.len() < wallets_quantity {
         let mut header_key = [0u8; KEY_SIZE];
-        match rng.try_fill_bytes(&mut header_key) {
-            Ok(()) => {
-                header_keys.insert(header_key);
-            }
-            Err(e) => {
-                log::warn!("While getting entropy for a salt got {e:?}, try to generate more entropy for the operating system (header_keys generated: {})", header_keys.len())
-            }
-        }
+        rng.fill_bytes(&mut header_key);
+        header_keys.insert(header_key);
         pb.set_position(header_keys.len().try_into()?);
     }
-    let header_keys: Vec<_> = header_keys.into_iter().map(Secret::new).collect();
+    let header_keys: Vec<_> = header_keys
+        .into_iter()
+        .map(|k| Secret::from(Box::new(k)))
+        .collect();
     pb.finish_using_style();
     let pb = get_prefixed_progress_bar(wallets_quantity, "Paddings", "Generating...");
     let paddings = (0..wallets_quantity)
@@ -257,7 +244,9 @@ pub(super) fn core_batch_generate_export(
             .with_context(|| format!("failure saving encrypted wallet {output_path:?}"))?;
     }
     pb.finish_using_style();
-    secp.randomize(rng);
+    let mut seed = [0u8; 32];
+    rng.fill_bytes(&mut seed);
+    secp.seeded_randomize(&seed);
     let pb = Arc::new(get_prefixed_progress_bar(
         wallets_quantity,
         "Wallet files",
@@ -397,7 +386,7 @@ pub(crate) fn batch_generate_export(
     theme: &dyn Theme,
     term: &Term,
     secp: &mut Secp256k1<All>,
-    rng: &mut impl CryptoRngCore,
+    rng: &mut (impl CryptoRng + RngCore),
     ic: impl InternetChecker,
     args: &SinglesigBatchGenerateExportArgs,
 ) -> anyhow::Result<()> {
@@ -418,7 +407,7 @@ pub(crate) fn batch_generate_export(
         .common
         .password
         .clone()
-        .map(SecretString::new)
+        .map(|s| SecretString::new(s.into()))
         .map(Arc::new);
     let args = CoreBatchGenerateExportArgs {
         password,

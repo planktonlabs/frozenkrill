@@ -7,8 +7,8 @@ use frozenkrill_core::{
     key_derivation::KeyDerivationDifficulty,
     log::{self, debug},
     parse_keyfiles_paths,
-    rand_core::CryptoRngCore,
-    secrecy::{Secret, SecretString},
+    rand_core::{CryptoRng, RngCore},
+    secrecy::{SecretBox, SecretString},
     wallet_description::read_decode_wallet,
 };
 
@@ -24,6 +24,8 @@ use crate::{
 };
 
 use super::{choose_keyfiles, duress_wallet_explanation};
+
+type Secret<T> = SecretBox<T>;
 
 mod export_public_info;
 mod reencode;
@@ -89,7 +91,7 @@ pub(super) fn singlesig_interactive_open(
     theme: &dyn Theme,
     term: &Term,
     secp: &mut Secp256k1<All>,
-    rng: &mut impl CryptoRngCore,
+    rng: &mut (impl CryptoRng + RngCore),
     ic: impl InternetChecker,
     keyfiles: Vec<PathBuf>,
     difficulty: Option<KeyDerivationDifficulty>,
@@ -169,7 +171,7 @@ pub(super) fn multisig_interactive_open(
     theme: &dyn Theme,
     term: &Term,
     secp: &mut Secp256k1<All>,
-    rng: &mut impl CryptoRngCore,
+    rng: &mut (impl CryptoRng + RngCore),
     mut ic: impl InternetChecker,
     keyfiles: Vec<PathBuf>,
     difficulty: Option<KeyDerivationDifficulty>,
@@ -193,7 +195,7 @@ pub(super) fn multisig_interactive_open(
         }
         ParsedWalletInputFile::PublicInfo(public_info) => match public_info {
             PublicInfoInput::MultisigJson(json) => {
-                MultisigCoreOpenWalletParam::Json(Secret::new(json))
+                MultisigCoreOpenWalletParam::Json(Secret::from(Box::new(json)))
             }
         },
     };

@@ -1,4 +1,5 @@
 use anyhow::Context;
+use bitcoin::secp256k1::{All, Secp256k1};
 use bitcoin::{
     ecdsa,
     psbt::{
@@ -9,7 +10,6 @@ use bitcoin::{
     FeeRate, PrivateKey, Psbt, PublicKey, Transaction,
 };
 use log::{debug, warn};
-use secp256k1::{All, Secp256k1, Signing};
 use secrecy::{ExposeSecret, SecretBox};
 type Secret<T> = SecretBox<T>;
 use std::{borrow::Borrow, fs::OpenOptions, io::Read, path::Path};
@@ -66,7 +66,7 @@ struct SignerProvider {
 impl GetKey for SignerProvider {
     type Error = GetKeyError;
 
-    fn get_key<C: Signing>(
+    fn get_key<C: bitcoin::secp256k1::Signing>(
         &self,
         key_request: KeyRequest,
         secp: &bitcoin::secp256k1::Secp256k1<C>,
@@ -93,9 +93,13 @@ impl GetKey for SignerProvider {
 }
 
 pub trait PsbtExt {
-    fn sign_partial<C, K>(&mut self, k: &K, secp: &bitcoin::secp256k1::Secp256k1<C>) -> SigningKeysMap
+    fn sign_partial<C, K>(
+        &mut self,
+        k: &K,
+        secp: &bitcoin::secp256k1::Secp256k1<C>,
+    ) -> SigningKeysMap
     where
-        C: Signing,
+        C: bitcoin::secp256k1::Signing,
         K: GetKey;
     fn output_type(&self, input_index: usize) -> Result<OutputType, SignError>;
     fn signing_algorithm(&self, input_index: usize) -> Result<SigningAlgorithm, SignError>;
@@ -110,10 +114,10 @@ pub trait PsbtExt {
         secp: &bitcoin::secp256k1::Secp256k1<C>,
     ) -> Result<Vec<PublicKey>, SignError>
     where
-        C: Signing,
+        C: bitcoin::secp256k1::Signing,
         T: Borrow<Transaction>,
         K: GetKey;
-        
+
     #[allow(clippy::result_large_err)]
     fn internal_extract_tx_with_fee_rate_limit(
         self,
@@ -202,7 +206,7 @@ impl PsbtExt for Psbt {
         secp: &bitcoin::secp256k1::Secp256k1<C>,
     ) -> Result<Vec<PublicKey>, SignError>
     where
-        C: Signing,
+        C: bitcoin::secp256k1::Signing,
         T: Borrow<Transaction>,
         K: GetKey,
     {
@@ -327,9 +331,13 @@ impl PsbtExt for Psbt {
     }
 
     // like sign, but won't generate an error if some input can't be signed
-    fn sign_partial<C, K>(&mut self, k: &K, secp: &bitcoin::secp256k1::Secp256k1<C>) -> SigningKeysMap
+    fn sign_partial<C, K>(
+        &mut self,
+        k: &K,
+        secp: &bitcoin::secp256k1::Secp256k1<C>,
+    ) -> SigningKeysMap
     where
-        C: Signing,
+        C: bitcoin::secp256k1::Signing,
         K: GetKey,
     {
         let tx = self.unsigned_tx.clone(); // clone because we need to mutably borrow when signing.
@@ -382,7 +390,7 @@ mod tests {
         create_file(&hex::decode("70736274ff010071020000000187ca9152f3540a73cfd51115277667e91a548fcf0544276f05fba9628c27fc5c0000000000fdffffff022a6203000000000016001487b78396f6f85213bce62e3374661bc578ae39d610560d00000000001600145c217d465b15f3c3041f9eac8ae88133485d4f6ae6340b00000100710200000001aa20bc793370fb83dba9a87753969fd3b9d7fd361be40a55d302f0d6fa1ddc410000000000feffffff02a8b81000000000001600149ef71340cba5b463069cfa4d781390cc9eefadb234de14d4010000001600140f4a26ef5174291b5c02b258a605d33944081b9f27cd240001011fa8b81000000000001600149ef71340cba5b463069cfa4d781390cc9eefadb2010304010000002206037a0f324d4c7baccc4da3bb2594cee6ee9f3b0771231fa7ce89b14ae191232bab0ccee87ee50000000001000000002202029402da79dd8b0d4f4d8eb625aaa79908088d0b1e10fbf70ab70fd5c84fbabbeb0ccee87ee501000000000000000000")?, &psbt_path)?;
         let mut p = open_psbt_file(&psbt_path)?;
         let spriv = "vprv9Ks2HJ9nwsjejp3mbQnSKEEZfN9jNNAEvrBvZP6N3P473Q2u6Noskm5nSu7wyoyNZB6T4e9U5FWYPjcQFsFKFoATH6hWYkrr2GShCuAwfYs";
-        let xpriv = Secret::new(WExtendedPrivKey(Xpriv::from_slip132_str(spriv)?));
+        let xpriv = Secret::from(WExtendedPrivKey(Xpriv::from_slip132_str(spriv)?));
         assert!(!p.inputs.is_empty());
         for i in &p.inputs {
             assert!(i.partial_sigs.is_empty())

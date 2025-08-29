@@ -25,7 +25,7 @@ use frozenkrill_core::{
     custom_logger,
     key_derivation::{self, default_derive_key, KeyDerivationDifficulty},
     log, mnemonic_utils, rand,
-    rand_core::CryptoRngCore,
+    rand_core::{CryptoRng, RngCore},
     random_generation_utils::get_secp,
     wallet_description::{EncryptedWalletVersion, MultisigType, ScriptType, KEY_SIZE, SALT_SIZE},
     DEFAULT_MAX_ADDITIONAL_PADDING, DEFAULT_MIN_ADDITIONAL_PADDING,
@@ -37,7 +37,7 @@ use dialoguer::{
     console::Term,
     theme::{ColorfulTheme, SimpleTheme, Theme},
 };
-use frozenkrill_core::secrecy::{ExposeSecret, Secret, SecretString};
+use frozenkrill_core::secrecy::{ExposeSecret, SecretBox, SecretString};
 use indicatif::ProgressBar;
 
 use frozenkrill_core::wallet_description::{
@@ -48,6 +48,8 @@ use crate::progress_bar::get_spinner;
 
 mod commands;
 mod progress_bar;
+
+type Secret<T> = SecretBox<T>;
 
 const VERSION: &str = "0.0.0";
 
@@ -926,7 +928,8 @@ fn ask_password(theme: &dyn Theme, term: &Term) -> anyhow::Result<SecretString> 
             .with_confirmation("Confirm password", "Passwords don't match, try again")
             .allow_empty_password(false)
             .interact_on(term)
-            .context("failure reading password")?,
+            .context("failure reading password")?
+            .into(),
     ))
 }
 
@@ -936,7 +939,8 @@ fn ask_non_duress_password(theme: &dyn Theme, term: &Term) -> anyhow::Result<Arc
             .with_prompt("Enter a non duress seed password")
             .with_confirmation("Confirm password", "Passwords don't match, try again")
             .interact_on(term)
-            .context("failure reading password")?,
+            .context("failure reading password")?
+            .into(),
     )))
 }
 
@@ -996,7 +1000,7 @@ fn handle_output_path<S: AsRef<std::ffi::OsStr> + ?Sized>(
 }
 
 fn ui_ask_manually_seed_input(
-    rng: &mut impl CryptoRngCore,
+    rng: &mut (impl CryptoRng + RngCore),
     theme: &dyn Theme,
     term: &Term,
     word_count: &WordCount,
@@ -1040,7 +1044,7 @@ fn ui_ask_manually_seed_input(
             words = mnemonic_utils::complete_words_with_checksum(rng, &words)?;
         }
         match Mnemonic::from_str(&words.join(" ")) {
-            Ok(mnemonic) => return Ok(Secret::new(mnemonic)),
+            Ok(mnemonic) => return Ok(Secret::from(Box::new(mnemonic))),
             Err(bip39::Error::InvalidChecksum) => {
                 if !dialoguer::Confirm::with_theme(theme)
                     .with_prompt("The checksum is invalid. A word must be incorrect. Try again?")
