@@ -16,12 +16,12 @@ dialoguer = { git = "https://github.com/galtland/dialoguer", branch = "master", 
     "fuzzy-select",
 ] }
 frozenkrill-core = { path = "./frozenkrill-core" }
-indicatif = "0.17"
+indicatif = "0.18"
 mockall = "0.13"
 path-absolutize = "3"
 qr2term = "0.3"
 serde = { version = "1", features = ["derive"] }
-termimad = "0.26"
+termimad = "0.34"
 zxcvbn = "3"
 expectrl = { version = "0.7", optional = true }
 

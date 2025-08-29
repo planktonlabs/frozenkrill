@@ -18,7 +18,9 @@ use frozenkrill_core::{
 };
 use miniscript::DescriptorPublicKey;
 use rand_core::RngCore;
-use secrecy::{ExposeSecret, Secret, SecretString};
+use secrecy::{ExposeSecret, SecretBox, SecretString};
+
+type Secret<T> = SecretBox<T>;
 use tempfile::TempDir;
 
 fn create_keyfiles_directory() -> anyhow::Result<TempDir> {
@@ -42,7 +44,7 @@ const TEST_SEED_PASSWORD: &str = "correct seed battery staple";
 fn test_full_generation_process_random_wallet() -> anyhow::Result<()> {
     let mut rng = rand::thread_rng();
     let mut password = [1u8; 1024 * 1024];
-    rng.try_fill_bytes(&mut password)?;
+    rng.fill_bytes(&mut password);
     let header_key = get_random_key(&mut rng)?;
     let salt = get_random_salt(&mut rng)?;
     let nonce = get_random_nonce(&mut rng)?;
@@ -62,7 +64,7 @@ fn test_full_generation_process_random_wallet() -> anyhow::Result<()> {
     ] {
         let encoded_wallet = generate_encrypted_encoded_singlesig_wallet(
             &key,
-            Secret::new(header_key),
+            Secret::from(Box::new(header_key)),
             Arc::clone(&mnemonic),
             &seed_password,
             salt,
@@ -98,7 +100,7 @@ fn test_full_generation_process_random_wallet() -> anyhow::Result<()> {
 fn test_default_seed_password() -> anyhow::Result<()> {
     let mut rng = rand::thread_rng();
     let mut password = [1u8; 1024 * 1024];
-    rng.try_fill_bytes(&mut password)?;
+    rng.fill_bytes(&mut password);
     let header_key = get_random_key(&mut rng)?;
     let salt = get_random_salt(&mut rng)?;
     let nonce = get_random_nonce(&mut rng)?;
@@ -116,7 +118,7 @@ fn test_default_seed_password() -> anyhow::Result<()> {
     ] {
         let encoded_wallet_no_seed_password = generate_encrypted_encoded_singlesig_wallet(
             &key,
-            Secret::new(header_key),
+            Secret::from(Box::new(header_key)),
             Arc::clone(&mnemonic),
             &None,
             salt,
@@ -130,7 +132,7 @@ fn test_default_seed_password() -> anyhow::Result<()> {
         )?;
         let encoded_wallet_empty_password = generate_encrypted_encoded_singlesig_wallet(
             &key,
-            Secret::new(header_key),
+            Secret::from(Box::new(header_key)),
             Arc::clone(&mnemonic),
             &Some(Arc::new(SecretString::new("".into()))), // empty password is the default
             salt,
@@ -184,7 +186,7 @@ fn test_read_existing_singlesig_wallet() -> anyhow::Result<()> {
 fn test_generation_multisig_wallet() -> anyhow::Result<()> {
     let mut rng = rand::thread_rng();
     let mut password = [1u8; 1024 * 1024];
-    rng.try_fill_bytes(&mut password)?;
+    rng.fill_bytes(&mut password);
     let salt = get_random_salt(&mut rng)?;
     let nonce = get_random_nonce(&mut rng)?;
     let header_nonce = get_random_nonce(&mut rng)?;
@@ -220,7 +222,7 @@ fn test_generation_multisig_wallet() -> anyhow::Result<()> {
     ] {
         let padder = get_padder(&mut rng, &PaddingParams::new(false, None, Some(5))?)?;
 
-        let header_key = Secret::new(get_random_key(&mut rng)?);
+        let header_key = Secret::from(Box::new(get_random_key(&mut rng)?));
         let encoded_wallet = generate_encrypted_encoded_multisig_wallet(
             configuration,
             inputs.clone(),

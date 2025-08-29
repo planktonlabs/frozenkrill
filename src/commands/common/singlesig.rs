@@ -32,7 +32,7 @@ pub(crate) fn open_singlesig_wallet_non_interactive(
         .common
         .password
         .clone()
-        .map(SecretString::new)
+        .map(|s| SecretString::new(s.into()))
         .map(Arc::new);
     singlesig_core_open(
         theme,

@@ -12,8 +12,8 @@ use frozenkrill_core::{
     },
     key_derivation::{self, KeyDerivationDifficulty},
     log, parse_keyfiles_paths,
-    rand_core::CryptoRngCore,
-    secrecy::{Secret, SecretString},
+    rand_core::{CryptoRng, RngCore},
+    secrecy::{SecretBox, SecretString},
     utils::create_file,
     wallet_description::{MultiSigWalletDescriptionV0, SingleSigWalletDescriptionV0},
     wallet_export::MultisigJsonWalletPublicExportV0,
@@ -27,6 +27,8 @@ use crate::commands::common::{
 use frozenkrill_core::wallet_description::WordCount;
 
 use crate::commands::common::generate_random_name;
+
+type Secret<T> = SecretBox<T>;
 
 use crate::{
     commands::common::double_check_non_duress_password, handle_output_path,
@@ -46,7 +48,7 @@ use super::{
 pub mod core;
 
 pub(crate) struct DuressPublicInfoParams {
-    pub(crate) non_duress_password: Arc<Secret<String>>,
+    pub(crate) non_duress_password: Arc<SecretString>,
     pub(crate) non_duress_public_info_json_output: PathBuf,
 }
 
@@ -191,7 +193,7 @@ pub(crate) fn singlesig_generate(
     theme: &dyn Theme,
     term: &Term,
     secp: &mut Secp256k1<All>,
-    mut rng: &mut impl CryptoRngCore,
+    mut rng: &mut (impl CryptoRng + RngCore),
     ic: impl InternetChecker,
     args: SinglesigGenerateArgs,
 ) -> anyhow::Result<()> {
@@ -239,7 +241,11 @@ pub(crate) fn singlesig_generate(
         public_json_file_path: public_info_json_output.clone(),
     };
     let script_type = frozenkrill_core::wallet_description::ScriptType::SegwitNative;
-    let password = args.common.password.map(SecretString::new).map(Arc::new);
+    let password = args
+        .common
+        .password
+        .map(|s| SecretString::new(s.into()))
+        .map(Arc::new);
     let args = SinglesigCoreGenerateArgs {
         password,
         output_file_path,
@@ -270,7 +276,7 @@ pub(crate) fn multisig_generate(
     theme: &dyn Theme,
     term: &Term,
     secp: &mut Secp256k1<All>,
-    rng: &mut impl CryptoRngCore,
+    rng: &mut (impl CryptoRng + RngCore),
     ic: impl InternetChecker,
     args: crate::MultisigGenerateArgs,
 ) -> anyhow::Result<()> {
@@ -299,7 +305,7 @@ pub(crate) fn multisig_generate(
         .common
         .password
         .clone()
-        .map(SecretString::new)
+        .map(|s| SecretString::new(s.into()))
         .map(Arc::new);
     let args = MultisigCoreGenerateArgs {
         password,

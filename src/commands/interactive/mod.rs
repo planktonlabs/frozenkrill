@@ -13,7 +13,7 @@ use frozenkrill_core::{
     },
     key_derivation::{self, KeyDerivationDifficulty},
     parse_keyfiles_paths,
-    rand_core::CryptoRngCore,
+    rand_core::{CryptoRng, RngCore},
     secrecy::SecretString,
     wallet_description::WordCount,
 };
@@ -60,7 +60,7 @@ pub(crate) fn interactive(
     theme: &dyn Theme,
     term: &Term,
     secp: &mut Secp256k1<All>,
-    rng: &mut impl CryptoRngCore,
+    rng: &mut (impl CryptoRng + RngCore),
     ic: impl InternetChecker,
     args: &InteractiveArgs,
 ) -> anyhow::Result<()> {
@@ -83,7 +83,11 @@ pub(crate) fn interactive(
             return Ok(());
         }
     };
-    let password = args.password.clone().map(SecretString::new).map(Arc::new);
+    let password = args
+        .password
+        .clone()
+        .map(|s| SecretString::new(s.into()))
+        .map(Arc::new);
     match &actions[action] {
         MainActions::SinglesigCreateNewSingle => singlesig_interactive_generate_one(
             theme,

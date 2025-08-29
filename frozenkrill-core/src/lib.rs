@@ -2,6 +2,7 @@ use std::{collections::HashSet, path::PathBuf, sync::Arc};
 
 use anyhow::{bail, ensure, Context};
 use bip39::Mnemonic;
+use bitcoin::secp256k1::{All, Secp256k1};
 use bitcoin::{
     bip32::{DerivationPath, Fingerprint},
     Network,
@@ -11,9 +12,10 @@ use encryption::default_encrypt;
 use itertools::Itertools;
 use log::debug;
 use miniscript::{Descriptor, DescriptorPublicKey};
-use rand_core::CryptoRngCore;
-use secp256k1::{All, Secp256k1};
-use secrecy::{ExposeSecret, Secret, SecretString, SecretVec};
+use rand_core::{CryptoRng, RngCore};
+use secrecy::{ExposeSecret, SecretBox, SecretString};
+type Secret<T> = SecretBox<T>;
+type SecretVec<T> = SecretBox<Vec<T>>;
 use wallet_description::{
     EncryptedWalletDescription, EncryptedWalletVersion, MultiSigCompactWalletDescriptionV0,
     MultisigType, ScriptType, SingleSigCompactWalletDescriptionV0, SingleSigWalletDescriptionV0,
@@ -110,8 +112,8 @@ impl CiphertextPadder {
 
 #[allow(clippy::too_many_arguments)]
 pub fn generate_encrypted_encoded_singlesig_wallet(
-    key: &Secret<[u8; KEY_SIZE]>,
-    header_key: Secret<[u8; KEY_SIZE]>,
+    key: &SecretBox<[u8; KEY_SIZE]>,
+    header_key: SecretBox<[u8; KEY_SIZE]>,
     mnemonic: Arc<Secret<Mnemonic>>,
     seed_password: &Option<Arc<SecretString>>,
     salt: [u8; SALT_SIZE],
@@ -153,8 +155,8 @@ pub fn generate_encrypted_encoded_singlesig_wallet(
 
 #[allow(clippy::too_many_arguments)]
 pub fn generate_encrypted_encoded_singlesig_wallet_standard(
-    key: &Secret<[u8; KEY_SIZE]>,
-    header_key: Secret<[u8; KEY_SIZE]>,
+    key: &SecretBox<[u8; KEY_SIZE]>,
+    header_key: SecretBox<[u8; KEY_SIZE]>,
     mnemonic: Arc<Secret<Mnemonic>>,
     seed_password: &Option<Arc<SecretString>>,
     salt: [u8; SALT_SIZE],
@@ -165,8 +167,8 @@ pub fn generate_encrypted_encoded_singlesig_wallet_standard(
     network: Network,
     secp: &Secp256k1<All>,
 ) -> anyhow::Result<Vec<u8>> {
-    let compressed: SecretVec<u8> = {
-        let json: SecretVec<u8> = {
+    let compressed: SecretBox<Vec<u8>> = {
+        let json: SecretBox<Vec<u8>> = {
             let wallet_description = SingleSigWalletDescriptionV0::generate(
                 mnemonic,
                 seed_password,
@@ -182,7 +184,9 @@ pub fn generate_encrypted_encoded_singlesig_wallet_standard(
                 )?;
             json_wallet_description.expose_secret().to_vec()?
         };
-        SecretVec::new(compress(json.expose_secret()).context("failure compressing json")?)
+        SecretBox::from(Box::new(
+            compress(json.expose_secret()).context("failure compressing json")?,
+        ))
     };
     let mut ciphertext = default_encrypt(&header_key, &header_nonce, &compressed)
         .context("failure encrypting compressed json")?;
@@ -214,8 +218,8 @@ pub fn generate_encrypted_encoded_singlesig_wallet_standard(
 
 #[allow(clippy::too_many_arguments)]
 pub fn generate_encrypted_encoded_singlesig_wallet_compact(
-    key: &Secret<[u8; KEY_SIZE]>,
-    header_key: Secret<[u8; KEY_SIZE]>,
+    key: &SecretBox<[u8; KEY_SIZE]>,
+    header_key: SecretBox<[u8; KEY_SIZE]>,
     mnemonic: Arc<Secret<Mnemonic>>,
     salt: [u8; SALT_SIZE],
     nonce: [u8; NONCE_SIZE],
@@ -295,8 +299,8 @@ pub fn ms_ddpk_to_dpks(
 pub fn generate_encrypted_encoded_multisig_wallet(
     configuration: MultisigType,
     inputs: MultisigInputs,
-    key: &Secret<[u8; KEY_SIZE]>,
-    header_key: Secret<[u8; KEY_SIZE]>,
+    key: &SecretBox<[u8; KEY_SIZE]>,
+    header_key: SecretBox<[u8; KEY_SIZE]>,
     salt: [u8; SALT_SIZE],
     nonce: [u8; NONCE_SIZE],
     header_nonce: [u8; NONCE_SIZE],
@@ -316,7 +320,7 @@ pub fn generate_encrypted_encoded_multisig_wallet(
                 script_type,
             )
             .context("failure generating wallet")?;
-            let json: SecretVec<u8> = {
+            let json: SecretBox<Vec<u8>> = {
                 let json_wallet_description =
                     MultisigJsonWalletDescriptionV0::from_wallet_description(
                         &wallet_description,
@@ -337,7 +341,7 @@ pub fn generate_encrypted_encoded_multisig_wallet(
         }
     };
     debug!("Serialized wallet with length {}", serialized.len());
-    let serialized = SecretVec::new(serialized);
+    let serialized = SecretBox::from(Box::new(serialized));
     let mut ciphertext = default_encrypt(&header_key, &header_nonce, &serialized)
         .context("failure encrypting compressed json")?;
     let header = DecodedHeaderV0::new(
@@ -408,7 +412,7 @@ pub const DEFAULT_MAX_ADDITIONAL_PADDING: u32 = 1000;
 pub const MAX_ADDITIONAL_PADDING: u32 = 1_000_000_000;
 
 pub fn get_padder(
-    rng: &mut impl CryptoRngCore,
+    rng: &mut (impl CryptoRng + RngCore),
     params: &PaddingParams,
 ) -> anyhow::Result<CiphertextPadder> {
     if params.disable_all_padding {

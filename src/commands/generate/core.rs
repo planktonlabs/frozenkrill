@@ -14,8 +14,8 @@ use frozenkrill_core::{
     get_padder,
     key_derivation::{default_derive_key, KeyDerivationDifficulty},
     log,
-    rand_core::CryptoRngCore,
-    secrecy::{Secret, SecretString},
+    rand_core::{CryptoRng, RngCore},
+    secrecy::{SecretBox, SecretString},
     utils::create_file,
     wallet_description::{
         generate_seeds, EncryptedWalletVersion, MultiSigWalletDescriptionV0,
@@ -46,6 +46,8 @@ use crate::{
 };
 
 use super::DuressPublicInfoParams;
+
+type Secret<T> = SecretBox<T>;
 
 pub(crate) struct DuressInputArgs {
     pub(crate) enable_duress_wallet: bool,
@@ -88,7 +90,7 @@ pub(crate) fn singlesig_core_generate(
     theme: &dyn Theme,
     term: &Term,
     secp: &mut Secp256k1<All>,
-    mut rng: &mut impl CryptoRngCore,
+    mut rng: &mut (impl CryptoRng + RngCore),
     ic: impl InternetChecker,
     args: SinglesigCoreGenerateArgs,
 ) -> anyhow::Result<()> {
@@ -105,7 +107,7 @@ pub(crate) fn singlesig_core_generate(
     let key = ui_derive_key(&password, args.keyfiles, &salt, args.difficulty)?;
     let nonce = get_random_nonce(&mut rng)?;
     let header_nonce = get_random_nonce(&mut rng)?;
-    let header_key = Secret::new(get_random_key(&mut rng)?);
+    let header_key = Secret::from(Box::new(get_random_key(&mut rng)?));
     let padder = get_padder(&mut rng, &args.padding_params)?;
     let mnemonic = if let Some(ref mnemonic) = args.user_mnemonic {
         Arc::clone(mnemonic)
@@ -131,7 +133,9 @@ pub(crate) fn singlesig_core_generate(
     create_file(&encrypted_wallet, output_file_path)
         .with_context(|| format!("failure saving encrypted wallet to {output_file_path:?}"))?;
     log::info!("Wallet saved to {output_file_path:?}");
-    secp.randomize(&mut rng);
+    let mut seed = [0u8; 32];
+    rng.fill_bytes(&mut seed);
+    secp.seeded_randomize(&seed);
     // If we are going to export the public info then we will derive the key again to make sure everything is okay and no bit flip happened somewhere
     if let Some(ref public_info_json_output) = args.public_info_json_output {
         let encrypted_wallet = read_decode_wallet(output_file_path)?;
@@ -203,7 +207,7 @@ pub(crate) fn multisig_core_generate(
     theme: &dyn Theme,
     term: &Term,
     secp: &mut Secp256k1<All>,
-    mut rng: &mut impl CryptoRngCore,
+    mut rng: &mut (impl CryptoRng + RngCore),
     args: MultisigCoreGenerateArgs,
 ) -> anyhow::Result<()> {
     warn_difficulty_level(args.difficulty);
@@ -218,7 +222,7 @@ pub(crate) fn multisig_core_generate(
     let key = ui_derive_key(&password, args.keyfiles, &salt, args.difficulty)?;
     let nonce = get_random_nonce(&mut rng)?;
     let header_nonce = get_random_nonce(&mut rng)?;
-    let header_key = Secret::new(get_random_key(&mut rng)?);
+    let header_key = Secret::from(Box::new(get_random_key(&mut rng)?));
     let padder = get_padder(&mut rng, &args.padding_params)?;
     let encrypted_wallet = generate_encrypted_encoded_multisig_wallet(
         args.configuration,
@@ -240,7 +244,9 @@ pub(crate) fn multisig_core_generate(
         format!("failure saving encrypted wallet to {output_file_path_encrypted:?}")
     })?;
     log::info!("Wallet saved to {output_file_path_encrypted:?}");
-    secp.randomize(&mut rng);
+    let mut seed = [0u8; 32];
+    rng.fill_bytes(&mut seed);
+    secp.seeded_randomize(&seed);
     if let Some(ref output_file_path_json) = args.output_file_path_json {
         let read_encrypted_wallet = read_decode_wallet(output_file_path_encrypted)?;
         log::info!("Will derive the key again to double check against bit flips...");

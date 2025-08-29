@@ -9,7 +9,9 @@ use frozenkrill_core::{
     wallet_description::SALT_SIZE,
 };
 
-use frozenkrill_core::secrecy::SecretString;
+use frozenkrill_core::secrecy::{SecretBox, SecretString};
+
+type Secret<T> = SecretBox<T>;
 
 pub(crate) mod batch_generate_export;
 pub(crate) mod common;
@@ -47,7 +49,7 @@ mod tests {
         psbt::open_psbt_file,
         rand,
         random_generation_utils::get_secp,
-        secrecy::{ExposeSecret, Secret},
+        secrecy::{ExposeSecret, SecretBox},
         utils::create_file,
         wallet_description::{
             self, read_decode_wallet, EncryptedWalletVersion, MultisigJsonWalletDescriptionV0,
@@ -57,6 +59,7 @@ mod tests {
         wallet_export::{MultisigJsonWalletPublicExportV0, SinglesigJsonWalletPublicExportV0},
         MultisigInputs, PaddingParams,
     };
+    type Secret<T> = SecretBox<T>;
 
     use super::{
         generate::core::{singlesig_core_generate, SinglesigCoreGenerateArgs},
@@ -98,7 +101,7 @@ mod tests {
             public_info_json_output: Some(public_info_json_output.clone()),
             duress_input_args,
             keyfiles,
-            user_mnemonic: Some(Arc::new(Secret::new(mnemonic))),
+            user_mnemonic: Some(Arc::new(Secret::from(Box::new(mnemonic)))),
             word_count,
             script_type,
             network,
@@ -205,7 +208,7 @@ mod tests {
             .cloned()
             .map(|seed| {
                 SingleSigWalletDescriptionV0::generate(
-                    Arc::new(Secret::new(seed)),
+                    Arc::new(Secret::from(Box::new(seed))),
                     &None,
                     network,
                     script_type,
@@ -286,7 +289,7 @@ mod tests {
                 .cloned()
                 .map(|seed| {
                     SingleSigWalletDescriptionV0::generate(
-                        Arc::new(Secret::new(seed)),
+                        Arc::new(Secret::from(Box::new(seed))),
                         &None,
                         network,
                         script_type,
@@ -308,9 +311,9 @@ mod tests {
                     keyfiles: keyfiles.to_owned(),
                     difficulty,
                 },
-                MultisigCoreOpenWalletParam::Json(Secret::new(
+                MultisigCoreOpenWalletParam::Json(Secret::from(Box::new(
                     MultisigJsonWalletPublicExportV0::from_path(&output_file_path_json)?,
-                )),
+                ))),
             ];
             for input_wallet in input_wallets {
                 let wallet = common::multisig::multisig_core_open(
@@ -441,9 +444,9 @@ mod tests {
                     keyfiles: keyfiles.to_owned(),
                     difficulty,
                 },
-                MultisigCoreOpenWalletParam::Json(Secret::new(
+                MultisigCoreOpenWalletParam::Json(Secret::from(Box::new(
                     MultisigJsonWalletPublicExportV0::from_path(&output_file_path_json)?,
-                )),
+                ))),
             ];
             for input_wallet in input_wallets {
                 let wallet = common::multisig::multisig_core_open(

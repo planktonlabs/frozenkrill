@@ -7,8 +7,8 @@ use std::{
 use anyhow::{bail, Context};
 use bitcoin::bip32::{ChildNumber, DerivationPath, Fingerprint, Xpub};
 use miniscript::DescriptorPublicKey;
-use secrecy::Zeroize;
 use serde::{Deserialize, Serialize};
+use zeroize::Zeroize;
 use zeroize::ZeroizeOnDrop;
 
 use crate::wallet_description::{
@@ -289,11 +289,13 @@ impl MultisigJsonWalletPublicExportV0 {
 mod tests {
     use std::{str::FromStr, sync::Arc};
 
-    use secrecy::Secret;
+    use secrecy::SecretBox;
 
     use crate::random_generation_utils::get_secp;
 
     use super::*;
+    
+    type Secret<T> = SecretBox<T>;
 
     #[test]
     fn test_json_public_export() -> anyhow::Result<()> {
@@ -301,7 +303,7 @@ mod tests {
 
         // TODO: also test using https://github.com/satoshilabs/slips/blob/master/slip-0014.md
         let seed_phrase = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
-        let mnemonic = Secret::new(bip39::Mnemonic::from_str(seed_phrase)?);
+        let mnemonic = Secret::from(Box::new(bip39::Mnemonic::from_str(seed_phrase)?));
         let mut rng = rand::thread_rng();
         let secp = get_secp(&mut rng);
         let w = SingleSigWalletDescriptionV0::generate(

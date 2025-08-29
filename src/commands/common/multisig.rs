@@ -17,7 +17,7 @@ use frozenkrill_core::{
     log::{self, debug, info},
     miniscript::{self, DescriptorPublicKey},
     parse_keyfiles_paths,
-    secrecy::{ExposeSecret, Secret, SecretString},
+    secrecy::{ExposeSecret, SecretBox, SecretString},
     serde_json,
     utils::{self, buf_open_file},
     wallet_description::{
@@ -49,6 +49,8 @@ use crate::{
 
 use super::ask_try_decrypt;
 
+type Secret<T> = SecretBox<T>;
+
 pub(crate) fn open_multisig_wallet_non_interactive(
     theme: &dyn Theme,
     term: &Term,
@@ -61,14 +63,14 @@ pub(crate) fn open_multisig_wallet_non_interactive(
     let input_file_path = handle_input_path(wallet_input_file)?;
     let input_wallet = match try_open_as_json_input(&input_file_path) {
         Ok(PublicInfoInput::MultisigJson(json)) => {
-            MultisigCoreOpenWalletParam::Json(Secret::new(json))
+            MultisigCoreOpenWalletParam::Json(Secret::from(Box::new(json)))
         }
         Err(json_error) => {
             let password = args
                 .common
                 .password
                 .clone()
-                .map(SecretString::new)
+                .map(|s| SecretString::new(s.into()))
                 .map(Arc::new);
             match read_decode_wallet(&input_file_path) {
                 Ok(encrypted_wallet) => MultisigCoreOpenWalletParam::Encrypted {

@@ -2,12 +2,12 @@ use std::io::{BufReader, BufWriter, Read, Write};
 
 use anyhow::{bail, ensure, Context};
 use bitcoin::bip32::{ChildNumber, DerivationPath, Fingerprint, Xpub};
+use bitcoin::key::XOnlyPublicKey;
 use itertools::Itertools;
 use miniscript::{
     descriptor::{DerivPaths, Wildcard},
     Descriptor, DescriptorPublicKey,
 };
-use secp256k1::XOnlyPublicKey;
 
 use crate::OptOrigin;
 

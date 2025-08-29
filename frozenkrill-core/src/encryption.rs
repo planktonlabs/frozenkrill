@@ -1,13 +1,13 @@
-use secrecy::{ExposeSecret, Secret, SecretVec};
+use secrecy::{ExposeSecret, SecretBox};
 
 use crate::wallet_description::{KEY_SIZE, NONCE_SIZE};
 
 pub const MAC_LENGTH: usize = alkali::symmetric::aead::xchacha20poly1305_ietf::MAC_LENGTH;
 
 pub(crate) fn default_encrypt(
-    key: &Secret<[u8; KEY_SIZE]>,
+    key: &SecretBox<[u8; KEY_SIZE]>,
     nonce: &[u8; NONCE_SIZE],
-    message: &SecretVec<u8>,
+    message: &SecretBox<Vec<u8>>,
 ) -> anyhow::Result<Vec<u8>> {
     let ciphertext =
         libsodium_encrypt_xchacha20poly1305(key.expose_secret(), nonce, message.expose_secret())?;
@@ -15,15 +15,12 @@ pub(crate) fn default_encrypt(
 }
 
 pub(crate) fn default_decrypt(
-    key: &Secret<[u8; KEY_SIZE]>,
+    key: &SecretBox<[u8; KEY_SIZE]>,
     nonce: &[u8; NONCE_SIZE],
     ciphertext: &[u8],
-) -> anyhow::Result<SecretVec<u8>> {
-    let cleartext = SecretVec::new(libsodium_decrypt_xchacha20poly1305(
-        key.expose_secret(),
-        nonce,
-        ciphertext,
-    )?);
+) -> anyhow::Result<SecretBox<Vec<u8>>> {
+    let plaintext = libsodium_decrypt_xchacha20poly1305(key.expose_secret(), nonce, ciphertext)?;
+    let cleartext = SecretBox::from(Box::new(plaintext));
     Ok(cleartext)
 }
 
@@ -143,10 +140,10 @@ mod tests {
         use pretty_assertions::assert_eq;
         let mut rng = rand::thread_rng();
         let mut key = [0u8; KEY_SIZE];
-        rng.try_fill_bytes(&mut key)?;
+        rng.fill_bytes(&mut key);
         let nonce = get_random_nonce(&mut rng)?;
         let mut message = [0u8; 1024];
-        rng.try_fill_bytes(&mut message)?;
+        rng.fill_bytes(&mut message);
 
         let sodium_encrypted_xchacha20poly1305 =
             libsodium_encrypt_xchacha20poly1305(&key, &nonce, &message)?;
