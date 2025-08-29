@@ -9,9 +9,7 @@ use frozenkrill_core::{
     wallet_description::SALT_SIZE,
 };
 
-use frozenkrill_core::secrecy::{SecretBox, SecretString};
-
-type Secret<T> = SecretBox<T>;
+use frozenkrill_core::secrecy::SecretString;
 
 pub(crate) mod batch_generate_export;
 pub(crate) mod common;
@@ -58,6 +56,7 @@ mod tests {
         },
         wallet_export::{MultisigJsonWalletPublicExportV0, SinglesigJsonWalletPublicExportV0},
     };
+    #[allow(dead_code)]
     type Secret<T> = SecretBox<T>;
 
     use super::{
