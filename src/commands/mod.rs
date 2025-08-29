@@ -75,7 +75,7 @@ mod tests {
     #[test]
     fn test_generate_read_singlesig() -> anyhow::Result<()> {
         use pretty_assertions::assert_eq;
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let mut secp = get_secp(&mut rng);
         let network = Network::Bitcoin;
         let difficulty = KeyDerivationDifficulty::Easy;
@@ -198,7 +198,7 @@ mod tests {
     fn test_generate_read_multisig() -> anyhow::Result<()> {
         use pretty_assertions::assert_eq;
         custom_logger::init();
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let mut secp = get_secp(&mut rng);
         let network = Network::Testnet;
         let script_type = ScriptType::SegwitNative;
@@ -406,7 +406,7 @@ mod tests {
     #[test]
     fn test_generate_read_descriptors_multisig() -> anyhow::Result<()> {
         use pretty_assertions::assert_eq;
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let mut secp = get_secp(&mut rng);
         let network = Network::Testnet;
         let script_type = ScriptType::SegwitNative;

@@ -596,11 +596,11 @@ impl SingleSigWalletDescriptionV0 {
         }
     }
 
-    pub(super) fn get_psbt_singlesig_keys(&self) -> Vec<PsbtKeyInfo> {
+    pub(super) fn get_psbt_singlesig_keys(&self) -> Vec<PsbtKeyInfo<'_>> {
         vec![&self.root_key, &self.singlesig_xpriv]
     }
 
-    pub(super) fn get_psbt_multisig_keys(&self) -> Vec<PsbtKeyInfo> {
+    pub(super) fn get_psbt_multisig_keys(&self) -> Vec<PsbtKeyInfo<'_>> {
         vec![&self.root_key, &self.multisig_xpriv]
     }
 }

@@ -13,7 +13,7 @@ use frozenkrill_core::{
     },
     key_derivation::{self, KeyDerivationDifficulty},
     parse_keyfiles_paths,
-    rand_core::{CryptoRng, RngCore},
+    rand_core::CryptoRng,
     secrecy::SecretString,
     wallet_description::WordCount,
 };
@@ -60,7 +60,7 @@ pub(crate) fn interactive(
     theme: &dyn Theme,
     term: &Term,
     secp: &mut Secp256k1<All>,
-    rng: &mut (impl CryptoRng + RngCore),
+    rng: &mut impl CryptoRng,
     ic: impl InternetChecker,
     args: &InteractiveArgs,
 ) -> anyhow::Result<()> {

@@ -7,7 +7,7 @@ use frozenkrill_core::{
     bitcoin::secp256k1::{All, Secp256k1},
     blake3,
     log::{self, debug},
-    rand_core::{CryptoRng, RngCore},
+    rand_core::CryptoRng,
     utils,
     wallet_description::{self, EncryptedWalletDescription, KEY_SIZE, SigType},
     wallet_export::{
@@ -59,7 +59,7 @@ pub(crate) struct AddressGenerationParams {
 pub(crate) fn generate_random_name(
     prefix: &str,
     suffix: &str,
-    rng: &mut (impl CryptoRng + RngCore),
+    rng: &mut impl CryptoRng,
 ) -> anyhow::Result<String> {
     let mut name_salt = [0u8; KEY_SIZE];
     rng.fill_bytes(&mut name_salt);
@@ -113,7 +113,7 @@ pub(crate) fn double_check_non_duress_password(
             .with_prompt("Enter the non duress seed password again")
             .interact_on(term)
             .context("failure reading password")?;
-        if non_duress_password.expose_secret() == &again {
+        if non_duress_password.expose_secret() == again {
             return Ok(());
         } else {
             log::error!("Passwords don't match. Type the same password as used before")

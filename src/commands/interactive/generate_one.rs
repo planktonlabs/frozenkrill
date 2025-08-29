@@ -11,7 +11,7 @@ use frozenkrill_core::{
     anyhow::{self, bail},
     bitcoin::secp256k1::{All, Secp256k1},
     key_derivation::KeyDerivationDifficulty,
-    rand_core::{CryptoRng, RngCore},
+    rand_core::CryptoRng,
     secrecy::SecretString,
     wallet_description::{MAX_TOTAL_SIGS_MULTISIG, MultisigType, ScriptType},
 };
@@ -39,7 +39,7 @@ pub(super) fn singlesig_interactive_generate_one(
     theme: &dyn Theme,
     term: &Term,
     secp: &mut Secp256k1<All>,
-    mut rng: &mut (impl CryptoRng + RngCore),
+    mut rng: &mut impl CryptoRng,
     ic: impl InternetChecker,
     keyfiles: Vec<PathBuf>,
     difficulty: Option<KeyDerivationDifficulty>,
@@ -214,7 +214,7 @@ pub(super) fn multisig_interactive_generate_single(
     theme: &dyn Theme,
     term: &Term,
     secp: &mut Secp256k1<All>,
-    rng: &mut (impl CryptoRng + RngCore),
+    rng: &mut impl CryptoRng,
     mut ic: impl InternetChecker,
     keyfiles: Vec<PathBuf>,
     difficulty: Option<KeyDerivationDifficulty>,
@@ -261,7 +261,7 @@ pub(super) fn multisig_interactive_generate_single(
 fn ask_generate_wallet_output_file(
     theme: &dyn Theme,
     term: &Term,
-    rng: &mut (impl CryptoRng + RngCore),
+    rng: &mut impl CryptoRng,
 ) -> anyhow::Result<PathBuf> {
     let suggested = Path::new(&generate_random_name("wallet_", "", rng)?)
         .absolutize()?

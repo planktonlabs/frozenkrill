@@ -16,7 +16,7 @@ use frozenkrill_core::{
     generate_encrypted_encoded_singlesig_wallet, get_padder, itertools,
     key_derivation::{KeyDerivationDifficulty, default_derive_key},
     log, parse_keyfiles_paths,
-    rand_core::{CryptoRng, RngCore},
+    rand_core::CryptoRng,
     secrecy::{ExposeSecret, SecretBox, SecretString},
     utils::create_file,
     wallet_description::{
@@ -67,7 +67,7 @@ pub(super) fn core_batch_generate_export(
     theme: &dyn Theme,
     term: &Term,
     secp: &mut Secp256k1<All>,
-    rng: &mut (impl CryptoRng + RngCore),
+    rng: &mut impl CryptoRng,
     ic: impl InternetChecker,
     args: CoreBatchGenerateExportArgs,
 ) -> anyhow::Result<()> {
@@ -392,7 +392,7 @@ pub(crate) fn batch_generate_export(
     theme: &dyn Theme,
     term: &Term,
     secp: &mut Secp256k1<All>,
-    rng: &mut (impl CryptoRng + RngCore),
+    rng: &mut impl CryptoRng,
     ic: impl InternetChecker,
     args: &SinglesigBatchGenerateExportArgs,
 ) -> anyhow::Result<()> {

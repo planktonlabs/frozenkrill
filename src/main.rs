@@ -26,7 +26,7 @@ use frozenkrill_core::{
     custom_logger,
     key_derivation::{self, KeyDerivationDifficulty, default_derive_key},
     log, mnemonic_utils, rand,
-    rand_core::{CryptoRng, RngCore},
+    rand_core::CryptoRng,
     random_generation_utils::get_secp,
     wallet_description::{EncryptedWalletVersion, KEY_SIZE, MultisigType, SALT_SIZE, ScriptType},
 };
@@ -587,7 +587,7 @@ fn main() -> anyhow::Result<()> {
 }
 
 fn process(cli: Cli, theme: Box<dyn Theme>, term: &Term) -> Result<(), anyhow::Error> {
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     let mut secp = get_secp(&mut rng);
     let ic = InternetCheckerImpl::new(cli.disable_internet_check);
     match cli.command {
@@ -987,7 +987,7 @@ fn ui_derive_key(
     Ok(key)
 }
 
-fn handle_input_path(input_file: &str) -> anyhow::Result<Cow<Path>> {
+fn handle_input_path(input_file: &str) -> anyhow::Result<Cow<'_, Path>> {
     let input_file_path = Path::new(input_file);
     anyhow::ensure!(
         input_file_path.exists(),
@@ -998,7 +998,7 @@ fn handle_input_path(input_file: &str) -> anyhow::Result<Cow<Path>> {
 
 fn handle_output_path<S: AsRef<std::ffi::OsStr> + ?Sized>(
     output_file: &S,
-) -> anyhow::Result<Cow<Path>> {
+) -> anyhow::Result<Cow<'_, Path>> {
     let output_file_path = Path::new(output_file);
     anyhow::ensure!(
         !output_file_path.exists(),
@@ -1008,7 +1008,7 @@ fn handle_output_path<S: AsRef<std::ffi::OsStr> + ?Sized>(
 }
 
 fn ui_ask_manually_seed_input(
-    rng: &mut (impl CryptoRng + RngCore),
+    rng: &mut impl CryptoRng,
     theme: &dyn Theme,
     term: &Term,
     word_count: &WordCount,

@@ -8,7 +8,7 @@ use frozenkrill_core::{
     PaddingParams, anyhow,
     bitcoin::secp256k1::{All, Secp256k1},
     key_derivation::KeyDerivationDifficulty,
-    rand_core::{CryptoRng, RngCore},
+    rand_core::CryptoRng,
     secrecy::SecretString,
     wallet_description::ScriptType,
 };
@@ -26,7 +26,7 @@ pub(super) fn interactive_generate_batch(
     theme: &dyn Theme,
     term: &Term,
     secp: &mut Secp256k1<All>,
-    rng: &mut (impl CryptoRng + RngCore),
+    rng: &mut impl CryptoRng,
     ic: impl InternetChecker,
     keyfiles: Vec<PathBuf>,
     difficulty: Option<KeyDerivationDifficulty>,

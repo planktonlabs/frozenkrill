@@ -12,10 +12,10 @@ use encryption::default_encrypt;
 use itertools::Itertools;
 use log::debug;
 use miniscript::{Descriptor, DescriptorPublicKey};
-use rand_core::{CryptoRng, RngCore};
+use rand_core::CryptoRng;
 use secrecy::{ExposeSecret, SecretBox, SecretString};
 type Secret<T> = SecretBox<T>;
-type SecretVec<T> = SecretBox<Vec<T>>;
+// type SecretVec<T> = SecretBox<Vec<T>>;  // Currently unused
 use wallet_description::{
     EncryptedWalletDescription, EncryptedWalletVersion, KEY_SIZE,
     MultiSigCompactWalletDescriptionV0, MultisigType, NONCE_SIZE, SALT_SIZE, ScriptType,
@@ -413,7 +413,7 @@ pub const DEFAULT_MAX_ADDITIONAL_PADDING: u32 = 1000;
 pub const MAX_ADDITIONAL_PADDING: u32 = 1_000_000_000;
 
 pub fn get_padder(
-    rng: &mut (impl CryptoRng + RngCore),
+    rng: &mut impl CryptoRng,
     params: &PaddingParams,
 ) -> anyhow::Result<CiphertextPadder> {
     if params.disable_all_padding {

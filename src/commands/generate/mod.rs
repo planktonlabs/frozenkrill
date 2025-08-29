@@ -13,8 +13,8 @@ use frozenkrill_core::{
     },
     key_derivation::{self, KeyDerivationDifficulty},
     log, parse_keyfiles_paths,
-    rand_core::{CryptoRng, RngCore},
-    secrecy::{SecretBox, SecretString},
+    rand_core::CryptoRng,
+    secrecy::SecretString,
     utils::create_file,
     wallet_description::{MultiSigWalletDescriptionV0, SingleSigWalletDescriptionV0},
     wallet_export::MultisigJsonWalletPublicExportV0,
@@ -28,7 +28,7 @@ use frozenkrill_core::wallet_description::WordCount;
 
 use crate::commands::common::generate_random_name;
 
-type Secret<T> = SecretBox<T>;
+// type Secret<T> = SecretBox<T>;  // Currently unused
 
 use crate::{
     InternetChecker, SinglesigGenerateArgs, commands::common::double_check_non_duress_password,
@@ -193,7 +193,7 @@ pub(crate) fn singlesig_generate(
     theme: &dyn Theme,
     term: &Term,
     secp: &mut Secp256k1<All>,
-    mut rng: &mut (impl CryptoRng + RngCore),
+    mut rng: &mut impl CryptoRng,
     ic: impl InternetChecker,
     args: SinglesigGenerateArgs,
 ) -> anyhow::Result<()> {
@@ -276,7 +276,7 @@ pub(crate) fn multisig_generate(
     theme: &dyn Theme,
     term: &Term,
     secp: &mut Secp256k1<All>,
-    rng: &mut (impl CryptoRng + RngCore),
+    rng: &mut impl CryptoRng,
     ic: impl InternetChecker,
     args: crate::MultisigGenerateArgs,
 ) -> anyhow::Result<()> {

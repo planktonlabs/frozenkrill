@@ -15,7 +15,7 @@ use frozenkrill_core::{
     get_padder,
     key_derivation::{KeyDerivationDifficulty, default_derive_key},
     log,
-    rand_core::{CryptoRng, RngCore},
+    rand_core::CryptoRng,
     secrecy::{SecretBox, SecretString},
     utils::create_file,
     wallet_description::{
@@ -89,7 +89,7 @@ pub(crate) fn singlesig_core_generate(
     theme: &dyn Theme,
     term: &Term,
     secp: &mut Secp256k1<All>,
-    mut rng: &mut (impl CryptoRng + RngCore),
+    mut rng: &mut impl CryptoRng,
     ic: impl InternetChecker,
     args: SinglesigCoreGenerateArgs,
 ) -> anyhow::Result<()> {
@@ -208,7 +208,7 @@ pub(crate) fn multisig_core_generate(
     theme: &dyn Theme,
     term: &Term,
     secp: &mut Secp256k1<All>,
-    mut rng: &mut (impl CryptoRng + RngCore),
+    mut rng: &mut impl CryptoRng,
     args: MultisigCoreGenerateArgs,
 ) -> anyhow::Result<()> {
     warn_difficulty_level(args.difficulty);
