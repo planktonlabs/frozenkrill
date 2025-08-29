@@ -8,14 +8,14 @@ use frozenkrill_core::{
     parse_keyfiles_paths,
     secrecy::SecretString,
     wallet_description::{
-        read_decode_wallet, EncryptedWalletDescription, SingleSigWalletDescriptionV0,
+        EncryptedWalletDescription, SingleSigWalletDescriptionV0, read_decode_wallet,
     },
     wallet_export::SinglesigJsonWalletPublicExportV0,
 };
 
 use crate::{
-    ask_non_duress_password, ask_password, handle_input_path, ui_derive_key,
-    ui_get_singlesig_wallet_description, InternetChecker, SinglesigOpenArgs,
+    InternetChecker, SinglesigOpenArgs, ask_non_duress_password, ask_password, handle_input_path,
+    ui_derive_key, ui_get_singlesig_wallet_description,
 };
 
 pub(crate) fn open_singlesig_wallet_non_interactive(

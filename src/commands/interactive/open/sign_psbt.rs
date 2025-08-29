@@ -88,7 +88,9 @@ fn ask_psbt_input_file(theme: &dyn Theme, term: &Term) -> anyhow::Result<(PathBu
         eprintln!(
             "You can't pick a PSBT file because there are no .psbt files in current directory"
         );
-        bail!("Copy some .psbt file to current directory or change the current directory so you can load the PSBT");
+        bail!(
+            "Copy some .psbt file to current directory or change the current directory so you can load the PSBT"
+        );
     }
     loop {
         let file = dialoguer::Select::with_theme(theme)

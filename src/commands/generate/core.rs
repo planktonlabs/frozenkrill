@@ -4,45 +4,44 @@ use frozenkrill_core::random_generation_utils::*;
 
 use dialoguer::{console::Term, theme::Theme};
 use frozenkrill_core::{
+    MultisigInputs, PaddingParams,
     anyhow::{self, Context},
     bip39::Mnemonic,
     bitcoin::{
-        secp256k1::{All, Secp256k1},
         Network,
+        secp256k1::{All, Secp256k1},
     },
     generate_encrypted_encoded_multisig_wallet, generate_encrypted_encoded_singlesig_wallet,
     get_padder,
-    key_derivation::{default_derive_key, KeyDerivationDifficulty},
+    key_derivation::{KeyDerivationDifficulty, default_derive_key},
     log,
-    rand_core::{CryptoRng, RngCore},
+    rand_core::CryptoRng,
     secrecy::{SecretBox, SecretString},
     utils::create_file,
     wallet_description::{
-        generate_seeds, EncryptedWalletVersion, MultiSigWalletDescriptionV0,
-        MultisigJsonWalletDescriptionV0, MultisigType, ScriptType,
+        EncryptedWalletVersion, MultiSigWalletDescriptionV0, MultisigJsonWalletDescriptionV0,
+        MultisigType, ScriptType, generate_seeds,
     },
-    MultisigInputs, PaddingParams,
 };
 
 use frozenkrill_core::secrecy::ExposeSecret;
 
 use frozenkrill_core::wallet_description::{
-    read_decode_wallet, SinglesigJsonWalletDescriptionV0, WordCount,
+    SinglesigJsonWalletDescriptionV0, WordCount, read_decode_wallet,
 };
 
 use crate::{
-    ask_non_duress_password, ask_password,
+    ENGLISH, InternetChecker, InternetCheckerImpl, ask_non_duress_password, ask_password,
     commands::{
         common::{
-            calculate_non_duress_output, AddressGenerationParams, CONTEXT_CORRUPTION_WARNING,
+            AddressGenerationParams, CONTEXT_CORRUPTION_WARNING, calculate_non_duress_output,
         },
         generate::{
             export_multisig_public_infos, export_singlesig_public_infos,
             inform_custom_generate_params,
         },
     },
-    get_derivation_key_spinner, ui_derive_key, warn_difficulty_level, InternetChecker,
-    InternetCheckerImpl, ENGLISH,
+    get_derivation_key_spinner, ui_derive_key, warn_difficulty_level,
 };
 
 use super::DuressPublicInfoParams;
@@ -90,7 +89,7 @@ pub(crate) fn singlesig_core_generate(
     theme: &dyn Theme,
     term: &Term,
     secp: &mut Secp256k1<All>,
-    mut rng: &mut (impl CryptoRng + RngCore),
+    mut rng: &mut impl CryptoRng,
     ic: impl InternetChecker,
     args: SinglesigCoreGenerateArgs,
 ) -> anyhow::Result<()> {
@@ -198,7 +197,9 @@ pub(crate) fn singlesig_core_generate(
         .context("failure checking generated wallet")?;
         inform_custom_generate_params(args.keyfiles, args.difficulty, duress_params.is_some());
         log::info!("Finished successfully!");
-        log::info!("Now run again with the other commands to retrieve the receiving addresses and/or public keys");
+        log::info!(
+            "Now run again with the other commands to retrieve the receiving addresses and/or public keys"
+        );
     }
     Ok(())
 }
@@ -207,7 +208,7 @@ pub(crate) fn multisig_core_generate(
     theme: &dyn Theme,
     term: &Term,
     secp: &mut Secp256k1<All>,
-    mut rng: &mut (impl CryptoRng + RngCore),
+    mut rng: &mut impl CryptoRng,
     args: MultisigCoreGenerateArgs,
 ) -> anyhow::Result<()> {
     warn_difficulty_level(args.difficulty);
@@ -327,7 +328,9 @@ pub(crate) fn multisig_core_generate(
         .context("failure checking generated wallet")?;
         inform_custom_generate_params(args.keyfiles, args.difficulty, false);
         log::info!("Finished successfully!");
-        log::info!("Now run again with the other commands to retrieve the receiving addresses and/or public keys");
+        log::info!(
+            "Now run again with the other commands to retrieve the receiving addresses and/or public keys"
+        );
     };
     Ok(())
 }

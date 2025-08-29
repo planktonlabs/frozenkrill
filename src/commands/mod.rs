@@ -1,5 +1,5 @@
 use std::{
-    io::{stdout, Write},
+    io::{Write, stdout},
     time::Instant,
 };
 
@@ -9,9 +9,7 @@ use frozenkrill_core::{
     wallet_description::SALT_SIZE,
 };
 
-use frozenkrill_core::secrecy::{SecretBox, SecretString};
-
-type Secret<T> = SecretBox<T>;
+use frozenkrill_core::secrecy::SecretString;
 
 pub(crate) mod batch_generate_export;
 pub(crate) mod common;
@@ -42,7 +40,7 @@ mod tests {
     use std::{path::PathBuf, str::FromStr, sync::Arc};
 
     use frozenkrill_core::{
-        bip39,
+        MultisigInputs, PaddingParams, bip39,
         bitcoin::Network,
         custom_logger, hex,
         key_derivation::KeyDerivationDifficulty,
@@ -52,23 +50,23 @@ mod tests {
         secrecy::{ExposeSecret, SecretBox},
         utils::create_file,
         wallet_description::{
-            self, read_decode_wallet, EncryptedWalletVersion, MultisigJsonWalletDescriptionV0,
-            MultisigType, PsbtWallet, ScriptType, SingleSigWalletDescriptionV0,
-            SinglesigJsonWalletDescriptionV0,
+            self, EncryptedWalletVersion, MultisigJsonWalletDescriptionV0, MultisigType,
+            PsbtWallet, ScriptType, SingleSigWalletDescriptionV0, SinglesigJsonWalletDescriptionV0,
+            read_decode_wallet,
         },
         wallet_export::{MultisigJsonWalletPublicExportV0, SinglesigJsonWalletPublicExportV0},
-        MultisigInputs, PaddingParams,
     };
+    #[allow(dead_code)]
     type Secret<T> = SecretBox<T>;
 
     use super::{
-        generate::core::{singlesig_core_generate, SinglesigCoreGenerateArgs},
+        generate::core::{SinglesigCoreGenerateArgs, singlesig_core_generate},
         *,
     };
     use crate::{
         commands::{
             common::multisig::MultisigCoreOpenWalletParam,
-            generate::core::{multisig_core_generate, DuressInputArgs, MultisigCoreGenerateArgs},
+            generate::core::{DuressInputArgs, MultisigCoreGenerateArgs, multisig_core_generate},
         },
         get_term_theme,
     };
@@ -76,7 +74,7 @@ mod tests {
     #[test]
     fn test_generate_read_singlesig() -> anyhow::Result<()> {
         use pretty_assertions::assert_eq;
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let mut secp = get_secp(&mut rng);
         let network = Network::Bitcoin;
         let difficulty = KeyDerivationDifficulty::Easy;
@@ -87,7 +85,9 @@ mod tests {
         create_file("stuff".as_bytes(), keyfile1.as_path())?;
         let keyfiles = &[keyfile1];
         let password = Arc::new(SecretString::new("9asFSD$#".into()));
-        let mnemonic = bip39::Mnemonic::from_str("abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about")?;
+        let mnemonic = bip39::Mnemonic::from_str(
+            "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
+        )?;
         let word_count = wallet_description::WordCount::W24;
         let duress_input_args = DuressInputArgs {
             enable_duress_wallet: false,
@@ -134,10 +134,22 @@ mod tests {
             j.singlesig_first_address,
             "bc1qcr8te4kr609gcawutmrza0j4xv80jy8z306fyu"
         );
-        assert_eq!(j.singlesig_receiving_output_descriptor, "wpkh([73c5da0a/84'/0'/0']xpub6CatWdiZiodmUeTDp8LT5or8nmbKNcuyvz7WyksVFkKB4RHwCD3XyuvPEbvqAQY3rAPshWcMLoP2fMFMKHPJ4ZeZXYVUhLv1VMrjPC7PW6V/0/*)#wc3n3van");
-        assert_eq!(j.singlesig_change_output_descriptor, "wpkh([73c5da0a/84'/0'/0']xpub6CatWdiZiodmUeTDp8LT5or8nmbKNcuyvz7WyksVFkKB4RHwCD3XyuvPEbvqAQY3rAPshWcMLoP2fMFMKHPJ4ZeZXYVUhLv1VMrjPC7PW6V/1/*)#lv5jvedt");
-        assert_eq!(j.singlesig_xpub, "zpub6rFR7y4Q2AijBEqTUquhVz398htDFrtymD9xYYfG1m4wAcvPhXNfE3EfH1r1ADqtfSdVCToUG868RvUUkgDKf31mGDtKsAYz2oz2AGutZYs");
-        assert_eq!(j.multisig_xpub, "Zpub74Jru6aftwwHxCUCWEvP6DgrfFsdA4U6ZRtQ5i8qJpMcC39yZGv3egBhQfV3MS9pZtH5z8iV5qWkJsK6ESs6mSzt4qvGhzJxPeeVS2e1zUG");
+        assert_eq!(
+            j.singlesig_receiving_output_descriptor,
+            "wpkh([73c5da0a/84'/0'/0']xpub6CatWdiZiodmUeTDp8LT5or8nmbKNcuyvz7WyksVFkKB4RHwCD3XyuvPEbvqAQY3rAPshWcMLoP2fMFMKHPJ4ZeZXYVUhLv1VMrjPC7PW6V/0/*)#wc3n3van"
+        );
+        assert_eq!(
+            j.singlesig_change_output_descriptor,
+            "wpkh([73c5da0a/84'/0'/0']xpub6CatWdiZiodmUeTDp8LT5or8nmbKNcuyvz7WyksVFkKB4RHwCD3XyuvPEbvqAQY3rAPshWcMLoP2fMFMKHPJ4ZeZXYVUhLv1VMrjPC7PW6V/1/*)#lv5jvedt"
+        );
+        assert_eq!(
+            j.singlesig_xpub,
+            "zpub6rFR7y4Q2AijBEqTUquhVz398htDFrtymD9xYYfG1m4wAcvPhXNfE3EfH1r1ADqtfSdVCToUG868RvUUkgDKf31mGDtKsAYz2oz2AGutZYs"
+        );
+        assert_eq!(
+            j.multisig_xpub,
+            "Zpub74Jru6aftwwHxCUCWEvP6DgrfFsdA4U6ZRtQ5i8qJpMcC39yZGv3egBhQfV3MS9pZtH5z8iV5qWkJsK6ESs6mSzt4qvGhzJxPeeVS2e1zUG"
+        );
         let public_info = SinglesigJsonWalletPublicExportV0::from_path(&public_info_json_output)?;
         assert_eq!(
             public_info.to_string_pretty()?,
@@ -185,7 +197,7 @@ mod tests {
     fn test_generate_read_multisig() -> anyhow::Result<()> {
         use pretty_assertions::assert_eq;
         custom_logger::init();
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let mut secp = get_secp(&mut rng);
         let network = Network::Testnet;
         let script_type = ScriptType::SegwitNative;
@@ -200,9 +212,17 @@ mod tests {
         let psbt2_path = tempdir.path().join("psbt2.psbt");
         create_file(&hex::decode(psbt)?, &psbt_path)?;
         create_file(&hex::decode(psbt2)?, &psbt2_path)?;
-        let seeds = [bip39::Mnemonic::from_str("abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about")?,
-            bip39::Mnemonic::from_str("fly often rather version bulk text affair super iron bunker whip shrug")?,
-            bip39::Mnemonic::from_str("father engine pizza shrimp suffer add outside inspire two visa neglect quote")?];
+        let seeds = [
+            bip39::Mnemonic::from_str(
+                "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
+            )?,
+            bip39::Mnemonic::from_str(
+                "fly often rather version bulk text affair super iron bunker whip shrug",
+            )?,
+            bip39::Mnemonic::from_str(
+                "father engine pizza shrimp suffer add outside inspire two visa neglect quote",
+            )?,
+        ];
         let signers = seeds
             .iter()
             .cloned()
@@ -218,13 +238,16 @@ mod tests {
             .collect::<anyhow::Result<Vec<_>>>()?;
         assert_eq!(
             "Vpub5n95dMZrDHj6SeBgJ1oz4Fae2N2eJNuWK3VTKDb2dzGpMFLUHLmtyDfen7AaQxwQ5mZnMyXdVrkEaoMLVTH8FmVBRVWPGFYWhmtDUGehGmq",
-            signers[0].encoded_multisig_xpub());
+            signers[0].encoded_multisig_xpub()
+        );
         assert_eq!(
             "Vpub5myyN3hupCfSaGExukQxaGiWTjmRSUNUBDdrLXetXUCwwhm43i7tSU93TumrVLTC5VsD9oJ4tAYHA8doPJBYtRwXmTJqidoNEX8PrJHtrhJ",
-            signers[1].encoded_multisig_xpub());
+            signers[1].encoded_multisig_xpub()
+        );
         assert_eq!(
             "Vpub5n9Cny7T8XGH2QofyDniyNyawwZEy4r4n1KCacMx9Wz45Hw6TfPjhEj8QRraqdJhaaYujwhqRc2amUdRa67zDyF4csqJXJ1LsXnzAKC3Hmj",
-            signers[2].encoded_multisig_xpub());
+            signers[2].encoded_multisig_xpub()
+        );
 
         assert_eq!(
             "wpkh([73c5da0a/84'/1'/0']tpubDC8msFGeGuwnKG9Upg7DM2b4DaRqg3CUZa5g8v2SRQ6K4NSkxUgd7HsL2XVWbVm39yBA4LAxysQAm397zwQSQoQgewGiYZqrA9DsP4zbQ1M/0/*)#2ag6nxcd",
@@ -330,9 +353,9 @@ mod tests {
                     json_wallet.expose_secret().first_address
                 );
                 assert_eq!(
-                "wsh(sortedmulti(2,[73c5da0a/48'/1'/0'/2']tpubDFH9dgzveyD8zTbPUFuLrGmCydNvxehyNdUXKJAQN8x4aZ4j6UZqGfnqFrD4NqyaTVGKbvEW54tsvPTK2UoSbCC1PJY8iCNiwTL3RWZEheQ/0/*,[7f4d5c70/48'/1'/0'/2']tpubDFHGoJYXaCkKaEDP9Tt5mQA9uCuXdLeXqbJGagwKsffJJbfMGoBfzgrJtAu4oWLsxJFSytQhzpBE74jQ77eJZPwtags3yEqZ7DEp7VGfSvz/0/*,[98d0d15a/48'/1'/0'/2']tpubDF83NP8zFt9V85eg5zWKNHu5R17i6kAwEocvLcEGFctCB1VJrqupjvGDwepLTDVNTDZkPjzwTNgvVijmvKhsDreMjGLbAadaUCaDoXDoMeB/0/*))#tfc0mal5",
-                json_wallet.expose_secret().receiving_output_descriptor
-            );
+                    "wsh(sortedmulti(2,[73c5da0a/48'/1'/0'/2']tpubDFH9dgzveyD8zTbPUFuLrGmCydNvxehyNdUXKJAQN8x4aZ4j6UZqGfnqFrD4NqyaTVGKbvEW54tsvPTK2UoSbCC1PJY8iCNiwTL3RWZEheQ/0/*,[7f4d5c70/48'/1'/0'/2']tpubDFHGoJYXaCkKaEDP9Tt5mQA9uCuXdLeXqbJGagwKsffJJbfMGoBfzgrJtAu4oWLsxJFSytQhzpBE74jQ77eJZPwtags3yEqZ7DEp7VGfSvz/0/*,[98d0d15a/48'/1'/0'/2']tpubDF83NP8zFt9V85eg5zWKNHu5R17i6kAwEocvLcEGFctCB1VJrqupjvGDwepLTDVNTDZkPjzwTNgvVijmvKhsDreMjGLbAadaUCaDoXDoMeB/0/*))#tfc0mal5",
+                    json_wallet.expose_secret().receiving_output_descriptor
+                );
                 // Try to sign PSBTs using the multisig wallet
                 let mut psbt = open_psbt_file(&psbt_path)?;
                 let mut psbt2 = open_psbt_file(&psbt2_path)?;
@@ -382,7 +405,7 @@ mod tests {
     #[test]
     fn test_generate_read_descriptors_multisig() -> anyhow::Result<()> {
         use pretty_assertions::assert_eq;
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let mut secp = get_secp(&mut rng);
         let network = Network::Testnet;
         let script_type = ScriptType::SegwitNative;

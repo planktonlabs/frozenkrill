@@ -1,13 +1,12 @@
 use anyhow::Context;
 use bitcoin::secp256k1::{All, Secp256k1};
 use bitcoin::{
-    ecdsa,
+    FeeRate, PrivateKey, Psbt, PublicKey, Transaction, ecdsa,
     psbt::{
         Error, ExtractTxError, GetKey, GetKeyError, IndexOutOfBoundsError, Input, KeyRequest,
         OutputType, SignError, SigningAlgorithm, SigningKeys, SigningKeysMap,
     },
     sighash::SighashCache,
-    FeeRate, PrivateKey, Psbt, PublicKey, Transaction,
 };
 use log::{debug, warn};
 use secrecy::{ExposeSecret, SecretBox};
@@ -104,7 +103,7 @@ pub trait PsbtExt {
     fn output_type(&self, input_index: usize) -> Result<OutputType, SignError>;
     fn signing_algorithm(&self, input_index: usize) -> Result<SigningAlgorithm, SignError>;
     fn check_index_is_within_bounds(&self, input_index: usize)
-        -> Result<(), IndexOutOfBoundsError>;
+    -> Result<(), IndexOutOfBoundsError>;
     fn checked_input(&self, input_index: usize) -> Result<&Input, IndexOutOfBoundsError>;
     fn bip32_sign_ecdsa<C, K, T>(
         &mut self,
@@ -165,14 +164,14 @@ impl PsbtExt for Psbt {
             Err(Error::MissingUtxo) => {
                 return Err(ExtractTxError::MissingInputValue {
                     tx: self.internal_extract_tx(),
-                })
+                });
             }
             Err(Error::NegativeFee) => return Err(ExtractTxError::SendingTooMuch { psbt: self }),
             Err(Error::FeeOverflow) => {
                 return Err(ExtractTxError::AbsurdFeeRate {
                     fee_rate: FeeRate::MAX,
                     tx: self.internal_extract_tx(),
-                })
+                });
             }
             _ => unreachable!(),
         };
@@ -387,7 +386,12 @@ mod tests {
         let secp = get_secp(&mut rng);
         let tempdir = tempfile::tempdir()?;
         let psbt_path = tempdir.path().join("psbt.psbt");
-        create_file(&hex::decode("70736274ff010071020000000187ca9152f3540a73cfd51115277667e91a548fcf0544276f05fba9628c27fc5c0000000000fdffffff022a6203000000000016001487b78396f6f85213bce62e3374661bc578ae39d610560d00000000001600145c217d465b15f3c3041f9eac8ae88133485d4f6ae6340b00000100710200000001aa20bc793370fb83dba9a87753969fd3b9d7fd361be40a55d302f0d6fa1ddc410000000000feffffff02a8b81000000000001600149ef71340cba5b463069cfa4d781390cc9eefadb234de14d4010000001600140f4a26ef5174291b5c02b258a605d33944081b9f27cd240001011fa8b81000000000001600149ef71340cba5b463069cfa4d781390cc9eefadb2010304010000002206037a0f324d4c7baccc4da3bb2594cee6ee9f3b0771231fa7ce89b14ae191232bab0ccee87ee50000000001000000002202029402da79dd8b0d4f4d8eb625aaa79908088d0b1e10fbf70ab70fd5c84fbabbeb0ccee87ee501000000000000000000")?, &psbt_path)?;
+        create_file(
+            &hex::decode(
+                "70736274ff010071020000000187ca9152f3540a73cfd51115277667e91a548fcf0544276f05fba9628c27fc5c0000000000fdffffff022a6203000000000016001487b78396f6f85213bce62e3374661bc578ae39d610560d00000000001600145c217d465b15f3c3041f9eac8ae88133485d4f6ae6340b00000100710200000001aa20bc793370fb83dba9a87753969fd3b9d7fd361be40a55d302f0d6fa1ddc410000000000feffffff02a8b81000000000001600149ef71340cba5b463069cfa4d781390cc9eefadb234de14d4010000001600140f4a26ef5174291b5c02b258a605d33944081b9f27cd240001011fa8b81000000000001600149ef71340cba5b463069cfa4d781390cc9eefadb2010304010000002206037a0f324d4c7baccc4da3bb2594cee6ee9f3b0771231fa7ce89b14ae191232bab0ccee87ee50000000001000000002202029402da79dd8b0d4f4d8eb625aaa79908088d0b1e10fbf70ab70fd5c84fbabbeb0ccee87ee501000000000000000000",
+            )?,
+            &psbt_path,
+        )?;
         let mut p = open_psbt_file(&psbt_path)?;
         let spriv = "vprv9Ks2HJ9nwsjejp3mbQnSKEEZfN9jNNAEvrBvZP6N3P473Q2u6Noskm5nSu7wyoyNZB6T4e9U5FWYPjcQFsFKFoATH6hWYkrr2GShCuAwfYs";
         let xpriv = Secret::from(Box::new(WExtendedPrivKey(Xpriv::from_slip132_str(spriv)?)));

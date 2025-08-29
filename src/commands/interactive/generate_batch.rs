@@ -5,17 +5,16 @@ use std::{
 
 use dialoguer::{console::Term, theme::Theme};
 use frozenkrill_core::{
-    anyhow,
+    PaddingParams, anyhow,
     bitcoin::secp256k1::{All, Secp256k1},
     key_derivation::KeyDerivationDifficulty,
-    rand_core::{CryptoRng, RngCore},
+    rand_core::CryptoRng,
     secrecy::SecretString,
     wallet_description::ScriptType,
-    PaddingParams,
 };
 use path_absolutize::Absolutize;
 
-use crate::{commands::batch_generate_export::CoreBatchGenerateExportArgs, InternetChecker};
+use crate::{InternetChecker, commands::batch_generate_export::CoreBatchGenerateExportArgs};
 
 use super::{
     ask_addresses_quantity, ask_for_keyfiles_generate, ask_network, ask_non_duress_wallet_generate,
@@ -27,7 +26,7 @@ pub(super) fn interactive_generate_batch(
     theme: &dyn Theme,
     term: &Term,
     secp: &mut Secp256k1<All>,
-    rng: &mut (impl CryptoRng + RngCore),
+    rng: &mut impl CryptoRng,
     ic: impl InternetChecker,
     keyfiles: Vec<PathBuf>,
     difficulty: Option<KeyDerivationDifficulty>,

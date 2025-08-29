@@ -7,13 +7,13 @@ use std::{
     sync::Arc,
 };
 
-use anyhow::{bail, ensure, Context};
+use anyhow::{Context, bail, ensure};
 use bip39::Mnemonic;
 use bitcoin::secp256k1::{All, Secp256k1};
 use bitcoin::{
+    Address, Network,
     bip32::{ChildNumber, DerivationPath, Fingerprint},
     psbt::Psbt,
-    Address, Network,
 };
 use itertools::Itertools;
 use log::debug;
@@ -26,12 +26,13 @@ use serde::{Deserialize, Serialize};
 use zeroize::{Zeroize, ZeroizeOnDrop};
 
 use crate::{
+    MultisigInputs,
     compression::uncompress,
     encoding::VarInt,
-    encryption::{default_decrypt, MAC_LENGTH},
+    encryption::{MAC_LENGTH, default_decrypt},
     ms_ddpk_to_dpks, ms_dpks_to_ddpk,
     psbt::sign_psbt,
-    utils, MultisigInputs,
+    utils,
 };
 use once_cell::sync::Lazy;
 
@@ -595,11 +596,11 @@ impl SingleSigWalletDescriptionV0 {
         }
     }
 
-    pub(super) fn get_psbt_singlesig_keys(&self) -> Vec<PsbtKeyInfo> {
+    pub(super) fn get_psbt_singlesig_keys(&self) -> Vec<PsbtKeyInfo<'_>> {
         vec![&self.root_key, &self.singlesig_xpriv]
     }
 
-    pub(super) fn get_psbt_multisig_keys(&self) -> Vec<PsbtKeyInfo> {
+    pub(super) fn get_psbt_multisig_keys(&self) -> Vec<PsbtKeyInfo<'_>> {
         vec![&self.root_key, &self.multisig_xpriv]
     }
 }
@@ -730,8 +731,10 @@ impl SinglesigJsonWalletDescriptionV0 {
                 {
                     Ok(Err(SingleSigValidationError::DerivationPathMismatch))
                 } else {
-                    debug!("Derivation paths are using different conventions for the m/ prefix, but that's ok: {} and {}",
-                        generated.singlesig_derivation_path, source.singlesig_derivation_path);
+                    debug!(
+                        "Derivation paths are using different conventions for the m/ prefix, but that's ok: {} and {}",
+                        generated.singlesig_derivation_path, source.singlesig_derivation_path
+                    );
                     Ok(Ok(()))
                 }
             } else {
@@ -1649,8 +1652,14 @@ mod tests {
             "bc1qnjg0jd8228aq7egyzacy8cys3knf9xvrerkf9g"
         );
         let jsonw = SinglesigJsonWalletDescriptionV0::from_wallet_description(&w, &secp)?;
-        assert_eq!(jsonw.expose_secret().singlesig_xpriv, "zprvAdG4iTXWBoARxkkzNpNh8r6Qag3irQB8PzEMkAFeTRXxHpbF9z4QgEvBRmfvqWvGp42t42nvgGpNgYSJA9iefm1yYNZKEm7z6qUWCroSQnE");
-        assert_eq!(jsonw.expose_secret().singlesig_xpub, "zpub6rFR7y4Q2AijBEqTUquhVz398htDFrtymD9xYYfG1m4wAcvPhXNfE3EfH1r1ADqtfSdVCToUG868RvUUkgDKf31mGDtKsAYz2oz2AGutZYs");
+        assert_eq!(
+            jsonw.expose_secret().singlesig_xpriv,
+            "zprvAdG4iTXWBoARxkkzNpNh8r6Qag3irQB8PzEMkAFeTRXxHpbF9z4QgEvBRmfvqWvGp42t42nvgGpNgYSJA9iefm1yYNZKEm7z6qUWCroSQnE"
+        );
+        assert_eq!(
+            jsonw.expose_secret().singlesig_xpub,
+            "zpub6rFR7y4Q2AijBEqTUquhVz398htDFrtymD9xYYfG1m4wAcvPhXNfE3EfH1r1ADqtfSdVCToUG868RvUUkgDKf31mGDtKsAYz2oz2AGutZYs"
+        );
 
         Ok(())
     }

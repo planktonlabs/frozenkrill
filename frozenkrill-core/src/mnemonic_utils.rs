@@ -1,10 +1,10 @@
-use anyhow::{bail, Context};
+use anyhow::{Context, bail};
 use bitcoin::bip158::{BitStreamReader, BitStreamWriter};
-use rand_core::{CryptoRng, RngCore};
+use rand_core::CryptoRng;
 use sha2::{Digest, Sha256};
 
 pub fn complete_words_with_checksum(
-    rng: &mut (impl CryptoRng + RngCore),
+    rng: &mut impl CryptoRng,
     words: &[String],
 ) -> anyhow::Result<Vec<String>> {
     anyhow::ensure!(

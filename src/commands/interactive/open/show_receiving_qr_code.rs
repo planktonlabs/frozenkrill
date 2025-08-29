@@ -4,8 +4,8 @@ use dialoguer::{console::Term, theme::Theme};
 use frozenkrill_core::{
     anyhow,
     bitcoin::{
-        secp256k1::{All, Secp256k1},
         Amount,
+        secp256k1::{All, Secp256k1},
     },
     secrecy::SecretString,
     wallet_description::{MultiSigWalletDescriptionV0, SingleSigWalletDescriptionV0},

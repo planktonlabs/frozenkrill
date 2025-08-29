@@ -7,39 +7,40 @@ use std::{
 
 use dialoguer::{console::Term, theme::Theme};
 use frozenkrill_core::{
-    anyhow::{self, bail, Context},
+    PaddingParams,
+    anyhow::{self, Context, bail},
     bitcoin::{
-        secp256k1::{All, Secp256k1},
         Network,
+        secp256k1::{All, Secp256k1},
     },
     generate_encrypted_encoded_singlesig_wallet, get_padder, itertools,
-    key_derivation::{default_derive_key, KeyDerivationDifficulty},
+    key_derivation::{KeyDerivationDifficulty, default_derive_key},
     log, parse_keyfiles_paths,
-    rand_core::{CryptoRng, RngCore},
+    rand_core::CryptoRng,
     secrecy::{ExposeSecret, SecretBox, SecretString},
     utils::create_file,
     wallet_description::{
+        EncryptedWalletVersion, KEY_SIZE, NONCE_SIZE, SALT_SIZE, ScriptType,
         calculate_seed_entropy_bytes, generate_entropy_for_seeds, generate_seeds_from_entropy,
-        EncryptedWalletVersion, ScriptType, KEY_SIZE, NONCE_SIZE, SALT_SIZE,
     },
-    PaddingParams,
 };
 
 use crate::commands::{
     common::singlesig::generate_singlesig_public_info, generate::core::generate_ask_password,
 };
 use frozenkrill_core::wallet_description::{
-    read_decode_wallet, SinglesigJsonWalletDescriptionV0, WordCount,
+    SinglesigJsonWalletDescriptionV0, WordCount, read_decode_wallet,
 };
 
 use crate::{
-    ask_non_duress_password,
+    ENGLISH, InternetChecker, SinglesigBatchGenerateExportArgs, ask_non_duress_password,
     commands::common::{
-        double_check_non_duress_password, from_public_info_json_path_to_non_duress,
-        from_wallet_to_public_info_json_path, generate_name, CONTEXT_CORRUPTION_WARNING,
+        CONTEXT_CORRUPTION_WARNING, double_check_non_duress_password,
+        from_public_info_json_path_to_non_duress, from_wallet_to_public_info_json_path,
+        generate_name,
     },
     progress_bar::get_prefixed_progress_bar,
-    warn_difficulty_level, InternetChecker, SinglesigBatchGenerateExportArgs, ENGLISH,
+    warn_difficulty_level,
 };
 
 use super::generate::{generate_check_keyfiles, inform_custom_generate_params};
@@ -66,7 +67,7 @@ pub(super) fn core_batch_generate_export(
     theme: &dyn Theme,
     term: &Term,
     secp: &mut Secp256k1<All>,
-    rng: &mut (impl CryptoRng + RngCore),
+    rng: &mut impl CryptoRng,
     ic: impl InternetChecker,
     args: CoreBatchGenerateExportArgs,
 ) -> anyhow::Result<()> {
@@ -173,7 +174,10 @@ pub(super) fn core_batch_generate_export(
                 seeds_entropy.insert(seed_entropy);
             }
             Err(e) => {
-                log::warn!("While getting entropy for a seed got {e:?}, try to generate more entropy for the operating system (seeds generated: {})", seeds_entropy.len())
+                log::warn!(
+                    "While getting entropy for a seed got {e:?}, try to generate more entropy for the operating system (seeds generated: {})",
+                    seeds_entropy.len()
+                )
             }
         }
         pb.set_position(seeds_entropy.len().try_into()?);
@@ -371,7 +375,9 @@ pub(super) fn core_batch_generate_export(
             }
             pb.finish_using_style();
         }
-        log::info!("Note: public information (containing xpub, receiving addresses and other params) have a .json extension. The encrypted wallets have no extension");
+        log::info!(
+            "Note: public information (containing xpub, receiving addresses and other params) have a .json extension. The encrypted wallets have no extension"
+        );
     }
     inform_custom_generate_params_batch(&args);
     log::info!("Finished successfully!");
@@ -386,7 +392,7 @@ pub(crate) fn batch_generate_export(
     theme: &dyn Theme,
     term: &Term,
     secp: &mut Secp256k1<All>,
-    rng: &mut (impl CryptoRng + RngCore),
+    rng: &mut impl CryptoRng,
     ic: impl InternetChecker,
     args: &SinglesigBatchGenerateExportArgs,
 ) -> anyhow::Result<()> {

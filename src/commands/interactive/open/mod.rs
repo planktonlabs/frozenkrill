@@ -7,20 +7,21 @@ use frozenkrill_core::{
     key_derivation::KeyDerivationDifficulty,
     log::{self, debug},
     parse_keyfiles_paths,
-    rand_core::{CryptoRng, RngCore},
+    rand_core::CryptoRng,
     secrecy::{SecretBox, SecretString},
     wallet_description::read_decode_wallet,
 };
 
 use crate::{
+    InternetChecker,
     commands::{
         common::{
-            multisig::MultisigCoreOpenWalletParam, try_open_as_json_input, ParsedWalletInputFile,
-            PublicInfoInput,
+            ParsedWalletInputFile, PublicInfoInput, multisig::MultisigCoreOpenWalletParam,
+            try_open_as_json_input,
         },
         interactive::get_ask_difficulty,
     },
-    handle_input_path, InternetChecker,
+    handle_input_path,
 };
 
 use super::{choose_keyfiles, duress_wallet_explanation};
@@ -91,7 +92,7 @@ pub(super) fn singlesig_interactive_open(
     theme: &dyn Theme,
     term: &Term,
     secp: &mut Secp256k1<All>,
-    rng: &mut (impl CryptoRng + RngCore),
+    rng: &mut impl CryptoRng,
     ic: impl InternetChecker,
     keyfiles: Vec<PathBuf>,
     difficulty: Option<KeyDerivationDifficulty>,
@@ -171,7 +172,7 @@ pub(super) fn multisig_interactive_open(
     theme: &dyn Theme,
     term: &Term,
     secp: &mut Secp256k1<All>,
-    rng: &mut (impl CryptoRng + RngCore),
+    rng: &mut impl CryptoRng,
     mut ic: impl InternetChecker,
     keyfiles: Vec<PathBuf>,
     difficulty: Option<KeyDerivationDifficulty>,
@@ -266,8 +267,12 @@ pub(crate) fn ask_for_keyfiles_open(
             .collect::<Result<Vec<_>, _>>()?;
         files.sort();
         if files.is_empty() {
-            eprintln!("You can't pick a keyfile because there are no files or directories in the current directory");
-            bail!("Copy the keyfiles or directories to current directory or change the current directory or use the --keyfile argument on command line to load keyfiles from other places");
+            eprintln!(
+                "You can't pick a keyfile because there are no files or directories in the current directory"
+            );
+            bail!(
+                "Copy the keyfiles or directories to current directory or change the current directory or use the --keyfile argument on command line to load keyfiles from other places"
+            );
         }
         loop {
             let chosen_files = choose_keyfiles(theme, term, &files)?;
@@ -276,7 +281,9 @@ pub(crate) fn ask_for_keyfiles_open(
                 .map(|i| files[i].to_owned())
                 .collect();
             if chosen_files.is_empty() {
-                eprintln!("No keyfile selected, you won't be able to open the wallet if it was created with a keyfile");
+                eprintln!(
+                    "No keyfile selected, you won't be able to open the wallet if it was created with a keyfile"
+                );
                 if dialoguer::Confirm::with_theme(theme)
                     .with_prompt("Proceed without a keyfile?")
                     .interact_on(term)?
@@ -306,7 +313,9 @@ pub(crate) fn ask_wallet_input_file(
     files.sort();
     if files.is_empty() {
         eprintln!("You can't pick a wallet file because there are no files in current directory");
-        bail!("Copy some files or directories to current directory or change the current directory so you can load a wallet");
+        bail!(
+            "Copy some files or directories to current directory or change the current directory so you can load a wallet"
+        );
     }
     loop {
         let file = dialoguer::Select::with_theme(theme)

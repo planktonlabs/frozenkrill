@@ -9,7 +9,7 @@ use frozenkrill_core::{
 };
 
 #[cfg(feature = "cli_tests")]
-use expectrl::{spawn, Eof, Session};
+use expectrl::{Eof, Session, spawn};
 
 #[cfg(feature = "cli_tests")]
 fn run_cli(args: &[&str]) -> anyhow::Result<Session> {

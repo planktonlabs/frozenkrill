@@ -4,8 +4,8 @@ use dialoguer::{console::Term, theme::Theme};
 use frozenkrill_core::{
     anyhow::{self, bail},
     bitcoin::{
-        secp256k1::{All, Secp256k1},
         Address, Network, Psbt,
+        secp256k1::{All, Secp256k1},
     },
     itertools::Itertools,
     log::{self, debug},
@@ -17,8 +17,8 @@ use crate::open_multisig_wallet_non_interactive;
 use crate::open_singlesig_wallet_non_interactive;
 
 use crate::{
-    handle_input_path, handle_output_path, InternetChecker, MultisigOpenArgs, SignPsbtArgs,
-    SinglesigOpenArgs,
+    InternetChecker, MultisigOpenArgs, SignPsbtArgs, SinglesigOpenArgs, handle_input_path,
+    handle_output_path,
 };
 
 use super::common::{double_check_non_duress_password, from_input_to_signed_psbt};

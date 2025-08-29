@@ -6,7 +6,7 @@ use std::{
     str::FromStr,
 };
 
-use anyhow::{bail, Context};
+use anyhow::{Context, bail};
 use secrecy::{ExposeSecret, SecretBox, SecretString};
 type Secret<T> = SecretBox<T>;
 

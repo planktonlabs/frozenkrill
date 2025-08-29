@@ -2,31 +2,31 @@ use std::path::{Path, PathBuf};
 
 use dialoguer::{console::Term, theme::Theme};
 use frozenkrill_core::{
-    anyhow,
+    PaddingParams, anyhow,
     bitcoin::secp256k1::{All, Secp256k1},
-    rand_core::{CryptoRng, RngCore},
+    rand_core::CryptoRng,
     wallet_description::{MultiSigWalletDescriptionV0, SingleSigWalletDescriptionV0},
-    PaddingParams,
 };
 use path_absolutize::Absolutize;
 
 use crate::{
+    InternetChecker,
     commands::{
         common::from_input_to_reencoded,
         interactive::{
-            ask_for_keyfiles_generate, ask_network, ask_wallet_file_type, get_ask_difficulty,
-            ValidateOutputFile,
+            ValidateOutputFile, ask_for_keyfiles_generate, ask_network, ask_wallet_file_type,
+            get_ask_difficulty,
         },
         reencode::{MultisigCoreReencodeArgs, SinglesigCoreReencodeArgs},
     },
-    handle_output_path, InternetChecker,
+    handle_output_path,
 };
 
 pub(super) fn singlesig_reencode(
     theme: &dyn Theme,
     term: &Term,
     secp: &mut Secp256k1<All>,
-    rng: &mut (impl CryptoRng + RngCore),
+    rng: &mut impl CryptoRng,
     ic: impl InternetChecker,
     wallet: &SingleSigWalletDescriptionV0,
     input_path: &Path,
@@ -57,7 +57,7 @@ pub(super) fn multisig_reencode(
     theme: &dyn Theme,
     term: &Term,
     secp: &mut Secp256k1<All>,
-    rng: &mut (impl CryptoRng + RngCore),
+    rng: &mut impl CryptoRng,
     ic: impl InternetChecker,
     wallet: &MultiSigWalletDescriptionV0,
     input_path: &Path,

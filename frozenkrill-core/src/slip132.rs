@@ -19,10 +19,10 @@
 use std::fmt::Debug;
 use std::str::FromStr;
 
-use anyhow::{bail, Context};
+use anyhow::{Context, bail};
+use bitcoin::NetworkKind;
 use bitcoin::base58::{self};
 use bitcoin::bip32::{ChildNumber, DerivationPath, Xpriv, Xpub};
-use bitcoin::NetworkKind;
 use serde::{Deserialize, Serialize};
 
 /// Magical version bytes for xpub: bitcoin mainnet public key for P2PKH or P2SH

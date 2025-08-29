@@ -8,17 +8,17 @@ use dialoguer::{console::Term, theme::Theme};
 use frozenkrill_core::{
     anyhow::{self, bail},
     bitcoin::{
-        secp256k1::{All, Secp256k1},
         Network,
+        secp256k1::{All, Secp256k1},
     },
     key_derivation::{self, KeyDerivationDifficulty},
     parse_keyfiles_paths,
-    rand_core::{CryptoRng, RngCore},
+    rand_core::CryptoRng,
     secrecy::SecretString,
     wallet_description::WordCount,
 };
 
-use crate::{handle_output_path, InteractiveArgs, InternetChecker, WalletFileType};
+use crate::{InteractiveArgs, InternetChecker, WalletFileType, handle_output_path};
 
 use self::{
     generate_batch::interactive_generate_batch,
@@ -60,7 +60,7 @@ pub(crate) fn interactive(
     theme: &dyn Theme,
     term: &Term,
     secp: &mut Secp256k1<All>,
-    rng: &mut (impl CryptoRng + RngCore),
+    rng: &mut impl CryptoRng,
     ic: impl InternetChecker,
     args: &InteractiveArgs,
 ) -> anyhow::Result<()> {

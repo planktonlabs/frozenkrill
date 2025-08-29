@@ -17,6 +17,19 @@ pub fn init() {
     try_init().unwrap();
 }
 
+/// Initializes the global logger with a specific log level if RUST_LOG is not set.
+///
+/// This should be called early in the execution of a Rust program, and the
+/// global logger may only be initialized once. Future initialization attempts
+/// will return an error.
+///
+/// # Panics
+///
+/// This function fails to set the global logger if one has already been set.
+pub fn init_with_level(level: &str) {
+    try_init_with_level(level).unwrap();
+}
+
 /// Initializes the global logger with a pretty env logger.
 ///
 /// This should be called early in the execution of a Rust program, and the
@@ -28,6 +41,28 @@ pub fn init() {
 /// This function fails to set the global logger if one has already been set.
 pub fn try_init() -> Result<(), log::SetLoggerError> {
     try_init_custom_env("RUST_LOG")
+}
+
+/// Initializes the global logger with a specific log level if RUST_LOG is not set.
+///
+/// This should be called early in the execution of a Rust program, and the
+/// global logger may only be initialized once. Future initialization attempts
+/// will return an error.
+///
+/// # Errors
+///
+/// This function fails to set the global logger if one has already been set.
+pub fn try_init_with_level(level: &str) -> Result<(), log::SetLoggerError> {
+    let mut builder = formatted_builder();
+
+    // Check if RUST_LOG is set, use it if it is, otherwise use the provided level
+    if let Ok(s) = ::std::env::var("RUST_LOG") {
+        builder.parse_filters(&s);
+    } else {
+        builder.parse_filters(level);
+    }
+
+    builder.try_init()
 }
 
 /// Initialized the global logger with a pretty env logger, with a custom variable name.

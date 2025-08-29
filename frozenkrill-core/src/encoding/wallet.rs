@@ -1,12 +1,12 @@
 use std::io::{BufReader, BufWriter, Read, Write};
 
-use anyhow::{bail, ensure, Context};
+use anyhow::{Context, bail, ensure};
 use bitcoin::bip32::{ChildNumber, DerivationPath, Fingerprint, Xpub};
 use bitcoin::key::XOnlyPublicKey;
 use itertools::Itertools;
 use miniscript::{
-    descriptor::{DerivPaths, Wildcard},
     Descriptor, DescriptorPublicKey,
+    descriptor::{DerivPaths, Wildcard},
 };
 
 use crate::OptOrigin;
@@ -122,15 +122,21 @@ pub fn deserialize_descriptor_pk(
                 VarInt::ZERO => {
                     let key = bitcoin::PublicKey::read_from(r)?;
                     let key = miniscript::descriptor::SinglePubKey::FullKey(key);
-                    Ok(DescriptorPublicKey::Single(miniscript::descriptor::SinglePub { origin, key }))
+                    Ok(DescriptorPublicKey::Single(
+                        miniscript::descriptor::SinglePub { origin, key },
+                    ))
                 }
                 VarInt::ONE => {
                     let key = crate::encoding::deserialize_byte_vector(r)?;
                     let key = XOnlyPublicKey::from_slice(&key)?;
                     let key = miniscript::descriptor::SinglePubKey::XOnly(key);
-                    Ok(DescriptorPublicKey::Single(miniscript::descriptor::SinglePub { origin, key }))
+                    Ok(DescriptorPublicKey::Single(
+                        miniscript::descriptor::SinglePub { origin, key },
+                    ))
                 }
-                other => bail!("Found unexpected varint: {other:?} while deserializing Single DescriptorPublicKey"),
+                other => bail!(
+                    "Found unexpected varint: {other:?} while deserializing Single DescriptorPublicKey"
+                ),
             }
         }
         VarInt::ONE => {
@@ -354,7 +360,9 @@ pub fn deserialize_descriptor_descriptor_pk(
                 match VarInt::deserialize(r)? {
                     VarInt::ZERO => todo!("Sh(Wsh sorted) isn't supported (yet)"),
                     VarInt::ONE => todo!("Sh(Wsh) isn't supported (yet)"),
-                    other => bail!("Found unexpected varint: {other:?} while deserializing Sh(Wsh) Descriptor<DescriptorPublicKey>"),
+                    other => bail!(
+                        "Found unexpected varint: {other:?} while deserializing Sh(Wsh) Descriptor<DescriptorPublicKey>"
+                    ),
                 };
             }
             VarInt::ONE => {
@@ -368,10 +376,14 @@ pub fn deserialize_descriptor_descriptor_pk(
                 for _ in 0..len {
                     pks.push(deserialize_descriptor_pk(r)?);
                 }
-                Ok(Descriptor::Sh(miniscript::descriptor::Sh::new_sortedmulti(k, pks)?))
+                Ok(Descriptor::Sh(miniscript::descriptor::Sh::new_sortedmulti(
+                    k, pks,
+                )?))
             }
             VarInt(3) => todo!("Sh(Ms) isn't supported (yet)"),
-            other => bail!("Found unexpected varint: {other:?} while deserializing Sh Descriptor<DescriptorPublicKey>"),
+            other => bail!(
+                "Found unexpected varint: {other:?} while deserializing Sh Descriptor<DescriptorPublicKey>"
+            ),
         },
         VarInt(4) => match VarInt::deserialize(r)? {
             VarInt::ZERO => {
@@ -381,13 +393,19 @@ pub fn deserialize_descriptor_descriptor_pk(
                 for _ in 0..len {
                     pks.push(deserialize_descriptor_pk(r)?);
                 }
-                Ok(Descriptor::Wsh(miniscript::descriptor::Wsh::new_sortedmulti(k, pks)?))
+                Ok(Descriptor::Wsh(
+                    miniscript::descriptor::Wsh::new_sortedmulti(k, pks)?,
+                ))
             }
             VarInt::ONE => todo!("Wsh(Ms) isn't supported (yet)"),
-            other => bail!("Found unexpected varint: {other:?} while deserializing Wsh Descriptor<DescriptorPublicKey>"),
-        }
+            other => bail!(
+                "Found unexpected varint: {other:?} while deserializing Wsh Descriptor<DescriptorPublicKey>"
+            ),
+        },
         VarInt(5) => todo!("Taproot isn't supported (yet)"),
-        other => bail!("Found unexpected varint: {other:?} while deserializing Descriptor<DescriptorPublicKey>"),
+        other => bail!(
+            "Found unexpected varint: {other:?} while deserializing Descriptor<DescriptorPublicKey>"
+        ),
     }
 }
 

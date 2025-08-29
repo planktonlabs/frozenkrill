@@ -1,30 +1,31 @@
 use std::{collections::HashSet, path::PathBuf, sync::Arc};
 
-use anyhow::{bail, ensure, Context};
+use anyhow::{Context, bail, ensure};
 use bip39::Mnemonic;
 use bitcoin::secp256k1::{All, Secp256k1};
 use bitcoin::{
-    bip32::{DerivationPath, Fingerprint},
     Network,
+    bip32::{DerivationPath, Fingerprint},
 };
 use compression::compress;
 use encryption::default_encrypt;
 use itertools::Itertools;
 use log::debug;
 use miniscript::{Descriptor, DescriptorPublicKey};
-use rand_core::{CryptoRng, RngCore};
+use rand_core::CryptoRng;
 use secrecy::{ExposeSecret, SecretBox, SecretString};
 type Secret<T> = SecretBox<T>;
-type SecretVec<T> = SecretBox<Vec<T>>;
+// type SecretVec<T> = SecretBox<Vec<T>>;  // Currently unused
 use wallet_description::{
-    EncryptedWalletDescription, EncryptedWalletVersion, MultiSigCompactWalletDescriptionV0,
-    MultisigType, ScriptType, SingleSigCompactWalletDescriptionV0, SingleSigWalletDescriptionV0,
-    SinglesigJsonWalletDescriptionV0, KEY_SIZE, NONCE_SIZE, SALT_SIZE,
+    EncryptedWalletDescription, EncryptedWalletVersion, KEY_SIZE,
+    MultiSigCompactWalletDescriptionV0, MultisigType, NONCE_SIZE, SALT_SIZE, ScriptType,
+    SingleSigCompactWalletDescriptionV0, SingleSigWalletDescriptionV0,
+    SinglesigJsonWalletDescriptionV0,
 };
 
 use crate::wallet_description::{
-    DecodedHeaderV0, MultiSigWalletDescriptionV0, MultisigJsonWalletDescriptionV0,
-    ENCRYPTED_HEADER_LENGTH,
+    DecodedHeaderV0, ENCRYPTED_HEADER_LENGTH, MultiSigWalletDescriptionV0,
+    MultisigJsonWalletDescriptionV0,
 };
 
 pub mod compression;
@@ -412,7 +413,7 @@ pub const DEFAULT_MAX_ADDITIONAL_PADDING: u32 = 1000;
 pub const MAX_ADDITIONAL_PADDING: u32 = 1_000_000_000;
 
 pub fn get_padder(
-    rng: &mut (impl CryptoRng + RngCore),
+    rng: &mut impl CryptoRng,
     params: &PaddingParams,
 ) -> anyhow::Result<CiphertextPadder> {
     if params.disable_all_padding {
@@ -471,7 +472,8 @@ impl MultisigInputs {
             }
         }
         self.signers.extend(other.signers);
-        anyhow::ensure!(change_added == receiving_added,
+        anyhow::ensure!(
+            change_added == receiving_added,
             "Expected change descriptor added {change_added} to be the same as receiving descriptor added {receiving_added}"
         );
         Ok(receiving_added)

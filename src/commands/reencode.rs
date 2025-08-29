@@ -5,34 +5,34 @@ use std::{
 
 use dialoguer::{console::Term, theme::Theme};
 use frozenkrill_core::{
+    PaddingParams,
     anyhow::{self, Context},
     bitcoin::{
-        secp256k1::{All, Secp256k1},
         Network,
+        secp256k1::{All, Secp256k1},
     },
     generate_encrypted_encoded_singlesig_wallet, get_padder,
     key_derivation::KeyDerivationDifficulty,
     log, parse_keyfiles_paths,
-    rand_core::{CryptoRng, RngCore},
+    rand_core::CryptoRng,
     secrecy::{ExposeSecret, SecretBox, SecretString},
     utils::create_file,
     wallet_description::{
-        read_decode_wallet, EncryptedWalletVersion, MultiSigWalletDescriptionV0,
-        MultisigJsonWalletDescriptionV0, ScriptType, SingleSigWalletDescriptionV0,
-        SinglesigJsonWalletDescriptionV0,
+        EncryptedWalletVersion, MultiSigWalletDescriptionV0, MultisigJsonWalletDescriptionV0,
+        ScriptType, SingleSigWalletDescriptionV0, SinglesigJsonWalletDescriptionV0,
+        read_decode_wallet,
     },
-    PaddingParams,
 };
 use frozenkrill_core::{key_derivation::default_derive_key, random_generation_utils::*};
 
 use crate::{
+    InternetChecker, MultisigOpenArgs, MultisigReencodeArgs, SinglesigOpenArgs,
+    SinglesigReencodeArgs,
     commands::{
         common::CONTEXT_CORRUPTION_WARNING,
         generate::{core::generate_ask_password, inform_custom_generate_params},
     },
     get_derivation_key_spinner, handle_output_path, ui_derive_key, warn_difficulty_level,
-    InternetChecker, MultisigOpenArgs, MultisigReencodeArgs, SinglesigOpenArgs,
-    SinglesigReencodeArgs,
 };
 
 use super::common::from_input_to_reencoded;
@@ -95,7 +95,7 @@ pub(crate) fn singlesig_core_reencode(
     theme: &dyn Theme,
     term: &Term,
     secp: &mut Secp256k1<All>,
-    mut rng: &mut (impl CryptoRng + RngCore),
+    mut rng: &mut impl CryptoRng,
     ic: impl InternetChecker,
     wallet: &SingleSigWalletDescriptionV0,
     args: SinglesigCoreReencodeArgs,
@@ -222,7 +222,7 @@ pub(crate) fn multisig_core_reencode(
     theme: &dyn Theme,
     term: &Term,
     secp: &mut Secp256k1<All>,
-    mut rng: &mut (impl CryptoRng + RngCore),
+    mut rng: &mut impl CryptoRng,
     ic: impl InternetChecker,
     wallet: &MultiSigWalletDescriptionV0,
     args: MultisigCoreReencodeArgs,
