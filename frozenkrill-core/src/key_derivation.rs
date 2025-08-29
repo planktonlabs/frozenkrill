@@ -7,7 +7,7 @@ use std::{
 };
 
 use anyhow::{bail, Context};
-use secrecy::{ExposeSecret, Secret, SecretString, SecretVec};
+use secrecy::{ExposeSecret, SecretBox, SecretString};
 
 use crate::wallet_description::{KEY_SIZE, SALT_SIZE};
 
@@ -129,7 +129,7 @@ fn _default_derive_key(
     keyfiles: &[PathBuf],
     salt: &[u8; SALT_SIZE],
     difficulty: &KeyDerivationDifficulty,
-) -> anyhow::Result<Secret<[u8; KEY_SIZE]>> {
+) -> anyhow::Result<SecretBox<[u8; KEY_SIZE]>> {
     // note that if keyfiles is empty the resulting password will be the original password
     let password = generate_password_with_keyfiles(password, salt, keyfiles)?;
     let argon2_difficulty_params = difficulty.argon2_difficulty_params();
@@ -148,7 +148,7 @@ pub fn default_derive_key(
     keyfiles: &[PathBuf],
     salt: &[u8; SALT_SIZE],
     difficulty: &KeyDerivationDifficulty,
-) -> anyhow::Result<Secret<[u8; KEY_SIZE]>> {
+) -> anyhow::Result<SecretBox<[u8; KEY_SIZE]>> {
     _default_derive_key(password, keyfiles, salt, difficulty)
         .context("failure deriving key, check if you have enough memory, perhaps try with a easier difficulty param")
 }
@@ -173,7 +173,7 @@ fn generate_password_with_keyfiles(
     password: &SecretString,
     salt: &[u8],
     keyfiles: &[PathBuf],
-) -> anyhow::Result<SecretVec<u8>> {
+) -> anyhow::Result<SecretBox<Vec<u8>>> {
     let mut hashes = Vec::with_capacity(keyfiles.len());
     for keyfile in keyfiles {
         let mut hasher = blake3::Hasher::new_derive_key(KEYFILES_CONTEXT);
@@ -190,7 +190,7 @@ fn generate_password_with_keyfiles(
     hashes.sort();
     let mut concatenated_hashes = hashes.concat();
     concatenated_hashes.extend(password.expose_secret().as_bytes());
-    Ok(SecretVec::new(concatenated_hashes))
+    Ok(SecretBox::from(concatenated_hashes))
 }
 
 #[cfg(test)]

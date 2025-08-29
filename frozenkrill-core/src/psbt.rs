@@ -10,7 +10,8 @@ use bitcoin::{
 };
 use log::{debug, warn};
 use secp256k1::{All, Secp256k1, Signing};
-use secrecy::{ExposeSecret, Secret};
+use secrecy::{ExposeSecret, SecretBox};
+type Secret<T> = SecretBox<T>;
 use std::{borrow::Borrow, fs::OpenOptions, io::Read, path::Path};
 
 use crate::{utils::create_file, wallet_description::WExtendedPrivKey};
@@ -68,7 +69,7 @@ impl GetKey for SignerProvider {
     fn get_key<C: Signing>(
         &self,
         key_request: KeyRequest,
-        secp: &Secp256k1<C>,
+        secp: &bitcoin::secp256k1::Secp256k1<C>,
     ) -> Result<Option<PrivateKey>, Self::Error> {
         match key_request {
             KeyRequest::Pubkey(_) => Err(GetKeyError::NotSupported),
@@ -92,7 +93,7 @@ impl GetKey for SignerProvider {
 }
 
 pub trait PsbtExt {
-    fn sign_partial<C, K>(&mut self, k: &K, secp: &Secp256k1<C>) -> SigningKeysMap
+    fn sign_partial<C, K>(&mut self, k: &K, secp: &bitcoin::secp256k1::Secp256k1<C>) -> SigningKeysMap
     where
         C: Signing,
         K: GetKey;
@@ -106,7 +107,7 @@ pub trait PsbtExt {
         k: &K,
         input_index: usize,
         cache: &mut SighashCache<T>,
-        secp: &Secp256k1<C>,
+        secp: &bitcoin::secp256k1::Secp256k1<C>,
     ) -> Result<Vec<PublicKey>, SignError>
     where
         C: Signing,
@@ -198,7 +199,7 @@ impl PsbtExt for Psbt {
         k: &K,
         input_index: usize,
         cache: &mut SighashCache<T>,
-        secp: &Secp256k1<C>,
+        secp: &bitcoin::secp256k1::Secp256k1<C>,
     ) -> Result<Vec<PublicKey>, SignError>
     where
         C: Signing,
@@ -326,7 +327,7 @@ impl PsbtExt for Psbt {
     }
 
     // like sign, but won't generate an error if some input can't be signed
-    fn sign_partial<C, K>(&mut self, k: &K, secp: &Secp256k1<C>) -> SigningKeysMap
+    fn sign_partial<C, K>(&mut self, k: &K, secp: &bitcoin::secp256k1::Secp256k1<C>) -> SigningKeysMap
     where
         C: Signing,
         K: GetKey,

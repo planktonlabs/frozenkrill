@@ -7,7 +7,7 @@ use std::{
 use anyhow::{bail, Context};
 use bitcoin::bip32::{ChildNumber, DerivationPath, Fingerprint, Xpub};
 use miniscript::DescriptorPublicKey;
-use secrecy::Zeroize;
+use zeroize::Zeroize;
 use serde::{Deserialize, Serialize};
 use zeroize::ZeroizeOnDrop;
 
@@ -289,7 +289,7 @@ impl MultisigJsonWalletPublicExportV0 {
 mod tests {
     use std::{str::FromStr, sync::Arc};
 
-    use secrecy::Secret;
+    use secrecy::SecretBox;
 
     use crate::random_generation_utils::get_secp;
 

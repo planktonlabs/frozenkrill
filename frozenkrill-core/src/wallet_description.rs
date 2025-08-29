@@ -17,10 +17,11 @@ use bitcoin::{
 use itertools::Itertools;
 use log::debug;
 use miniscript::{Descriptor, DescriptorPublicKey};
-use rand_core::CryptoRngCore;
+use rand_core::{CryptoRng, RngCore};
 use regex::Regex;
 use secp256k1::{All, Secp256k1};
-use secrecy::{CloneableSecret, ExposeSecret, Secret, SecretString, SecretVec};
+use secrecy::{CloneableSecret, ExposeSecret, SecretBox, SecretString};
+type Secret<T> = SecretBox<T>;
 use serde::{Deserialize, Serialize};
 use zeroize::{Zeroize, ZeroizeOnDrop};
 
@@ -225,7 +226,7 @@ impl EncryptedWalletDescription {
 
     pub fn decrypt_singlesig(
         &self,
-        key: &Secret<[u8; KEY_SIZE]>,
+        key: &SecretBox<[u8; KEY_SIZE]>,
         seed_password: &Option<Arc<SecretString>>,
         secp: &Secp256k1<All>,
     ) -> anyhow::Result<Secret<SinglesigJsonWalletDescriptionV0>> {
@@ -235,7 +236,7 @@ impl EncryptedWalletDescription {
 
     pub fn decrypt_multisig(
         &self,
-        key: &Secret<[u8; KEY_SIZE]>,
+        key: &SecretBox<[u8; KEY_SIZE]>,
         secp: &Secp256k1<All>,
     ) -> anyhow::Result<Secret<MultisigJsonWalletDescriptionV0>> {
         decrypt_wallet_multisig(&self.nonce, &self.encrypted_header, &self.ciphertext, key, secp)
@@ -753,14 +754,14 @@ impl SinglesigJsonWalletDescriptionV0 {
         Ok(Secret::new(w))
     }
 
-    pub fn to_vec(&self) -> anyhow::Result<SecretVec<u8>> {
-        Ok(SecretVec::new(
+    pub fn to_vec(&self) -> anyhow::Result<SecretBox<Vec<u8>>> {
+        Ok(SecretBox::from(
             serde_json::to_vec(self).context("failure serializing json")?,
         ))
     }
 
-    pub fn to_vec_pretty(&self) -> anyhow::Result<SecretVec<u8>> {
-        Ok(SecretVec::new(
+    pub fn to_vec_pretty(&self) -> anyhow::Result<SecretBox<Vec<u8>>> {
+        Ok(SecretBox::from(
             serde_json::to_vec_pretty(self).context("failure serializing json")?,
         ))
     }
@@ -782,9 +783,9 @@ impl SingleSigCompactWalletDescriptionV0 {
         Ok(Self { mnemonic })
     }
 
-    pub fn serialize(&self) -> SecretVec<u8> {
+    pub fn serialize(&self) -> SecretBox<Vec<u8>> {
         let entropy = self.mnemonic.expose_secret().to_entropy();
-        SecretVec::new(entropy)
+        SecretBox::from(entropy)
     }
 
     pub fn deserialize(mut data: BufReader<impl Read>) -> anyhow::Result<Self> {
@@ -1235,14 +1236,14 @@ impl MultisigJsonWalletDescriptionV0 {
         Ok(Secret::new(w))
     }
 
-    pub fn to_vec(&self) -> anyhow::Result<SecretVec<u8>> {
-        Ok(SecretVec::new(
+    pub fn to_vec(&self) -> anyhow::Result<SecretBox<Vec<u8>>> {
+        Ok(SecretBox::from(
             serde_json::to_vec(self).context("failure serializing json")?,
         ))
     }
 
-    pub fn to_vec_pretty(&self) -> anyhow::Result<SecretVec<u8>> {
-        Ok(SecretVec::new(
+    pub fn to_vec_pretty(&self) -> anyhow::Result<SecretBox<Vec<u8>>> {
+        Ok(SecretBox::from(
             serde_json::to_vec_pretty(self).context("failure serializing json")?,
         ))
     }
@@ -1295,10 +1296,10 @@ impl WordCount {
     }
 }
 
-pub fn generate_entropy_for_seeds<Rng: CryptoRngCore>(
+pub fn generate_entropy_for_seeds<Rng: (CryptoRng + RngCore)>(
     entropy_bytes: usize,
     rng: &mut Rng,
-) -> Result<[u8; (MAX_NB_WORDS / 3) * 4], rand_core::Error> {
+) -> Result<[u8; (MAX_NB_WORDS / 3) * 4], anyhow::Error> {
     let mut entropy = [0u8; (MAX_NB_WORDS / 3) * 4];
     rng.try_fill_bytes(&mut entropy[0..entropy_bytes])?;
     Ok(entropy)
@@ -1318,7 +1319,7 @@ pub fn generate_seeds_from_entropy(
     Ok(Secret::new(mnemonic))
 }
 
-pub fn generate_seeds<Rng: CryptoRngCore>(
+pub fn generate_seeds<Rng: (CryptoRng + RngCore)>(
     rng: &mut Rng,
     word_count: WordCount,
     language: bip39::Language,
@@ -1413,7 +1414,7 @@ fn decrypt_header<'a>(
     nonce: &[u8; NONCE_SIZE],
     encrypted_header: &[u8; ENCRYPTED_HEADER_LENGTH],
     ciphertext: &'a [u8],
-    key: &Secret<[u8; KEY_SIZE]>,
+    key: &SecretBox<[u8; KEY_SIZE]>,
 ) -> anyhow::Result<(DecodedHeaderV0, &'a [u8])> {
     let header =
         default_decrypt(key, nonce, encrypted_header).context("failure decrypting header")?;
@@ -1432,10 +1433,10 @@ fn decrypt_header<'a>(
 fn get_uncompressed_wallet(
     header: &DecodedHeaderV0,
     ciphertext: &[u8],
-) -> anyhow::Result<SecretVec<u8>> {
+) -> anyhow::Result<SecretBox<Vec<u8>>> {
     let compressed = default_decrypt(&header.key, &header.nonce, ciphertext)
         .context("failure decrypting data")?;
-    let uncompressed = SecretVec::new(
+    let uncompressed = SecretBox::from(
         uncompress(compressed.expose_secret()).context("failure uncompressing decrypted data")?,
     );
     Ok(uncompressed)
@@ -1457,7 +1458,7 @@ fn decrypt_wallet_singlesig(
     nonce: &[u8; NONCE_SIZE],
     encrypted_header: &[u8; ENCRYPTED_HEADER_LENGTH],
     ciphertext: &[u8],
-    key: &Secret<[u8; KEY_SIZE]>,
+    key: &SecretBox<[u8; KEY_SIZE]>,
     seed_password: &Option<Arc<SecretString>>,
     secp: &Secp256k1<All>,
 ) -> anyhow::Result<Secret<SinglesigJsonWalletDescriptionV0>> {
@@ -1488,7 +1489,7 @@ fn decrypt_wallet_multisig(
     nonce: &[u8; NONCE_SIZE],
     encrypted_header: &[u8; ENCRYPTED_HEADER_LENGTH],
     ciphertext: &[u8],
-    key: &Secret<[u8; KEY_SIZE]>,
+    key: &SecretBox<[u8; KEY_SIZE]>,
     secp: &Secp256k1<All>,
 ) -> anyhow::Result<Secret<MultisigJsonWalletDescriptionV0>> {
     let (header, ciphertext) = decrypt_header(nonce, encrypted_header, ciphertext, key)?;
@@ -1553,7 +1554,7 @@ impl EncryptedWalletVersion {
 }
 
 pub(crate) struct DecodedHeaderV0 {
-    key: Secret<[u8; KEY_SIZE]>,
+    key: SecretBox<[u8; KEY_SIZE]>,
     nonce: [u8; NONCE_SIZE],
     version: EncryptedWalletVersion,
     length: HeaderLengthType,
@@ -1561,7 +1562,7 @@ pub(crate) struct DecodedHeaderV0 {
 
 impl DecodedHeaderV0 {
     pub(crate) fn new(
-        key: Secret<[u8; KEY_SIZE]>,
+        key: SecretBox<[u8; KEY_SIZE]>,
         nonce: [u8; NONCE_SIZE],
         version: EncryptedWalletVersion,
         length: u32,
