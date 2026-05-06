@@ -54,7 +54,7 @@ fn test_full_generation_process_random_wallet() -> anyhow::Result<()> {
     let password = SecretString::new(TEST_PASSWORD.into());
     let seed_password = Some(Arc::new(SecretString::new(TEST_SEED_PASSWORD.into())));
     let mnemonic = Arc::new(generate_seeds(&mut rng, WordCount::W24, Language::English)?);
-    let keyfiles = parse_keyfiles_paths(&[tempdir.into_path().to_str().unwrap().to_owned()])?;
+    let keyfiles = parse_keyfiles_paths(&[tempdir.keep().to_str().unwrap().to_owned()])?;
     let key = default_derive_key(&password, &keyfiles, &salt, &TEST_DIFFICULTY)?;
 
     for encrypted_wallet_version in [
@@ -109,7 +109,7 @@ fn test_default_seed_password() -> anyhow::Result<()> {
     let secp = get_secp(&mut rng);
     let password = SecretString::new(TEST_PASSWORD.into());
     let mnemonic = Arc::new(generate_seeds(&mut rng, WordCount::W24, Language::English)?);
-    let keyfiles = parse_keyfiles_paths(&[tempdir.into_path().to_str().unwrap().to_owned()])?;
+    let keyfiles = parse_keyfiles_paths(&[tempdir.keep().to_str().unwrap().to_owned()])?;
     let key = default_derive_key(&password, &keyfiles, &salt, &TEST_DIFFICULTY)?;
     for encrypted_wallet_version in [
         EncryptedWalletVersion::V0Standard,
@@ -158,7 +158,7 @@ fn test_read_existing_singlesig_wallet() -> anyhow::Result<()> {
     let encoded_wallet_compact = "330e3ea18e5f2d46a3eb1b4ac7e91851f6f8ad50016ab41fc66a8f0bb7e30fa510de4989c4a41dad6af954dd7d02520794d70944b16908b8e4d5d1f1721e95bf4cb9569ea97ab73ec54c37ac3fa717c9cc60cf1ebb5e2690c5c8a37b45d6cb9404c26d39bf96cb39869a5ce6a6c33c1fb7d06468d83bf71a41ec65b2dfda0df7e253e6f04ba89b0c70828353fdf2274831c2cdf2828b3da995ea8a4c0127ed7bafc1f67f0fb353cc";
 
     let tempdir = create_keyfiles_directory()?;
-    let keyfiles = parse_keyfiles_paths(&[tempdir.into_path().to_str().unwrap().to_owned()])?;
+    let keyfiles = parse_keyfiles_paths(&[tempdir.keep().to_str().unwrap().to_owned()])?;
     let mut rng = rand::thread_rng();
     let secp = get_secp(&mut rng);
     let password = SecretString::new(TEST_PASSWORD.into());
@@ -192,7 +192,7 @@ fn test_generation_multisig_wallet() -> anyhow::Result<()> {
     let tempdir = create_keyfiles_directory()?;
     let secp = get_secp(&mut rng);
     let password = SecretString::new(TEST_PASSWORD.into());
-    let keyfiles = parse_keyfiles_paths(&[tempdir.into_path().to_str().unwrap().to_owned()])?;
+    let keyfiles = parse_keyfiles_paths(&[tempdir.keep().to_str().unwrap().to_owned()])?;
     let key = default_derive_key(&password, &keyfiles, &salt, &TEST_DIFFICULTY)?;
 
     let script_type = ScriptType::SegwitNative;
@@ -253,7 +253,7 @@ fn test_read_existing_multisig_wallet() -> anyhow::Result<()> {
     let encoded_wallet_compact = "653117627897eca8532abb09de7fc502b8e9a16c40ee103621c874d4895c566cb11be28cbe45823a9b441018d467ab50a4979692b6f394cd47f92a074798bfd12ebb10e98ec09795d142afe3bc6774ad1fb630a4a1aa061d936424b72e2061259082304a7add46ae812693a40765542155d0a0079d2f174d7c715a18dbf506232d4033780e120898e84bf1703b88c2d3ee1d6571d88ab8baa12566041c6944fd6836c45e8eff0c9517f34ab8c6e4496712984dae98d1c9cb329bbbe4f5eb2564755fe7c912e24d6b23d9530eeaf86f297740f548d2318047bf16540719979e87b379df193e7e2454dfaafb918efca4405c893b327d93546093fa5b9bbdfa3da680c81d6b50841b97412a56a0411899e075ab3f76bb11445a32cae35a2a574d40a636e5fbe419ef281ae9b8a86768ac64dd33419ad339c64344641cacd95beaa92771d8a0cc9281573c913c63daad14d57cc4216e0ef2787648b1f3962d35561f26bc682d189fe20ec8acb278c4c66aacd90d2e1037464b1850b7b0fbdf2a9c346fc003492868cac728f7c4d88812b95556e4addb39fb929b97f944281901a572505256101fa0f9f6df58e6b68a3b1207af886c0514dd0981ffc4230cc942848240512af6846db6c0ca4363157fadc1dab99ca79eb8";
 
     let tempdir = create_keyfiles_directory()?;
-    let keyfiles = parse_keyfiles_paths(&[tempdir.into_path().to_str().unwrap().to_owned()])?;
+    let keyfiles = parse_keyfiles_paths(&[tempdir.keep().to_str().unwrap().to_owned()])?;
     let mut rng = rand::thread_rng();
     let secp = get_secp(&mut rng);
     let password = SecretString::new(TEST_PASSWORD.into());

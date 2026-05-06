@@ -12,6 +12,7 @@ use frozenkrill_core::{
 use frozenkrill_core::secrecy::SecretString;
 
 pub(crate) mod batch_generate_export;
+pub(crate) mod combine_secret;
 pub(crate) mod common;
 pub(crate) mod export_public_info;
 pub(crate) mod generate;
@@ -20,6 +21,7 @@ pub(crate) mod psbt;
 pub(crate) mod reencode;
 pub(crate) mod show_receiving_qr_code;
 pub(crate) mod show_secrets;
+pub(crate) mod split_secret;
 
 pub(crate) fn benchmark() -> anyhow::Result<()> {
     let password = SecretString::new("top secret".into());
@@ -74,7 +76,7 @@ mod tests {
     #[test]
     fn test_generate_read_singlesig() -> anyhow::Result<()> {
         use pretty_assertions::assert_eq;
-        let mut rng = rand::rng();
+        let mut rng = rand::thread_rng();
         let mut secp = get_secp(&mut rng);
         let network = Network::Bitcoin;
         let difficulty = KeyDerivationDifficulty::Easy;
@@ -197,7 +199,7 @@ mod tests {
     fn test_generate_read_multisig() -> anyhow::Result<()> {
         use pretty_assertions::assert_eq;
         custom_logger::init();
-        let mut rng = rand::rng();
+        let mut rng = rand::thread_rng();
         let mut secp = get_secp(&mut rng);
         let network = Network::Testnet;
         let script_type = ScriptType::SegwitNative;
@@ -405,7 +407,7 @@ mod tests {
     #[test]
     fn test_generate_read_descriptors_multisig() -> anyhow::Result<()> {
         use pretty_assertions::assert_eq;
-        let mut rng = rand::rng();
+        let mut rng = rand::thread_rng();
         let mut secp = get_secp(&mut rng);
         let network = Network::Testnet;
         let script_type = ScriptType::SegwitNative;

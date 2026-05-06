@@ -1,0 +1,16 @@
+{
+  "artifact_id": "run-20260502233654-final_review-vote-1-c1-a1-cr1-artifact",
+  "payload_id": "run-20260502233654-final_review-vote-1-c1-a1-cr1-payload",
+  "stage_id": "final_review",
+  "created_at": "2026-05-03T00:03:49.373367750Z",
+  "content": "# Final Review Votes\n**Producer:** agent:codex/gpt-5.5-xhigh\n\n## Summary\n\nAccepted all three amendments. The first identifies a real metadata-voting safety bug; the latter two identify valid cleanup and hygiene issues with lower urgency.\n\n## Votes\n\n- `fr-1-14a48673`: Accept\n  The issue is technically valid. `successes` stores all independently Pedersen-verified inputs, while the threshold check only counts complete share identifiers separately. `derive_metadata` then drops conflicting duplicate-id buckets and uses only the surviving buckets as the denominator, so duplicate conflicts can shrink the vote to a fabricated strict majority, including for `is_duress`. For 24-word shares, lo/hi-valid but identifier-mismatched splices can also remain in the metadata vote. The success group should be restricted to complete verified ids, and conflicts should either count against the majority denominator or fail closed, with regression tests.\n- `fr-1-b79747ff`: Accept\n  The dead-code claim is supported by the current workspace search: `VssJsonWalletDescriptionV0::from_singlesig` has no remaining caller, while `SinglesigPublicMetadataV0::from_singlesig_json` is distinct and still used. Keeping an unused 12-argument public constructor adds maintenance burden and can preserve an obsolete construction path. This is a valid cleanup amendment, even if it is best scheduled as a small follow-up or folded into adjacent wallet-description cleanup.\n- `fr-1-bb33648c`: Accept\n  The `verification_data` and `verification_data_hi` overwrites on cloned success entries are dead writes in the current code path: the later identifier check, metadata vote, recovery conversion, and group description do not read those fields. The owned `Vec<VssJsonWalletDescriptionV0>` also duplicates secret share material for each successful candidate where borrowed references would suffice. Zeroization limits the impact, but reducing unnecessary secret-material copies and removing dead writes is a valid maintainability and security-hygiene improvement.\n",
+  "record_kind": "stage_supporting",
+  "producer": {
+    "type": "agent",
+    "requested_backend_family": "codex",
+    "requested_model_id": "gpt-5.5-xhigh",
+    "actual_backend_family": "codex",
+    "actual_model_id": "gpt-5.5-xhigh"
+  },
+  "completion_round": 1
+}

@@ -1,0 +1,16 @@
+{
+  "artifact_id": "run-20260502051848-final_review-vote-1-c1-a1-cr1-artifact",
+  "payload_id": "run-20260502051848-final_review-vote-1-c1-a1-cr1-payload",
+  "stage_id": "final_review",
+  "created_at": "2026-05-02T05:40:59.279393766Z",
+  "content": "# Final Review Votes\n**Producer:** agent:codex/gpt-5.5-xhigh\n\n## Summary\n\nBoth amendments identify real documentation drift in the VSS share JSON example and should be accepted. The current docs describe fields and encodings that do not match the serialized schema.\n\n## Votes\n\n- `fr-1-19ba7088`: Accept\n  The amendment is technically correct: the implementation serializes share and verifier material as hex strings, includes blinder fields and optional high-half fields, and embeds original_wallet as SinglesigPublicMetadataV0 rather than a tagged wallet object with seed/descriptors/public_keys. Updating the docs prevents users from relying on an invalid decrypted share format.\n- `fr-1-4a3963db`: Accept\n  The amendment is also valid and more specific. The documented example omits real VSS fields, includes nonexistent SinglesigPublicMetadataV0 fields, and shows an obsolete wallet_type discriminator. Regenerating the example from actual serde_json output or a deterministic round-trip fixture would improve correctness and reduce future drift.\n",
+  "record_kind": "stage_supporting",
+  "producer": {
+    "type": "agent",
+    "requested_backend_family": "codex",
+    "requested_model_id": "gpt-5.5-xhigh",
+    "actual_backend_family": "codex",
+    "actual_model_id": "gpt-5.5-xhigh"
+  },
+  "completion_round": 1
+}

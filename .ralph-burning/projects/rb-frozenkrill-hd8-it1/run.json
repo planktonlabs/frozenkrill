@@ -1,0 +1,16 @@
+{
+  "active_run": null,
+  "status": "completed",
+  "cycle_history": [],
+  "completion_rounds": 1,
+  "max_completion_rounds": 25,
+  "rollback_point_meta": {
+    "last_rollback_id": null,
+    "rollback_count": 0
+  },
+  "amendment_queue": {
+    "pending": [],
+    "processed_count": 0
+  },
+  "status_summary": "completed"
+}

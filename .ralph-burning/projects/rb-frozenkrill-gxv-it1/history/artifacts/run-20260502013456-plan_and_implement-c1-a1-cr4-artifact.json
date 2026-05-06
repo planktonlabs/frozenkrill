@@ -1,0 +1,16 @@
+{
+  "artifact_id": "run-20260502013456-plan_and_implement-c1-a1-cr4-artifact",
+  "payload_id": "run-20260502013456-plan_and_implement-c1-a1-cr4",
+  "stage_id": "plan_and_implement",
+  "created_at": "2026-05-02T02:57:33.038757572Z",
+  "content": "# Plan and Implement\n\n## Change Summary\n\n{\n  \"change_summary\": \"Removed the tracked repo-root `result` Nix build-output symlink from the bead's staged changes and added `result*` to `.gitignore` next to the existing Rust build-output rules so future `nix build` outputs such as `result`, `result-1`, or `result-bin` stay untracked. No source behavior changed.\",\n  \"outstanding_risks\": [\n    \"The working tree still contains modified `.ralph-burning/` orchestration state outside this amendment scope; it was left untouched.\"\n  ],\n  \"steps\": [\n    {\n      \"description\": \"Inspect the current tracked state for `.gitignore` and the repo-root `result` symlink.\",\n      \"order\": 1,\n      \"status\": \"completed\"\n    },\n    {\n      \"description\": \"Add a `result*` ignore rule next to the existing `target/` rule in `.gitignore`.\",\n      \"order\": 2,\n      \"status\": \"completed\"\n    },\n    {\n      \"description\": \"Remove the tracked `result` symlink from the index using `git rm --ignore-unmatch result`.\",\n      \"order\": 3,\n      \"status\": \"complete\n\n## Steps\n\n1. [Completed] codex implementation turn\n\n## Validation Evidence\n\nNone provided.\n\n## Outstanding Risks\n\nNone identified.\n",
+  "record_kind": "stage_primary",
+  "producer": {
+    "type": "agent",
+    "requested_backend_family": "codex",
+    "requested_model_id": "gpt-5.5-high",
+    "actual_backend_family": "codex",
+    "actual_model_id": "gpt-5.5-high"
+  },
+  "completion_round": 4
+}

@@ -1,0 +1,16 @@
+{
+  "artifact_id": "run-20260502013456-final_review-vote-2-c1-a1-cr2-artifact",
+  "payload_id": "run-20260502013456-final_review-vote-2-c1-a1-cr2-payload",
+  "stage_id": "final_review",
+  "created_at": "2026-05-02T02:33:59.371309656Z",
+  "content": "# Final Review Votes\n**Producer:** agent:claude/claude-opus-4-7-max\n\n## Summary\n\nVoted on 1 amendment (fr-2-5594977e). Verified the attack chain: at frozenkrill-core/src/secret_sharing.rs:1205-1211 verified_inputs is the AND of lo+hi verification; on a 3-of-5 24-word recovery where lo combines from {1,2,3} and hi combines from {3,4,5}, only share 3 lands in verified_inputs even though the seed itself recovered cleanly. derive_metadata at 1378/1385 then computes any_duress = (duress_yes*2 > tally_source.len()), which becomes true from a single tampered share with is_duress=true; the legitimate xpub on that same share lets authenticate pass via rebuild_singlesig(&None); and rebuild_singlesig at 83-90 only refuses a passphrase when is_duress is false, so the flipped flag converts a non-duress wallet into a passphrase-derivable one and silently produces an attacker-controllable wallet. Requiring at least the candidate threshold of distinct complete verified share identifiers (or returning empty metadata so authenticate fails) is a correct, fail-closed fix consistent with the existing strict-majority and abstain logic in this file.\n\n## Votes\n\n- `fr-2-5594977e`: Accept\n  Real defect with a complete attack chain. On a 24-word 3-of-N recovery, lo and hi can succeed from disjoint share subsets, so the AND-filter at line 1209 can collapse verified_inputs to a single share even though the seed reconstructed correctly. derive_metadata then operates on that single share: any_duress = duress_yes*2 > tally_source.len() resolves to true from one tampered is_duress flag, and the strict_majority check is also satisfied trivially. authenticate (line 1437) cannot catch this because xpub/network on that one verified share are the legitimate values and the no-passphrase rebuild matches. The damaging step is rebuild_singlesig at lines 83-90: !is_duress is the only gate on passphrase use, so a flipped is_duress=true bypasses it and silently derives a wallet from the legitimate seed plus an arbitrary user-supplied passphrase, which is exactly the silent unrelated-wallet derivation the gate exists to prevent. Requiring at least the candidate threshold worth of distinct complete verified share identifiers before accepting the candidate (or zeroing metadata so authenticate refuses) is fail-closed, matches the file's existing abstain pattern (e.g. the empty-metadata return in derive_metadata when deduped is empty, and the empty-metadata authenticate refusal), and only rejects recoveries where the metadata vote is too thin to robustly resist a single tampered share. The cost is forcing users with this specific corruption pattern to remove the corrupted shares before retrying — an acceptable tradeoff against silent fund-loss exposure.\n",
+  "record_kind": "stage_supporting",
+  "producer": {
+    "type": "agent",
+    "requested_backend_family": "claude",
+    "requested_model_id": "claude-opus-4-7-max",
+    "actual_backend_family": "claude",
+    "actual_model_id": "claude-opus-4-7-max"
+  },
+  "completion_round": 2
+}

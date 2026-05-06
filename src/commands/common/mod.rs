@@ -59,7 +59,7 @@ pub(crate) struct AddressGenerationParams {
 pub(crate) fn generate_random_name(
     prefix: &str,
     suffix: &str,
-    rng: &mut impl CryptoRng,
+    rng: &mut (impl CryptoRng + frozenkrill_core::rand::RngCore),
 ) -> anyhow::Result<String> {
     let mut name_salt = [0u8; KEY_SIZE];
     rng.fill_bytes(&mut name_salt);

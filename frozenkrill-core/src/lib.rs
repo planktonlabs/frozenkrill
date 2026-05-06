@@ -36,6 +36,7 @@ pub mod key_derivation;
 pub mod mnemonic_utils;
 pub mod psbt;
 pub mod random_generation_utils;
+pub mod secret_sharing;
 pub mod slip132;
 pub mod utils;
 pub mod wallet_description;
@@ -91,24 +92,71 @@ pub struct CiphertextPadder {
 impl CiphertextPadder {
     pub fn pad(self, ciphertext: &mut Vec<u8>) -> anyhow::Result<()> {
         if let Some(base_padding_bytes) = self.base_padding_bytes {
-            anyhow::ensure!(
-                ciphertext.len() <= MINIMUM_CIPHERTEXT_SIZE_BYTES,
-                "Pre padded ciphertext size {} is already greater than {MINIMUM_CIPHERTEXT_SIZE_BYTES}",
-                ciphertext.len()
-            );
-            ciphertext.extend_from_slice(&base_padding_bytes);
-            anyhow::ensure!(
-                ciphertext.len() >= MINIMUM_CIPHERTEXT_SIZE_BYTES,
-                "Not enough padding bytes to bring ciphertext size from {} to at least {MINIMUM_CIPHERTEXT_SIZE_BYTES}",
-                ciphertext.len()
-            );
-            ciphertext.truncate(MINIMUM_CIPHERTEXT_SIZE_BYTES);
+            // The base-padding step exists to enforce a *minimum*
+            // ciphertext size — every file is padded out to
+            // `MINIMUM_CIPHERTEXT_SIZE_BYTES` so smaller-than-minimum
+            // payloads can't be distinguished by file size. When the
+            // payload is already at or above that minimum (this is the
+            // normal case for VSS shares of 24-word wallets, which
+            // carry an extra secret/blinder half plus a second Pedersen
+            // verifier set), there is nothing to do here — the size
+            // floor is already satisfied. Skip the base-padding step
+            // rather than hard-erroring, otherwise `split-secret` would
+            // refuse to write a perfectly valid larger share.
+            if ciphertext.len() < MINIMUM_CIPHERTEXT_SIZE_BYTES {
+                ciphertext.extend_from_slice(&base_padding_bytes);
+                anyhow::ensure!(
+                    ciphertext.len() >= MINIMUM_CIPHERTEXT_SIZE_BYTES,
+                    "Not enough padding bytes to bring ciphertext size from {} to at least {MINIMUM_CIPHERTEXT_SIZE_BYTES}",
+                    ciphertext.len()
+                );
+                ciphertext.truncate(MINIMUM_CIPHERTEXT_SIZE_BYTES);
+            }
         }
         if let Some(mut additional_padding_bytes) = self.additional_padding_bytes {
             ciphertext.append(&mut additional_padding_bytes);
         }
         Ok(())
     }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn encrypt_with_standard_envelope(
+    key: &SecretBox<[u8; KEY_SIZE]>,
+    header_key: SecretBox<[u8; KEY_SIZE]>,
+    payload: SecretBox<Vec<u8>>,
+    salt: [u8; SALT_SIZE],
+    nonce: [u8; NONCE_SIZE],
+    header_nonce: [u8; NONCE_SIZE],
+    encrypted_version: EncryptedWalletVersion,
+    padder: Option<CiphertextPadder>,
+    encrypt_context: &'static str,
+    serialize_context: &'static str,
+) -> anyhow::Result<Vec<u8>> {
+    let mut ciphertext =
+        default_encrypt(&header_key, &header_nonce, &payload).context(encrypt_context)?;
+    let ciphertext_len = ciphertext.len().try_into().with_context(|| {
+        format!(
+            "resulting ciphertext is too big: {} bytes",
+            ciphertext.len()
+        )
+    })?;
+    let header = DecodedHeaderV0::new(header_key, header_nonce, encrypted_version, ciphertext_len);
+    let mut encrypted_header = [0u8; ENCRYPTED_HEADER_LENGTH];
+    encrypted_header.copy_from_slice(
+        &default_encrypt(
+            key,
+            &nonce,
+            &header.serialize().context("failure encoding header")?,
+        )
+        .context("failure encrypting header")?[..ENCRYPTED_HEADER_LENGTH],
+    );
+    if let Some(padder) = padder {
+        padder.pad(&mut ciphertext)?;
+    }
+    EncryptedWalletDescription::new(nonce, salt, encrypted_header, ciphertext)
+        .serialize()
+        .context(serialize_context)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -168,7 +216,7 @@ pub fn generate_encrypted_encoded_singlesig_wallet_standard(
     network: Network,
     secp: &Secp256k1<All>,
 ) -> anyhow::Result<Vec<u8>> {
-    let compressed: SecretBox<Vec<u8>> = {
+    let compressed_payload: SecretBox<Vec<u8>> = {
         let json: SecretBox<Vec<u8>> = {
             let wallet_description = SingleSigWalletDescriptionV0::generate(
                 mnemonic,
@@ -189,32 +237,18 @@ pub fn generate_encrypted_encoded_singlesig_wallet_standard(
             compress(json.expose_secret()).context("failure compressing json")?,
         ))
     };
-    let mut ciphertext = default_encrypt(&header_key, &header_nonce, &compressed)
-        .context("failure encrypting compressed json")?;
-    let header = DecodedHeaderV0::new(
+    encrypt_with_standard_envelope(
+        key,
         header_key,
+        compressed_payload,
+        salt,
+        nonce,
         header_nonce,
         EncryptedWalletVersion::V0Standard,
-        ciphertext.len().try_into().with_context(|| {
-            format!(
-                "resulting ciphertext is too big: {} bytes",
-                ciphertext.len()
-            )
-        })?,
-    );
-    let mut encrypted_header = [0u8; ENCRYPTED_HEADER_LENGTH];
-    encrypted_header.copy_from_slice(
-        &default_encrypt(
-            key,
-            &nonce,
-            &header.serialize().context("failure encoding header")?,
-        )
-        .context("failure encrypting header")?,
-    );
-    padder.pad(&mut ciphertext)?;
-    EncryptedWalletDescription::new(nonce, salt, encrypted_header, ciphertext)
-        .serialize()
-        .context("failure encoding encrypted wallet")
+        Some(padder),
+        "failure encrypting compressed json",
+        "failure encoding encrypted wallet",
+    )
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -229,31 +263,18 @@ pub fn generate_encrypted_encoded_singlesig_wallet_compact(
 ) -> anyhow::Result<Vec<u8>> {
     let wallet_description =
         SingleSigCompactWalletDescriptionV0::new(mnemonic).context("failure generating wallet")?;
-    let ciphertext = default_encrypt(&header_key, &header_nonce, &wallet_description.serialize())
-        .context("failure encrypting wallet")?;
-    let header = DecodedHeaderV0::new(
+    encrypt_with_standard_envelope(
+        key,
         header_key,
+        wallet_description.serialize(),
+        salt,
+        nonce,
         header_nonce,
         header_version,
-        ciphertext.len().try_into().with_context(|| {
-            format!(
-                "resulting ciphertext is too big: {} bytes",
-                ciphertext.len()
-            )
-        })?,
-    );
-    let mut encrypted_header = [0u8; ENCRYPTED_HEADER_LENGTH];
-    encrypted_header.copy_from_slice(
-        &default_encrypt(
-            key,
-            &nonce,
-            &header.serialize().context("failure encoding header")?,
-        )
-        .context("failure encrypting header")?,
-    );
-    EncryptedWalletDescription::new(nonce, salt, encrypted_header, ciphertext)
-        .serialize()
-        .context("failure encoding encrypted wallet")
+        None,
+        "failure encrypting wallet",
+        "failure encoding encrypted wallet",
+    )
 }
 
 pub fn ms_dpks_to_ddpk(
@@ -342,40 +363,66 @@ pub fn generate_encrypted_encoded_multisig_wallet(
         }
     };
     debug!("Serialized wallet with length {}", serialized.len());
-    let serialized = SecretBox::from(Box::new(serialized));
-    let mut ciphertext = default_encrypt(&header_key, &header_nonce, &serialized)
-        .context("failure encrypting compressed json")?;
-    let header = DecodedHeaderV0::new(
-        header_key,
-        header_nonce,
-        encrypted_wallet_version,
-        ciphertext.len().try_into().with_context(|| {
-            format!(
-                "resulting ciphertext is too big: {} bytes",
-                ciphertext.len()
-            )
-        })?,
-    );
-    let mut encrypted_header = [0u8; ENCRYPTED_HEADER_LENGTH];
-    encrypted_header.copy_from_slice(
-        &default_encrypt(
-            key,
-            &nonce,
-            &header.serialize().context("failure encoding header")?,
-        )
-        .context("failure encrypting header")?,
-    );
-    match encrypted_wallet_version {
-        EncryptedWalletVersion::V0Standard => {
-            padder.pad(&mut ciphertext)?;
-        }
+    let padder = match encrypted_wallet_version {
+        EncryptedWalletVersion::V0Standard => Some(padder),
         EncryptedWalletVersion::V0CompactMainnet | EncryptedWalletVersion::V0CompactTestnet => {
             debug!("Ignoring padder as we are are generating a compact wallet");
+            None
         }
     };
-    EncryptedWalletDescription::new(nonce, salt, encrypted_header, ciphertext)
-        .serialize()
-        .context("failure encoding encrypted wallet")
+    encrypt_with_standard_envelope(
+        key,
+        header_key,
+        SecretBox::from(Box::new(serialized)),
+        salt,
+        nonce,
+        header_nonce,
+        encrypted_wallet_version,
+        padder,
+        "failure encrypting compressed json",
+        "failure encoding encrypted wallet",
+    )
+}
+
+/// Generate an encrypted VSS share wallet.
+///
+/// Only `EncryptedWalletVersion::V0Standard` is supported; the compact
+/// variants are rejected here because the corresponding decrypt path
+/// (`decrypt_vss`) cannot decode them — accepting them in the encoder would
+/// silently produce share files that nothing can ever reopen.
+#[allow(clippy::too_many_arguments)]
+pub fn generate_encrypted_encoded_vss_wallet(
+    key: &SecretBox<[u8; KEY_SIZE]>,
+    header_key: SecretBox<[u8; KEY_SIZE]>,
+    vss_wallet: &wallet_description::VssJsonWalletDescriptionV0,
+    salt: [u8; SALT_SIZE],
+    nonce: [u8; NONCE_SIZE],
+    header_nonce: [u8; NONCE_SIZE],
+    padder: CiphertextPadder,
+    encrypted_version: EncryptedWalletVersion,
+) -> anyhow::Result<Vec<u8>> {
+    anyhow::ensure!(
+        matches!(encrypted_version, EncryptedWalletVersion::V0Standard),
+        "VSS share encoding only supports V0Standard (got {encrypted_version:?}); the compact format cannot be decrypted"
+    );
+    let compressed_payload: SecretBox<Vec<u8>> = {
+        let json = vss_wallet.to_vec()?;
+        SecretBox::from(Box::new(
+            compress(json.expose_secret()).context("failure compressing json")?,
+        ))
+    };
+    encrypt_with_standard_envelope(
+        key,
+        header_key,
+        compressed_payload,
+        salt,
+        nonce,
+        header_nonce,
+        encrypted_version,
+        Some(padder),
+        "failure encrypting compressed json",
+        "failure encoding encrypted VSS wallet",
+    )
 }
 
 fn expand_keyfiles(keyfiles: &[String]) -> anyhow::Result<Vec<PathBuf>> {
@@ -413,7 +460,7 @@ pub const DEFAULT_MAX_ADDITIONAL_PADDING: u32 = 1000;
 pub const MAX_ADDITIONAL_PADDING: u32 = 1_000_000_000;
 
 pub fn get_padder(
-    rng: &mut impl CryptoRng,
+    rng: &mut (impl CryptoRng + rand::RngCore),
     params: &PaddingParams,
 ) -> anyhow::Result<CiphertextPadder> {
     if params.disable_all_padding {

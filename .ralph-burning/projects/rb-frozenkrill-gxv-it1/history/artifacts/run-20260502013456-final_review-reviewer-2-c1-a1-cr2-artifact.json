@@ -1,0 +1,16 @@
+{
+  "artifact_id": "run-20260502013456-final_review-reviewer-2-c1-a1-cr2-artifact",
+  "payload_id": "run-20260502013456-final_review-reviewer-2-c1-a1-cr2-payload",
+  "stage_id": "final_review",
+  "created_at": "2026-05-02T02:31:14.336242521Z",
+  "content": "# Final Review Proposal\n**Producer:** agent:claude/claude-opus-4-7-max\n\n## Summary\n\nvsss-rs 4.3.8 → 5.4.0 migration in frozenkrill-core/src/secret_sharing.rs is correct and complete. Cargo.toml bumped to vsss-rs = \"5.4\" with curve25519 feature; all v5 API transitions (typed DefaultShare<IdentifierPrimeField<WrappedScalar>, IdentifierPrimeField<WrappedScalar>>, ValueGroup<WrappedRistretto> verifiers, split_secret by reference, ReadableShareSet::combine() method) integrated cleanly. The v5 on-disk byte layout (identifier||value, each 32-byte WrappedScalar canonical encoding, 64 bytes total) is documented inline near the Share struct definition. Pedersen verifier set layout [g, h, C_0, ..., C_{t-1}] preserved; threshold_from_pedersen = count - 2 still correct. Identifier extraction migrated from byte-0 to typed VsssScalar everywhere (verified_unique_share_pairs dedupe, combine_vss_wallets::derive_metadata by_id grouping, verify_vsss_share_pair helper). The round-2 amendment to verify_vsss_share_pair adds the secret_id != blinder_id fail-closed check before calling verify_share_and_blinder (vsss-rs 5's check evaluates only at the secret share's identifier, so a forged blinder identifier could pass when blinder values coincided); a regression test covers it. All codex-hardened invariants preserved: typed-id dedupe, fail-closed metadata authentication, candidate cross-product enumeration for split lo/hi corruption, strict-majority is_duress aggregation, per-share verifier-corruption tolerance via candidate verifiers. Tests on raw byte slicing updated from bytes[1..] to bytes[32..]. rand_core 0.9.3 was already transitive via secp256k1 0.31.1 before migration; vsss-rs 5.4.0 still pins rand_core 0.6. All gates pass: cargo test --workspace (67 lib + 5 integration), cargo clippy --workspace --all-targets -- -D warnings, cargo fmt --check, nix build.\n\n## Amendments\n\nNone.\n",
+  "record_kind": "stage_supporting",
+  "producer": {
+    "type": "agent",
+    "requested_backend_family": "claude",
+    "requested_model_id": "claude-opus-4-7-max",
+    "actual_backend_family": "claude",
+    "actual_model_id": "claude-opus-4-7-max"
+  },
+  "completion_round": 2
+}

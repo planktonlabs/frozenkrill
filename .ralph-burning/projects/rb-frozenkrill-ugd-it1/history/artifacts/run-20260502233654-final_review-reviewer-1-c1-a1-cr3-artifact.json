@@ -1,0 +1,16 @@
+{
+  "artifact_id": "run-20260502233654-final_review-reviewer-1-c1-a1-cr3-artifact",
+  "payload_id": "run-20260502233654-final_review-reviewer-1-c1-a1-cr3-payload",
+  "stage_id": "final_review",
+  "created_at": "2026-05-03T00:45:38.855768241Z",
+  "content": "# Final Review Proposal\n**Producer:** agent:codex/gpt-5.5-xhigh\n\n## Summary\n\nNo correctness, safety, or robustness findings in the reviewed branch state. Reviewed the product-code delta while ignoring orchestration state, with focus on the secret_sharing.rs refactor. Verified cargo test --workspace, clippy with -D warnings, fmt --check, cargo build --workspace, and nix build.\n\n## Amendments\n\nNone.\n",
+  "record_kind": "stage_supporting",
+  "producer": {
+    "type": "agent",
+    "requested_backend_family": "codex",
+    "requested_model_id": "gpt-5.5-xhigh",
+    "actual_backend_family": "codex",
+    "actual_model_id": "gpt-5.5-xhigh"
+  },
+  "completion_round": 3
+}

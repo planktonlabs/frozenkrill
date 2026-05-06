@@ -1,0 +1,16 @@
+{
+  "artifact_id": "run-20260502013456-final_review-vote-1-c1-a1-cr2-artifact",
+  "payload_id": "run-20260502013456-final_review-vote-1-c1-a1-cr2-payload",
+  "stage_id": "final_review",
+  "created_at": "2026-05-02T02:32:28.301244490Z",
+  "content": "# Final Review Votes\n**Producer:** agent:codex/gpt-5.5-xhigh\n\n## Summary\n\nOne amendment was reviewed. It describes a real safety defect in metadata authentication for mixed low/high VSS recovery candidates.\n\n## Votes\n\n- `fr-2-5594977e`: Accept\n  The code accepts a successful 24-word candidate when the low and high halves each meet threshold, but it only requires the intersection of shares verifying for both halves to be non-empty before deriving metadata. Since `derive_metadata` then takes a strict majority over that reduced complete-share set, a single complete share can become the whole metadata electorate. Authentication only checks the no-passphrase wallet identity, so an `is_duress` flip on that one share can survive authentication and later permit passphrase recovery. Requiring at least threshold distinct complete verified share identifiers, or rejecting/withholding metadata when that cannot be met, is technically justified.\n",
+  "record_kind": "stage_supporting",
+  "producer": {
+    "type": "agent",
+    "requested_backend_family": "codex",
+    "requested_model_id": "gpt-5.5-xhigh",
+    "actual_backend_family": "codex",
+    "actual_model_id": "gpt-5.5-xhigh"
+  },
+  "completion_round": 2
+}

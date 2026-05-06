@@ -26,7 +26,7 @@ pub(super) fn interactive_generate_batch(
     theme: &dyn Theme,
     term: &Term,
     secp: &mut Secp256k1<All>,
-    rng: &mut impl CryptoRng,
+    rng: &mut (impl CryptoRng + frozenkrill_core::rand::RngCore),
     ic: impl InternetChecker,
     keyfiles: Vec<PathBuf>,
     difficulty: Option<KeyDerivationDifficulty>,

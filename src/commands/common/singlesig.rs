@@ -25,15 +25,30 @@ pub(crate) fn open_singlesig_wallet_non_interactive(
     ic: impl InternetChecker,
     args: &SinglesigOpenArgs,
 ) -> anyhow::Result<(SingleSigWalletDescriptionV0, Option<Arc<SecretString>>)> {
-    let input_file_path = handle_input_path(&args.common.wallet_input_file)?;
-    let encrypted_wallet = read_decode_wallet(&input_file_path)?;
-    let keyfiles = parse_keyfiles_paths(&args.common.keyfile)?;
     let password = args
         .common
         .password
         .clone()
         .map(|s| SecretString::new(s.into()))
         .map(Arc::new);
+    open_singlesig_wallet_non_interactive_with_password(theme, term, secp, ic, args, password)
+}
+
+/// Same as `open_singlesig_wallet_non_interactive` but accepts a
+/// pre-derived password (already wrapped in `SecretString`). Use this when
+/// the caller already prompted for the password and wants to avoid copying
+/// it through a plain `String` just to satisfy the public-args type.
+pub(crate) fn open_singlesig_wallet_non_interactive_with_password(
+    theme: &dyn Theme,
+    term: &Term,
+    secp: &Secp256k1<All>,
+    ic: impl InternetChecker,
+    args: &SinglesigOpenArgs,
+    password: Option<Arc<SecretString>>,
+) -> anyhow::Result<(SingleSigWalletDescriptionV0, Option<Arc<SecretString>>)> {
+    let input_file_path = handle_input_path(&args.common.wallet_input_file)?;
+    let encrypted_wallet = read_decode_wallet(&input_file_path)?;
+    let keyfiles = parse_keyfiles_paths(&args.common.keyfile)?;
     singlesig_core_open(
         theme,
         term,

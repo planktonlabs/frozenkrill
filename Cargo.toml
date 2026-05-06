@@ -9,6 +9,7 @@ members = ["frozenkrill-core"]
 
 [dependencies]
 base32 = "0.5"
+chrono = "0.4"
 clap = { version = "4", features = ["derive", "env"] }
 const_format = "0.2"
 current_platform = "0.2"

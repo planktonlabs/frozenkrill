@@ -1,0 +1,16 @@
+{
+  "artifact_id": "run-20260502051848-final_review-vote-2-c1-a1-cr2-artifact",
+  "payload_id": "run-20260502051848-final_review-vote-2-c1-a1-cr2-payload",
+  "stage_id": "final_review",
+  "created_at": "2026-05-02T05:55:53.984564328Z",
+  "content": "# Final Review Votes\n**Producer:** agent:claude/claude-opus-4-7-max\n\n## Summary\n\nVerified all three documentation claims against the source. The doc at docs/secret_sharing.md genuinely lists a non-existent --wallet-file-type flag, presents a hidden/deprecated --display-mnemonic as the documented way to surface the mnemonic, and shows JSON values that don't match the Display impls in wallet_description.rs. These are concrete user-facing inaccuracies worth fixing.\n\n## Votes\n\n- `fr-2-d4bb881f`: Accept\n  All three claims verified: (1) src/main.rs:552 has a comment explicitly stating no --wallet-file-type flag, and src/main.rs:1251 hardcodes V0Standard; (2) src/main.rs:599-605 marks --display-mnemonic with hide=true and 'Deprecated' help text, and src/commands/combine_secret.rs:174 discards it via `let _ = display_mnemonic` while printing unconditionally; (3) frozenkrill-core/src/wallet_description.rs:121 emits 'singlesig' (not 'single') and line 160 emits 'segwit-native' (not 'segwit_native'). Users following the guide would pass an unsupported flag and misread the share JSON. The amendment is a narrow, verifiable doc fix with no risk to code behavior.\n",
+  "record_kind": "stage_supporting",
+  "producer": {
+    "type": "agent",
+    "requested_backend_family": "claude",
+    "requested_model_id": "claude-opus-4-7-max",
+    "actual_backend_family": "claude",
+    "actual_model_id": "claude-opus-4-7-max"
+  },
+  "completion_round": 2
+}

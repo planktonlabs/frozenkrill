@@ -1,0 +1,16 @@
+{
+  "artifact_id": "run-20260502233654-plan_and_implement-c1-a1-cr3-artifact",
+  "payload_id": "run-20260502233654-plan_and_implement-c1-a1-cr3",
+  "stage_id": "plan_and_implement",
+  "created_at": "2026-05-03T00:39:47.622307854Z",
+  "content": "# Plan and Implement\n\n## Change Summary\n\n{\"change_summary\":\"Completed the pending remediation for frozenkrill-ugd in frozenkrill-core/src/secret_sharing.rs. The dead SuccessEntry verified_inputs verifier rewrite is gone; verified entries are cloned without overwriting verification_data or verification_data_hi. The collapsed internal Share schema and simplified SuccessEntry shape remain in place. The acceptance line metric now passes against the local base ref: 200 insertions and 387 deletions, net -187 lines, exceeding the required net reduction of at least 180 lines.\",\"outstanding_risks\":[\"The remote ref origin/feature/pedersen-secret-sharing is not present in this checkout, so the exact origin-based stat command fails; the equivalent local feature/pedersen-secret-sharing ref was used for the line-reduction measurement.\"],\"steps\":[{\"description\":\"Inspect pending amendments and current recovery-path implementation in frozenkrill-core/src/secret_sharing.rs.\",\"order\":1,\"status\":\"completed\"},{\"description\":\"Verify the dead verif\n\n## Steps\n\n1. [Completed] codex implementation turn\n\n## Validation Evidence\n\nNone provided.\n\n## Outstanding Risks\n\nNone identified.\n",
+  "record_kind": "stage_primary",
+  "producer": {
+    "type": "agent",
+    "requested_backend_family": "codex",
+    "requested_model_id": "gpt-5.5-high",
+    "actual_backend_family": "codex",
+    "actual_model_id": "gpt-5.5-high"
+  },
+  "completion_round": 3
+}

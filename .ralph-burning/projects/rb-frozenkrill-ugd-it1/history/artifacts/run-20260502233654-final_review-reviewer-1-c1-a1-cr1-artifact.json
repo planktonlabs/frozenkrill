@@ -1,0 +1,16 @@
+{
+  "artifact_id": "run-20260502233654-final_review-reviewer-1-c1-a1-cr1-artifact",
+  "payload_id": "run-20260502233654-final_review-reviewer-1-c1-a1-cr1-payload",
+  "stage_id": "final_review",
+  "created_at": "2026-05-02T23:57:26.585392858Z",
+  "content": "# Final Review Proposal\n**Producer:** agent:codex/gpt-5.5-xhigh\n\n## Summary\n\nReviewed the branch delta excluding orchestration state. `nix develop --command cargo test --workspace`, `cargo fmt --check`, and `cargo clippy --workspace --all-targets -- -D warnings` passed. Found one recovery metadata voting gap in the refactored `derive_metadata` path.\n\n## Amendments\n\n1. `frozenkrill-core/src/secret_sharing.rs:804` builds `verified_inputs` from every wallet whose lo/hi halves verify independently, while `frozenkrill-core/src/secret_sharing.rs:818` only separately checks that enough complete matching share identifiers exist. Then `derive_metadata` drops duplicate-id buckets with conflicting metadata at `frozenkrill-core/src/secret_sharing.rs:849` and computes identity/`is_duress` strict majorities only over the surviving votes at `frozenkrill-core/src/secret_sharing.rs:881` and `frozenkrill-core/src/secret_sharing.rs:887`. That lets conflicts shrink the denominator: e.g. a 2-of-3 recovery can still reconstruct from ids 1 and 2, but a tampered `is_duress=true` copy for id 1 plus conflicting copies for id 2 leaves only id 1 in the vote, fabricating a strict majority and authorizing passphrase rebuild. For 24-word recoveries, lo/hi splices that are not complete matching share ids can also remain in the metadata vote. Build the success group from complete verified share ids only, and treat duplicate metadata conflicts as abstentions that still count against the strict-majority denominator (or fail closed). Add regression coverage for duplicate-conflict and lo/hi-splice metadata votes.\n   Classification: fix_current_bead\n   Rationale: The bead changes `SuccessEntry`/`derive_metadata`, and strict-majority `is_duress` aggregation is an explicit invariant. The current voting shape can let tampered duplicate inputs influence authenticated recovery metadata even though the threshold reconstruction itself used distinct verified shares.\n",
+  "record_kind": "stage_supporting",
+  "producer": {
+    "type": "agent",
+    "requested_backend_family": "codex",
+    "requested_model_id": "gpt-5.5-xhigh",
+    "actual_backend_family": "codex",
+    "actual_model_id": "gpt-5.5-xhigh"
+  },
+  "completion_round": 1
+}

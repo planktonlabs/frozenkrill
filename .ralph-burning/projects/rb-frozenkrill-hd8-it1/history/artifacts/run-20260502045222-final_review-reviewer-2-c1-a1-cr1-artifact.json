@@ -1,0 +1,16 @@
+{
+  "artifact_id": "run-20260502045222-final_review-reviewer-2-c1-a1-cr1-artifact",
+  "payload_id": "run-20260502045222-final_review-reviewer-2-c1-a1-cr1-payload",
+  "stage_id": "final_review",
+  "created_at": "2026-05-02T05:14:10.732421214Z",
+  "content": "# Final Review Proposal\n**Producer:** agent:claude/claude-opus-4-7-max\n\n## Summary\n\nBead frozenkrill-hd8 is correctly and completely implemented. All four scoped refactors (comment trim, verifier-check helper extraction, dropping Share::checksum, collapsing the Share regroup in combine_vss_wallets) are in place. Net reduction in frozenkrill-core/src/secret_sharing.rs is 346 lines (471 deletions, 125 insertions), well above the 250-line target. cargo build/test/clippy/fmt and nix build are all clean; all 67 lib + 5 integration + 7 commands tests pass. Cryptographic semantics (Pedersen verification, M-of-N threshold reconstruction, fail-closed metadata authentication, lo×hi cross-product candidate enumeration, strict-majority is_duress aggregation, per-share verifier-corruption tolerance) are all preserved. The new wallet_verifies_against_candidate helper is semantically equivalent to the inline verifies_lo/verifies_hi/share_passes closures it replaces (lo mandatory; hi vacuously OK when candidate hi_set is None, which is gated upstream by the los_with_hi retain rule that already prevents 12-word candidates from being tested against 24-word wallets). The new combine_wallet_candidate_to_mnemonic mirrors the old Share-based path — the only behavioral delta is that the warn log for tampered mnemonic_length is now emitted only on the test-only combine_shares_to_mnemonic path, not on the production combine_vss_wallets path; recovery still uses the cryptographically authoritative word count and the AEAD wrapper still protects the metadata from external tamper, so this is a minor observability nit, not a safety issue — not worth flagging. The only product code file changed is secret_sharing.rs; wallet_description.rs is correctly untouched per scope. No amendments proposed.\n\n## Amendments\n\nNone.\n",
+  "record_kind": "stage_supporting",
+  "producer": {
+    "type": "agent",
+    "requested_backend_family": "claude",
+    "requested_model_id": "claude-opus-4-7-max",
+    "actual_backend_family": "claude",
+    "actual_model_id": "claude-opus-4-7-max"
+  },
+  "completion_round": 1
+}

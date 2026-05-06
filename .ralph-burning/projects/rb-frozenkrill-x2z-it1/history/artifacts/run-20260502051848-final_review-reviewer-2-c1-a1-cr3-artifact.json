@@ -1,0 +1,16 @@
+{
+  "artifact_id": "run-20260502051848-final_review-reviewer-2-c1-a1-cr3-artifact",
+  "payload_id": "run-20260502051848-final_review-reviewer-2-c1-a1-cr3-payload",
+  "stage_id": "final_review",
+  "created_at": "2026-05-02T06:07:42.416379785Z",
+  "content": "# Final Review Proposal\n**Producer:** agent:claude/claude-opus-4-7-max\n\n## Summary\n\nAll bead-x2z acceptance criteria are met. The OriginalWalletJson tagged enum is fully removed; the encryption envelope is unified into a single helper (encrypt_with_standard_envelope) shared by singlesig_standard, singlesig_compact, multisig, and vss. cargo build, cargo test (67 core + 5 integration + 31 secret_sharing), cargo clippy --all-targets -D warnings, cargo fmt --check, and nix build are all clean. Net line reduction across wallet_description.rs and lib.rs is 105 (>=100 required). On-disk encrypted byte layout is preserved: default_encrypt returns exactly ENCRYPTED_HEADER_LENGTH bytes for a HEADER_LENGTH plaintext (HEADER_LENGTH + MAC_LENGTH), so the new [..ENCRYPTED_HEADER_LENGTH] slice is a no-op equivalent to the original copy_from_slice. Header-built-from-unpadded-ciphertext ordering is preserved across all three call sites. Integration tests with hardcoded fixture bytes still decrypt correctly, providing strong regression coverage against the byte layout. No remaining product-code references to OriginalWalletJson, is_singlesig, or is_multisig. No bugs, safety problems, correctness gaps, or maintainability risks identified.\n\n## Amendments\n\nNone.\n",
+  "record_kind": "stage_supporting",
+  "producer": {
+    "type": "agent",
+    "requested_backend_family": "claude",
+    "requested_model_id": "claude-opus-4-7-max",
+    "actual_backend_family": "claude",
+    "actual_model_id": "claude-opus-4-7-max"
+  },
+  "completion_round": 3
+}

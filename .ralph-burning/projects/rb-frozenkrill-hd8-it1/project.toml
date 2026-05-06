@@ -1,0 +1,7 @@
+id = "rb-frozenkrill-hd8-it1"
+name = "Simplify secret_sharing.rs (hd8)"
+flow = "iterative_minimal"
+prompt_reference = "prompt.md"
+prompt_hash = "86c318c2418c6704747c5a832ee30f8f3a79f8230dfeddbb374983ef0270fd9f"
+created_at = "2026-05-02T04:52:19.210253757Z"
+status_summary = "created"

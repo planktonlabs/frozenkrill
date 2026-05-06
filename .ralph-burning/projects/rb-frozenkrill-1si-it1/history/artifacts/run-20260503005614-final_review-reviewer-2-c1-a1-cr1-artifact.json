@@ -1,0 +1,16 @@
+{
+  "artifact_id": "run-20260503005614-final_review-reviewer-2-c1-a1-cr1-artifact",
+  "payload_id": "run-20260503005614-final_review-reviewer-2-c1-a1-cr1-payload",
+  "stage_id": "final_review",
+  "created_at": "2026-05-03T01:13:36.457238772Z",
+  "content": "# Final Review Proposal\n**Producer:** agent:claude/claude-opus-4-7-max\n\n## Summary\n\nAll three bead findings are correctly addressed. (1) `to_singlesig` fully removed from `wallet_description.rs` (72 lines); test callers in `secret_sharing.rs::tests` migrated to `VssRecovery::rebuild_singlesig` or `combine_vss_wallets` with appropriate renames (e.g. `test_to_singlesig_refuses_passphrase_on_normal_share` → `test_rebuild_singlesig_refuses_passphrase_on_normal_share`, `test_vss_to_singlesig_rejects_tampered_xpub` → `test_combine_vss_wallets_rejects_tampered_xpub`). The tampered-xpub test now tampers both shares used in recovery so the unanimous metadata vote yields the bad xpub, then the seed reconstruction's xpub mismatch fails recovery — equivalent coverage of the metadata-tamper guard, just at the new authentication layer. (2) Duplicate output_dir / M-of-N preflight `ensure!` block (28 lines) removed from `split_singlesig_wallet`; verified the CLI-side preflight in `main.rs::Commands::SplitSecret` (lines 967-995) runs equivalent checks BEFORE any credential prompt, and that `split_singlesig_wallet` is `pub(crate)` with exactly one caller. (3) Stale multi-paragraph comment in `combine_secret.rs` collapsed to a 2-line note pointing at `combine_vss_wallets` as the authoritative authentication site. Build, full test suite (69 lib + 5 integration + 33 secret_sharing tests), clippy with -D warnings, and fmt are all clean. Net line reduction in the implementation commit: 121 deletions vs 4 insertions across the three targeted files — well above the 60-line target. Safety properties preserved: `combine_vss_wallets` still authenticates seed→no-passphrase-xpub before returning, and `VssRecovery::rebuild_singlesig` remains the sole safe API for duress passphrase restores. No bugs, correctness gaps, or maintainability risks identified.\n\n## Amendments\n\nNone.\n",
+  "record_kind": "stage_supporting",
+  "producer": {
+    "type": "agent",
+    "requested_backend_family": "claude",
+    "requested_model_id": "claude-opus-4-7-max",
+    "actual_backend_family": "claude",
+    "actual_model_id": "claude-opus-4-7-max"
+  },
+  "completion_round": 1
+}

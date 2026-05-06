@@ -193,7 +193,7 @@ pub(crate) fn singlesig_generate(
     theme: &dyn Theme,
     term: &Term,
     secp: &mut Secp256k1<All>,
-    mut rng: &mut impl CryptoRng,
+    mut rng: &mut (impl CryptoRng + frozenkrill_core::rand::RngCore),
     ic: impl InternetChecker,
     args: SinglesigGenerateArgs,
 ) -> anyhow::Result<()> {
@@ -276,7 +276,7 @@ pub(crate) fn multisig_generate(
     theme: &dyn Theme,
     term: &Term,
     secp: &mut Secp256k1<All>,
-    rng: &mut impl CryptoRng,
+    rng: &mut (impl CryptoRng + frozenkrill_core::rand::RngCore),
     ic: impl InternetChecker,
     args: crate::MultisigGenerateArgs,
 ) -> anyhow::Result<()> {

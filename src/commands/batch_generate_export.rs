@@ -67,7 +67,7 @@ pub(super) fn core_batch_generate_export(
     theme: &dyn Theme,
     term: &Term,
     secp: &mut Secp256k1<All>,
-    rng: &mut impl CryptoRng,
+    rng: &mut (impl CryptoRng + frozenkrill_core::rand::RngCore),
     ic: impl InternetChecker,
     args: CoreBatchGenerateExportArgs,
 ) -> anyhow::Result<()> {
@@ -392,7 +392,7 @@ pub(crate) fn batch_generate_export(
     theme: &dyn Theme,
     term: &Term,
     secp: &mut Secp256k1<All>,
-    rng: &mut impl CryptoRng,
+    rng: &mut (impl CryptoRng + frozenkrill_core::rand::RngCore),
     ic: impl InternetChecker,
     args: &SinglesigBatchGenerateExportArgs,
 ) -> anyhow::Result<()> {

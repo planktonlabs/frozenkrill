@@ -1,0 +1,16 @@
+{
+  "artifact_id": "run-20260503005614-plan_and_implement-c1-a1-cr1-artifact",
+  "payload_id": "run-20260503005614-plan_and_implement-c1-a1-cr1",
+  "stage_id": "plan_and_implement",
+  "created_at": "2026-05-03T01:09:05.995068697Z",
+  "content": "# Plan and Implement\n\n## Change Summary\n\n{\n  \"change_summary\": \"Implemented frozenkrill-1si cleanup trio. Removed the #[cfg(test)] VSS per-share to_singlesig rebuild path from wallet_description.rs and migrated secret_sharing.rs tests to VssRecovery::rebuild_singlesig/combine_vss_wallets. Dropped duplicate split-secret M-of-N and output-directory preflight checks from commands::split_secret::split_singlesig_wallet, relying on the existing Commands::SplitSecret preflight in main.rs. Trimmed the stale combine-secret authentication comment to point at combine_vss_wallets. The targeted files show 4 insertions and 121 deletions, exceeding the required 60-line reduction.\",\n  \"outstanding_risks\": [],\n  \"steps\": [\n    {\n      \"order\": 0,\n      \"status\": \"completed\",\n      \"description\": \"Verified the current branch and located all to_singlesig, split-secret preflight, and combine-secret comment references before changing source behavior.\"\n    },\n    {\n      \"order\": 1,\n      \"status\": \"completed\",\n      \"description\": \"Trimmed the st\n\n## Steps\n\n1. [Completed] codex implementation turn\n\n## Validation Evidence\n\nNone provided.\n\n## Outstanding Risks\n\nNone identified.\n",
+  "record_kind": "stage_primary",
+  "producer": {
+    "type": "agent",
+    "requested_backend_family": "codex",
+    "requested_model_id": "gpt-5.5-high",
+    "actual_backend_family": "codex",
+    "actual_model_id": "gpt-5.5-high"
+  },
+  "completion_round": 1
+}

@@ -1,0 +1,16 @@
+{
+  "artifact_id": "run-20260502051848-final_review-vote-1-c1-a1-cr2-artifact",
+  "payload_id": "run-20260502051848-final_review-vote-1-c1-a1-cr2-payload",
+  "stage_id": "final_review",
+  "created_at": "2026-05-02T05:55:47.796710681Z",
+  "content": "# Final Review Votes\n**Producer:** agent:codex/gpt-5.5-xhigh\n\n## Summary\n\nAccepted the documentation amendment because it identifies concrete mismatches between the guide and current CLI/serialization behavior.\n\n## Votes\n\n- `fr-2-d4bb881f`: Accept\n  The amendment is technically sound: the current split-secret CLI does not expose --wallet-file-type and hardcodes VSS shares to V0Standard, combine-secret keeps --display-mnemonic hidden/deprecated while printing the mnemonic unconditionally, and the documented JSON sample values do not match the current Display/serialization strings. Leaving the guide as-is would cause users to run unsupported flags and misunderstand share metadata, so updating it improves correctness and maintainability.\n",
+  "record_kind": "stage_supporting",
+  "producer": {
+    "type": "agent",
+    "requested_backend_family": "codex",
+    "requested_model_id": "gpt-5.5-xhigh",
+    "actual_backend_family": "codex",
+    "actual_model_id": "gpt-5.5-xhigh"
+  },
+  "completion_round": 2
+}

@@ -19,8 +19,34 @@
           extensions = [ "rust-src" "rust-analyzer" ];
           targets = [ "x86_64-unknown-linux-musl" ];
         };
+        rustPlatform = pkgs.makeRustPlatform {
+          cargo = rustToolchain;
+          rustc = rustToolchain;
+        };
       in
       {
+        packages.default = rustPlatform.buildRustPackage {
+          pname = "frozenkrill";
+          version = "0.0.0";
+          src = self;
+
+          cargoLock = {
+            lockFile = ./Cargo.lock;
+            outputHashes = {
+              "bip39-2.2.0" = "sha256-5+K4vj5T2nfNGijXufJ+RUYbbwHfHXMA8EYOypfzRqs=";
+              "dialoguer-0.11.0" = "sha256-4Gy1yfYk42X9O1nLwULftbmipzqRWUfJ9b6bhrvPASM=";
+            };
+          };
+
+          nativeBuildInputs = with pkgs; [
+            pkg-config
+            pkgsStatic.stdenv.cc
+          ];
+
+          CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER = "${pkgs.pkgsStatic.stdenv.cc}/bin/${pkgs.pkgsStatic.stdenv.cc.targetPrefix}cc";
+          CC_x86_64_unknown_linux_musl = "${pkgs.pkgsStatic.stdenv.cc}/bin/${pkgs.pkgsStatic.stdenv.cc.targetPrefix}cc";
+        };
+
         devShells.default = pkgs.mkShell {
           packages = with pkgs; [
             bashInteractive

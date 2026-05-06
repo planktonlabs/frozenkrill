@@ -43,6 +43,7 @@ pub type WalletVersionType = u32;
 
 pub const ZERO_MULTISIG_WALLET_VERSION: WalletVersionType = 0;
 pub const ZERO_SINGLESIG_WALLET_VERSION: WalletVersionType = 0;
+pub const ZERO_VSS_WALLET_VERSION: WalletVersionType = 0;
 pub const STANDARD_ENCRYPTED_WALLET_VERSION: HeaderVersionType = 0;
 pub const COMPACT_ENCRYPTED_MAINNET_WALLET_VERSION: HeaderVersionType = 1;
 pub const COMPACT_ENCRYPTED_TESTNET_WALLET_VERSION: HeaderVersionType = 2;
@@ -242,6 +243,14 @@ impl EncryptedWalletDescription {
     ) -> anyhow::Result<Secret<MultisigJsonWalletDescriptionV0>> {
         decrypt_wallet_multisig(&self.nonce, &self.encrypted_header, &self.ciphertext, key, secp)
             .context("failed to decrypt the wallet, check if you have used the correct password, keyfiles and difficulty parameter")
+    }
+
+    pub fn decrypt_vss(
+        &self,
+        key: &SecretBox<[u8; KEY_SIZE]>,
+    ) -> anyhow::Result<VssJsonWalletDescriptionV0> {
+        decrypt_wallet_vss(&self.nonce, &self.encrypted_header, &self.ciphertext, key)
+            .context("failed to decrypt the share, check if you have used the correct password, keyfiles and difficulty parameter")
     }
 }
 
@@ -1262,6 +1271,114 @@ impl MultisigJsonWalletDescriptionV0 {
     }
 }
 
+/// Public metadata about a singlesig wallet that is safe to embed in a VSS
+/// share. Excludes the BIP-39 seed phrase and all xprivs — the share is
+/// reconstructed by combining `threshold` shares to recover the mnemonic and
+/// then re-deriving the wallet, with `singlesig_xpub` cross-checked to detect
+/// a tampered share.
+#[derive(Clone, Default, Serialize, Deserialize, Zeroize, ZeroizeOnDrop, PartialEq, Eq)]
+pub struct SinglesigPublicMetadataV0 {
+    pub version: WalletVersionType,
+    pub sigtype: String,
+    pub master_fingerprint: String,
+    pub singlesig_xpub: String,
+    pub singlesig_derivation_path: String,
+    pub multisig_xpub: String,
+    pub multisig_derivation_path: String,
+    pub singlesig_first_address: String,
+    pub singlesig_receiving_output_descriptor: String,
+    pub singlesig_change_output_descriptor: String,
+    pub network: String,
+    pub script_type: String,
+}
+
+impl SinglesigPublicMetadataV0 {
+    /// Project a full singlesig wallet json into the public-only metadata that
+    /// gets embedded in each share.
+    pub fn from_singlesig_json(w: &SinglesigJsonWalletDescriptionV0) -> Self {
+        Self {
+            version: w.version,
+            sigtype: w.sigtype.clone(),
+            master_fingerprint: w.master_fingerprint.clone(),
+            singlesig_xpub: w.singlesig_xpub.clone(),
+            singlesig_derivation_path: w.singlesig_derivation_path.clone(),
+            multisig_xpub: w.multisig_xpub.clone(),
+            multisig_derivation_path: w.multisig_derivation_path.clone(),
+            singlesig_first_address: w.singlesig_first_address.clone(),
+            singlesig_receiving_output_descriptor: w.singlesig_receiving_output_descriptor.clone(),
+            singlesig_change_output_descriptor: w.singlesig_change_output_descriptor.clone(),
+            network: w.network.to_string(),
+            script_type: w.script_type.to_string(),
+        }
+    }
+}
+
+/// VSS (Verifiable Secret Sharing) wallet description containing one share and
+/// public metadata about the original singlesig wallet.
+#[derive(Clone, Serialize, Deserialize, Zeroize, ZeroizeOnDrop, PartialEq, Eq)]
+pub struct VssJsonWalletDescriptionV0 {
+    pub version: WalletVersionType,
+    pub share_index: u8,
+    pub threshold: u8,
+    pub total_shares: u8,
+    /// 12 or 24
+    pub mnemonic_length: u8,
+    /// Secret share of the low 16 entropy bytes (hex).
+    pub share_data: String,
+    /// Blinder share of the low 16 entropy bytes (hex).
+    pub blinder_share_data: String,
+    /// Pedersen commitments for the low half (hex, comma-separated).
+    pub verification_data: String,
+    /// Secret share of the high 16 entropy bytes (hex). Only present for 24-word.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub share_data_hi: Option<String>,
+    /// Blinder share of the high 16 entropy bytes. Only present for 24-word.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub blinder_share_data_hi: Option<String>,
+    /// Pedersen commitments for the high half. Only present for 24-word.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub verification_data_hi: Option<String>,
+    pub created_at: String,
+    pub original_wallet: SinglesigPublicMetadataV0,
+}
+
+impl VssJsonWalletDescriptionV0 {
+    /// Deserialize from JSON
+    pub fn deserialize(data: BufReader<impl Read>) -> anyhow::Result<Secret<Self>> {
+        let w =
+            serde_json::from_reader::<_, Self>(data).context("failure parsing VSS wallet json")?;
+        anyhow::ensure!(
+            w.version == ZERO_VSS_WALLET_VERSION,
+            "Version {} isn't {ZERO_VSS_WALLET_VERSION}",
+            w.version
+        );
+        Ok(Secret::from(Box::new(w)))
+    }
+
+    /// Serialize to bytes
+    pub fn to_vec(&self) -> anyhow::Result<SecretBox<Vec<u8>>> {
+        Ok(SecretBox::from(Box::new(
+            serde_json::to_vec(self).context("failure serializing json")?,
+        )))
+    }
+
+    /// Serialize to pretty-printed bytes
+    pub fn to_vec_pretty(&self) -> anyhow::Result<SecretBox<Vec<u8>>> {
+        Ok(SecretBox::from(Box::new(
+            serde_json::to_vec_pretty(self).context("failure serializing json")?,
+        )))
+    }
+
+    /// Serialize to pretty-printed string
+    pub fn to_string_pretty(&self) -> anyhow::Result<SecretString> {
+        Ok(SecretString::new(
+            serde_json::to_string_pretty(self)
+                .context("failure serializing json")?
+                .into(),
+        ))
+    }
+}
+
 pub trait PsbtWallet {
     fn sign_psbt(&self, psbt: &mut Psbt, secp: &Secp256k1<All>) -> anyhow::Result<usize>;
 
@@ -1521,6 +1638,27 @@ fn decrypt_wallet_multisig(
             // TODO: this intermediate wallet description is a bit unnecessary, try to optimize this whole process
             let wallet = compact.to_description(vec![], network, script_type)?;
             MultisigJsonWalletDescriptionV0::from_wallet_description(&wallet, secp)
+        }
+    }
+}
+
+fn decrypt_wallet_vss(
+    nonce: &[u8; NONCE_SIZE],
+    encrypted_header: &[u8; ENCRYPTED_HEADER_LENGTH],
+    ciphertext: &[u8],
+    key: &SecretBox<[u8; KEY_SIZE]>,
+) -> anyhow::Result<VssJsonWalletDescriptionV0> {
+    let (header, ciphertext) = decrypt_header(nonce, encrypted_header, ciphertext, key)?;
+    match header.version {
+        EncryptedWalletVersion::V0Standard => {
+            let uncompressed = get_uncompressed_wallet(&header, ciphertext)?;
+            let secret_vss = VssJsonWalletDescriptionV0::deserialize(BufReader::new(
+                uncompressed.expose_secret().as_slice(),
+            ))?;
+            Ok(secret_vss.expose_secret().clone())
+        }
+        EncryptedWalletVersion::V0CompactMainnet | EncryptedWalletVersion::V0CompactTestnet => {
+            anyhow::bail!("Compact wallet format not supported for VSS shares")
         }
     }
 }

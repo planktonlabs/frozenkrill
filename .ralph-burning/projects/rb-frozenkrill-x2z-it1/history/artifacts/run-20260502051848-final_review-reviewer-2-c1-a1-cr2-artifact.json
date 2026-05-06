@@ -1,0 +1,16 @@
+{
+  "artifact_id": "run-20260502051848-final_review-reviewer-2-c1-a1-cr2-artifact",
+  "payload_id": "run-20260502051848-final_review-reviewer-2-c1-a1-cr2-payload",
+  "stage_id": "final_review",
+  "created_at": "2026-05-02T05:55:12.899145576Z",
+  "content": "# Final Review Proposal\n**Producer:** agent:claude/claude-opus-4-7-max\n\n## Summary\n\nReviewed the x2z bead end-to-end against fork point 812909619d4. The two refactors land cleanly: (1) `OriginalWalletJson` tagged enum dropped — `VssJsonWalletDescriptionV0::original_wallet` is now `SinglesigPublicMetadataV0` directly, and all consumers (`to_singlesig`, `derive_metadata`, `canonicalize_duress`, `duress_yes` filter, tests) are updated to operate on the flat metadata; (2) `encrypt_with_standard_envelope` helper extracted in `frozenkrill-core/src/lib.rs:124-160` and reused by all three call sites (singlesig standard/compact, multisig, VSS). Cryptographic envelope semantics are byte-exact: `default_encrypt` of the header always produces exactly `ENCRYPTED_HEADER_LENGTH` bytes (HEADER_LENGTH + MAC_LENGTH), so the helper's `[..ENCRYPTED_HEADER_LENGTH]` slice is a no-op against the original `copy_from_slice` of the full Vec; padding is conditionally applied via `Option<CiphertextPadder>` (Some for V0Standard, None for compact), matching the original conditional pad behavior; encryption order (encrypt payload → header derivation → encrypt header → pad → assemble) is identical. The on-disk JSON layout simplifies (the `wallet_type` discriminator goes away) — acceptable per the bead prompt because the secret-sharing feature is unreleased. `nix develop --command cargo build/test/clippy/fmt --workspace` and `nix build` all pass; 67 lib + 31 secret_sharing + 5 integration tests green; net line reduction across `wallet_description.rs` + `lib.rs` is 105 lines (target ≥100). The round-1 reviewer finding about stale `docs/secret_sharing.md` JSON example has been fixed in round 2 (decrypted-share example now reflects the actual `SinglesigPublicMetadataV0` schema, with `*_hi` fields and the `wallet_type` discriminator removed). Pedersen verification, strict-majority metadata vote, fail-closed `is_duress` aggregation, and per-share xpub authentication invariants are preserved. No new amendments.\n\n## Amendments\n\nNone.\n",
+  "record_kind": "stage_supporting",
+  "producer": {
+    "type": "agent",
+    "requested_backend_family": "claude",
+    "requested_model_id": "claude-opus-4-7-max",
+    "actual_backend_family": "claude",
+    "actual_model_id": "claude-opus-4-7-max"
+  },
+  "completion_round": 2
+}

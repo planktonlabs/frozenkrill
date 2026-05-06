@@ -1,0 +1,7 @@
+id = "rb-frozenkrill-gxv-it1"
+name = "vsss-rs 4 → 5 upgrade"
+flow = "iterative_minimal"
+prompt_reference = "prompt.md"
+prompt_hash = "b74da804b55b6342e521ba690ff57b58c9b384242fb7c0d814c1c4ca5c13c3c2"
+created_at = "2026-05-02T01:34:48.496390426Z"
+status_summary = "created"

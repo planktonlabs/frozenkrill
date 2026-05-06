@@ -1,0 +1,7 @@
+id = "rb-frozenkrill-x2z-it1"
+name = "Drop OriginalWalletJson + unify VSS envelope (x2z)"
+flow = "iterative_minimal"
+prompt_reference = "prompt.md"
+prompt_hash = "9a02e54a242dd289dfcc16f5fc9aa9f14990d66febf95a3a24a2e550f7022b2b"
+created_at = "2026-05-02T05:18:45.350285125Z"
+status_summary = "created"

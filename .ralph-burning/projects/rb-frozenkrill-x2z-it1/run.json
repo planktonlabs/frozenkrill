@@ -1,0 +1,38 @@
+{
+  "active_run": null,
+  "status": "completed",
+  "cycle_history": [],
+  "completion_rounds": 3,
+  "max_completion_rounds": 25,
+  "rollback_point_meta": {
+    "last_rollback_id": null,
+    "rollback_count": 0
+  },
+  "amendment_queue": {
+    "pending": [],
+    "processed_count": 2
+  },
+  "status_summary": "completed",
+  "last_stage_resolution_snapshot": {
+    "stage_id": "final_review",
+    "resolved_at": "2026-05-02T05:48:29.487674763Z",
+    "final_review_reviewers": [
+      {
+        "backend_family": "codex",
+        "model_id": "gpt-5.5-xhigh"
+      },
+      {
+        "backend_family": "claude",
+        "model_id": "claude-opus-4-7-max"
+      },
+      {
+        "backend_family": "codex",
+        "model_id": "gpt-5.3-codex-spark-xhigh"
+      }
+    ],
+    "final_review_arbiter": {
+      "backend_family": "codex",
+      "model_id": "gpt-5.5-xhigh"
+    }
+  }
+}

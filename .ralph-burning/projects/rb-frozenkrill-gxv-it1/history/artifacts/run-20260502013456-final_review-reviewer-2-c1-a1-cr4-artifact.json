@@ -1,0 +1,16 @@
+{
+  "artifact_id": "run-20260502013456-final_review-reviewer-2-c1-a1-cr4-artifact",
+  "payload_id": "run-20260502013456-final_review-reviewer-2-c1-a1-cr4-payload",
+  "stage_id": "final_review",
+  "created_at": "2026-05-02T03:08:23.132552540Z",
+  "content": "# Final Review Proposal\n**Producer:** agent:claude/claude-opus-4-7-max\n\n## Summary\n\nvsss-rs 4 → 5.4 migration is correct and complete. Cargo.toml bumped to 5.4 with curve25519 feature; Cargo.lock resolves to 5.4.0; the v5 typed-share API is correctly encapsulated via new type aliases (VsssScalar/VsssShare/VsssVerifier) and helpers (vsss_share_to_bytes/from_bytes, verify_vsss_share_pair, complete_vsss_share_identifier). split_one_scalar adapts to v5's by-reference secret and 2-param StdPedersenResult; combine_one_half uses good.combine() via ReadableShareSet; verifier hex parsing wraps points in ValueGroup<WrappedRistretto>. Identifier extraction migrated from [0] byte to typed IdentifierPrimeField<WrappedScalar> everywhere (dedupe, metadata voting, cross-product). Tests correctly preserve the typed identifier (bytes[0..32]) when tampering value bytes. The on-disk layout is documented in the Share struct docstring (identifier || value, 32 bytes each, canonical WrappedScalar encoding). All codex-hardened invariants (per-share dedupe, fail-closed metadata auth, candidate cross-product, threshold from Pedersen set, verifier-corruption tolerance, strict-majority is_duress) are preserved. The new complete_verified_ids ≥ threshold guard added in combine_vss_wallets closes a metadata-authentication hole exposed by the typed-id move and is covered by test_combine_vss_wallets_rejects_below_threshold_complete_share_ids. cargo build, all 68 frozenkrill-core tests, 5 integration tests, clippy --workspace --all-targets -D warnings, and cargo fmt --check all pass cleanly. No real bugs, safety problems, correctness gaps, or significant maintainability risks identified — the migration is launch-ready.\n\n## Amendments\n\nNone.\n",
+  "record_kind": "stage_supporting",
+  "producer": {
+    "type": "agent",
+    "requested_backend_family": "claude",
+    "requested_model_id": "claude-opus-4-7-max",
+    "actual_backend_family": "claude",
+    "actual_model_id": "claude-opus-4-7-max"
+  },
+  "completion_round": 4
+}

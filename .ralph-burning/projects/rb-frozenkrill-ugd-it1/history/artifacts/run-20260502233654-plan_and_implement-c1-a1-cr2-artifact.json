@@ -1,0 +1,16 @@
+{
+  "artifact_id": "run-20260502233654-plan_and_implement-c1-a1-cr2-artifact",
+  "payload_id": "run-20260502233654-plan_and_implement-c1-a1-cr2",
+  "stage_id": "plan_and_implement",
+  "created_at": "2026-05-03T00:15:20.011787428Z",
+  "content": "# Plan and Implement\n\n## Change Summary\n\n{\n  \"change_summary\": \"Implemented the pending remediation in frozenkrill-core/src/secret_sharing.rs. Successful candidate groups are now normalized to complete verified share ids only, so lo/hi-spliced 24-word inputs cannot contribute metadata votes unless the lo and hi identifiers match. Metadata voting now keeps conflicting duplicate share ids in the strict-majority denominator while treating their metadata as abstentions, preventing duplicate conflicts from shrinking the vote enough to fabricate duress or identity metadata. Added regression coverage for duplicate metadata conflicts and lo/hi-splice metadata voting. The prior Share removal and SuccessEntry simplification remain intact; local-base stat for frozenkrill-core/src/secret_sharing.rs is 108 insertions and 374 deletions, net -266 lines.\",\n  \"outstanding_risks\": [\n    \"The exact requested stat command against origin/feature/pedersen-secret-sharing could not be run because this checkout does not have that remote ref; the equi\n\n## Steps\n\n1. [Completed] codex implementation turn\n\n## Validation Evidence\n\nNone provided.\n\n## Outstanding Risks\n\nNone identified.\n",
+  "record_kind": "stage_primary",
+  "producer": {
+    "type": "agent",
+    "requested_backend_family": "codex",
+    "requested_model_id": "gpt-5.5-high",
+    "actual_backend_family": "codex",
+    "actual_model_id": "gpt-5.5-high"
+  },
+  "completion_round": 2
+}

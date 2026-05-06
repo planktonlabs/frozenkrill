@@ -1,0 +1,7 @@
+id = "rb-frozenkrill-ugd-it1"
+name = "Collapse Share schema (ugd)"
+flow = "iterative_minimal"
+prompt_reference = "prompt.md"
+prompt_hash = "07c37684b8917b56f93e15400de45e3546949f6e0f79dc19db285c862c107b62"
+created_at = "2026-05-02T23:36:49.478787327Z"
+status_summary = "created"

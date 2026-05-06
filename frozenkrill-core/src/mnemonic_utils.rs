@@ -4,7 +4,7 @@ use rand_core::CryptoRng;
 use sha2::{Digest, Sha256};
 
 pub fn complete_words_with_checksum(
-    rng: &mut impl CryptoRng,
+    rng: &mut (impl CryptoRng + rand::RngCore),
     words: &[String],
 ) -> anyhow::Result<Vec<String>> {
     anyhow::ensure!(

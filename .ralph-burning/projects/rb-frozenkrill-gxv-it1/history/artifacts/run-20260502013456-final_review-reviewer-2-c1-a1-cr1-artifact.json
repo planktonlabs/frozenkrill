@@ -1,0 +1,16 @@
+{
+  "artifact_id": "run-20260502013456-final_review-reviewer-2-c1-a1-cr1-artifact",
+  "payload_id": "run-20260502013456-final_review-reviewer-2-c1-a1-cr1-payload",
+  "stage_id": "final_review",
+  "created_at": "2026-05-02T02:05:18.364182258Z",
+  "content": "# Final Review Proposal\n**Producer:** agent:claude/claude-opus-4-7-max\n\n## Summary\n\nReviewed the vsss-rs 4.3.8 → 5.4.0 migration on branch feat/frozenkrill-gxv-vsss-5x-upgrade against fork point 8129096. Scope: Cargo.toml bump, secret_sharing.rs rewrite (~410 lines changed), small wallet_description.rs refactors, tempfile API (`into_path`→`keep`) and a flake.nix `packages.default` addition for `nix build`. The migration is correct on every dimension I checked: (1) API translation — new typed shares (`DefaultShare<IdentifierPrimeField<WrappedScalar>, …>`) wrapped behind `VsssScalar`/`VsssShare`/`VsssVerifier` aliases, with `vsss_share_to_bytes` / `vsss_share_from_bytes` bridging the typed shares to a 32-byte-id ‖ 32-byte-value on-disk hex layout; `parse_ristretto_points` correctly wraps points in `ValueGroup(WrappedRistretto(_))`; `split_secret` now takes the secret by reference with the new 2-arg `StdPedersenResult<S, V>` form; `combine_shares` is replaced by the trait `.combine()` method on `Vec<S>`; the `pedersen_verifier_set()` access dereferences the new extra `ValueGroup` wrapper (`v.0.0.compress()`). (2) Cryptographic invariants preserved — Pedersen verifier layout `[g, h, C_0..C_{t-1}]` unchanged (still threshold = count − 2), per-share `verify_share_and_blinder` semantics preserved via `impl PedersenVerifierSet<S, V> for Vec<V>`, share dedupe now keyed on the typed identifier (HashSet/HashMap of `IdentifierPrimeField<WrappedScalar>`) rather than the first raw byte, and the fail-closed metadata authentication / cross-product (lo×hi) candidate enumeration / strict-majority is_duress aggregation / per-share verifier-corruption tolerance all carry through. (3) On-disk format change is documented at the top of the `Share` struct, matching the bead's requirement. (4) Tests — `nix develop --command cargo test --workspace` is green (66 lib tests including the 30 in `secret_sharing::tests`, plus 5 integration tests, plus 7 main-binary tests); the property tests (100 random 24-word + 50 random 12-word round trips) pass; the byte-flip regression tests were updated to flip indices 32.. (the value half) instead of 1.. to reflect the new typed layout, and they still detect tampering. (5) Build gates — `cargo check`, `cargo clippy --all-targets -D warnings`, `cargo fmt --check`, and `nix build` all clean. (6) Out-of-scope dep pins respected — rand stays at 0.8.5 and rand_core at 0.6 (the bead-mandated pin against the bip39 fork's cap); only vsss-rs and its newly-required transitive deps moved. No new bugs, no security regressions, no broken codex-hardened invariants.\n\n## Amendments\n\nNone.\n",
+  "record_kind": "stage_supporting",
+  "producer": {
+    "type": "agent",
+    "requested_backend_family": "claude",
+    "requested_model_id": "claude-opus-4-7-max",
+    "actual_backend_family": "claude",
+    "actual_model_id": "claude-opus-4-7-max"
+  },
+  "completion_round": 1
+}

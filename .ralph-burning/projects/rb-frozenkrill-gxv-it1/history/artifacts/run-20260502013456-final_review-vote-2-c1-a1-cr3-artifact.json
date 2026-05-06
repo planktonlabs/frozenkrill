@@ -1,0 +1,16 @@
+{
+  "artifact_id": "run-20260502013456-final_review-vote-2-c1-a1-cr3-artifact",
+  "payload_id": "run-20260502013456-final_review-vote-2-c1-a1-cr3-payload",
+  "stage_id": "final_review",
+  "created_at": "2026-05-02T02:56:00.822930683Z",
+  "content": "# Final Review Votes\n**Producer:** agent:claude/claude-opus-4-7-max\n\n## Summary\n\nBoth amendments address verifiable, real defects in the repository that would otherwise leak into the bead's PR or mislead downstream readers about the on-disk share format.\n\n## Votes\n\n- `fr-3-5382e896`: Accept\n  Verified: `/home/user/frozenkrill/result` exists as a symlink to a nix store path (`/nix/store/...-frozenkrill-0.0.0`), `git ls-files` confirms it is tracked, and `.gitignore` does not contain a `result` (or `result*`) entry. Committing a nix-build output symlink is a clear repo-hygiene defect — every contributor running `nix build` will recreate it with a fresh store hash and see a phantom diff in `git status`. The proposed fix (`git rm result`, add `result*` to `.gitignore`) is minimal, reversible, and the artifact was indeed introduced by this run's checkpoint, so it is in scope.\n- `fr-3-5470ceac`: Accept\n  Verified against `frozenkrill-core/src/wallet_description.rs:1352-1379`: the actual `VssJsonWalletDescriptionV0` struct uses hex-encoded `share_data`/`blinder_share_data`/`verification_data`, includes `mnemonic_length`, and has `Option<String>` `_hi` variants for 24-word splits. The doc's `docs/secret_sharing.md:127-145` block contradicts this on every count: it claims base64 encoding, omits `mnemonic_length`, `blinder_share_data*`, and all three `_hi` fields, and — most seriously — shows a `seed_phrase` field inside `original_wallet`, which is the exact opposite of the VSS security property (the seed is deliberately NOT embedded; only `SinglesigPublicMetadataV0` is). A user reading this doc would be misled about both the encoding format and the security model, including duress mode. Updating it is correct and the in-source v5 layout doc on `secret_sharing.rs` already disagrees with this standalone file.\n",
+  "record_kind": "stage_supporting",
+  "producer": {
+    "type": "agent",
+    "requested_backend_family": "claude",
+    "requested_model_id": "claude-opus-4-7-max",
+    "actual_backend_family": "claude",
+    "actual_model_id": "claude-opus-4-7-max"
+  },
+  "completion_round": 3
+}

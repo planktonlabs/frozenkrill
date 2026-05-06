@@ -1,0 +1,16 @@
+{
+  "artifact_id": "run-20260502013456-final_review-vote-1-c1-a1-cr3-artifact",
+  "payload_id": "run-20260502013456-final_review-vote-1-c1-a1-cr3-payload",
+  "stage_id": "final_review",
+  "created_at": "2026-05-02T02:56:01.534154172Z",
+  "content": "# Final Review Votes\n**Producer:** agent:codex/gpt-5.5-xhigh\n\n## Summary\n\nBoth amendments are technically justified and reduce concrete repository/documentation defects.\n\n## Votes\n\n- `fr-3-5382e896`: Accept\n  A tracked Nix result symlink is a reproducibility and maintenance defect: its store path changes across builds and will cause persistent phantom diffs. Removing it from the index and ignoring future result outputs is safe and matches normal Nix project hygiene.\n- `fr-3-5470ceac`: Accept\n  The current documentation materially misdescribes the serialized VSS share format, including encoding, required blinder fields, 24-word high-half fields, mnemonic_length, public-only wallet metadata, and duress behavior. Updating it to match VssJsonWalletDescriptionV0 improves safety and maintainability; the rewrite should be checked against the actual struct so all serialized SinglesigPublicMetadataV0 fields are represented.\n",
+  "record_kind": "stage_supporting",
+  "producer": {
+    "type": "agent",
+    "requested_backend_family": "codex",
+    "requested_model_id": "gpt-5.5-xhigh",
+    "actual_backend_family": "codex",
+    "actual_model_id": "gpt-5.5-xhigh"
+  },
+  "completion_round": 3
+}

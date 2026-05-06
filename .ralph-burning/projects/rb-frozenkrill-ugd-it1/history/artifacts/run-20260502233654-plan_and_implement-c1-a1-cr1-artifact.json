@@ -1,0 +1,16 @@
+{
+  "artifact_id": "run-20260502233654-plan_and_implement-c1-a1-cr1-artifact",
+  "payload_id": "run-20260502233654-plan_and_implement-c1-a1-cr1",
+  "stage_id": "plan_and_implement",
+  "created_at": "2026-05-02T23:52:03.451831356Z",
+  "content": "# Plan and Implement\n\n## Change Summary\n\n{\"change_summary\":\"Implemented both requested structural simplifications in frozenkrill-core/src/secret_sharing.rs: removed the duplicate internal Share schema and switched split/combine/test-only raw-mnemonic paths to VssJsonWalletDescriptionV0 directly; simplified SuccessEntry to carry only the recovered mnemonic plus the normalized verified input group, with derive_metadata consuming that group directly. The recovery path still verifies Pedersen share/blinder pairs against candidate verifier sets, preserves lo/hi candidate cross-product enumeration, fails closed on ambiguous metadata, and keeps strict-majority duress aggregation. Net source reduction measured against local feature/pedersen-secret-sharing is 108 insertions and 374 deletions, for a net reduction of 266 lines.\",\"outstanding_risks\":[\"The requested origin/feature/pedersen-secret-sharing diff command could not be run exactly because this checkout has no origin/feature/pedersen-secret-sharing ref and git fetch origin featu\n\n## Steps\n\n1. [Completed] codex implementation turn\n\n## Validation Evidence\n\nNone provided.\n\n## Outstanding Risks\n\nNone identified.\n",
+  "record_kind": "stage_primary",
+  "producer": {
+    "type": "agent",
+    "requested_backend_family": "codex",
+    "requested_model_id": "gpt-5.5-high",
+    "actual_backend_family": "codex",
+    "actual_model_id": "gpt-5.5-high"
+  },
+  "completion_round": 1
+}

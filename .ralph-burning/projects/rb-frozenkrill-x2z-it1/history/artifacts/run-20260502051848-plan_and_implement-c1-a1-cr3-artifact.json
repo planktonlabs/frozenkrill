@@ -1,0 +1,16 @@
+{
+  "artifact_id": "run-20260502051848-plan_and_implement-c1-a1-cr3-artifact",
+  "payload_id": "run-20260502051848-plan_and_implement-c1-a1-cr3",
+  "stage_id": "plan_and_implement",
+  "created_at": "2026-05-02T06:01:01.852515323Z",
+  "content": "# Plan and Implement\n\n## Change Summary\n\n{\n  \"change_summary\": \"Applied the pending documentation remediation in docs/secret_sharing.md. The guide no longer documents unsupported or deprecated CLI usage: removed --wallet-file-type from split-secret, removed --display-mnemonic from combine-secret examples, clarified that combine-secret prints the recovered mnemonic on success, and corrected the example decrypted VSS JSON to use the current serialized values \\\"singlesig\\\" and \\\"segwit-native\\\" with direct singlesig public metadata. I also tightened the adjacent credential documentation so --password/--keyfile/--difficulty are described as source-wallet open options, while --share-password/--share-keyfile/--no-share-keyfile/--share-difficulty document the current share-encryption override model.\",\n  \"outstanding_risks\": [],\n  \"steps\": [\n    {\n      \"description\": \"Reviewed docs/secret_sharing.md against the current split-secret/combine-secret CLI definitions and wallet metadata serializers.\",\n      \"order\": 1,\n      \"status\": \"c\n\n## Steps\n\n1. [Completed] codex implementation turn\n\n## Validation Evidence\n\nNone provided.\n\n## Outstanding Risks\n\nNone identified.\n",
+  "record_kind": "stage_primary",
+  "producer": {
+    "type": "agent",
+    "requested_backend_family": "codex",
+    "requested_model_id": "gpt-5.5-high",
+    "actual_backend_family": "codex",
+    "actual_model_id": "gpt-5.5-high"
+  },
+  "completion_round": 3
+}

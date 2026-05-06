@@ -1,0 +1,16 @@
+{
+  "artifact_id": "run-20260502013456-plan_and_implement-c1-a1-cr3-artifact",
+  "payload_id": "run-20260502013456-plan_and_implement-c1-a1-cr3",
+  "stage_id": "plan_and_implement",
+  "created_at": "2026-05-02T02:43:34.105913502Z",
+  "content": "# Plan and Implement\n\n## Change Summary\n\n{\n  \"change_summary\": \"Implemented the pending complete-share threshold amendment in frozenkrill-core/src/secret_sharing.rs. combine_vss_wallets now accepts a recovered candidate only when at least the candidate threshold worth of distinct cryptographic share identifiers verify as complete inputs: the low half must verify, the high half must verify for 24-word candidates, and the typed vsss-rs share identifiers for low/high halves must match. Added complete_vsss_share_identifier as the shared identifier extraction helper and added a regression test for the 3-of-5 24-word split case where low recovery succeeds from ids {1,2,3}, high recovery succeeds from ids {3,4,5}, but their complete intersection is below threshold and must be rejected.\",\n  \"outstanding_risks\": [\n    \"The working tree still contains modified .ralph-burning orchestration state outside the source-code review scope; I left it untouched.\",\n    \"This round was scoped to the pending amendment on top of the already-present \n\n## Steps\n\n1. [Completed] codex implementation turn\n\n## Validation Evidence\n\nNone provided.\n\n## Outstanding Risks\n\nNone identified.\n",
+  "record_kind": "stage_primary",
+  "producer": {
+    "type": "agent",
+    "requested_backend_family": "codex",
+    "requested_model_id": "gpt-5.5-high",
+    "actual_backend_family": "codex",
+    "actual_model_id": "gpt-5.5-high"
+  },
+  "completion_round": 3
+}

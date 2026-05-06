@@ -1,0 +1,16 @@
+{
+  "artifact_id": "run-20260502051848-plan_and_implement-c1-a1-cr1-artifact",
+  "payload_id": "run-20260502051848-plan_and_implement-c1-a1-cr1",
+  "stage_id": "plan_and_implement",
+  "created_at": "2026-05-02T05:34:31.306102718Z",
+  "content": "# Plan and Implement\n\n## Change Summary\n\n{\"change_summary\":\"Implemented bead frozenkrill-x2z by removing the speculative OriginalWalletJson VSS metadata enum and storing SinglesigPublicMetadataV0 directly, simplifying recovery/test call sites accordingly, and centralizing the shared encrypted wallet envelope construction in frozenkrill-core/src/lib.rs so singlesig, multisig, compact, and VSS encoders use one helper for encrypt/header/padding/final serialization. The encrypted envelope byte semantics remain the same: payload ciphertext length is captured before padding, header encryption still uses the outer key/nonce, and VSS remains restricted to V0Standard.\",\"steps\":[{\"order\":1,\"status\":\"completed\",\"description\":\"Dropped OriginalWalletJson and changed VssJsonWalletDescriptionV0::original_wallet to SinglesigPublicMetadataV0.\"},{\"order\":2,\"status\":\"completed\",\"description\":\"Removed enum-match defensive multisig handling and is_singlesig/is_multisig helpers from the VSS wallet-description path.\"},{\"order\":3,\"status\":\"completed\n\n## Steps\n\n1. [Completed] codex implementation turn\n\n## Validation Evidence\n\nNone provided.\n\n## Outstanding Risks\n\nNone identified.\n",
+  "record_kind": "stage_primary",
+  "producer": {
+    "type": "agent",
+    "requested_backend_family": "codex",
+    "requested_model_id": "gpt-5.5-high",
+    "actual_backend_family": "codex",
+    "actual_model_id": "gpt-5.5-high"
+  },
+  "completion_round": 1
+}

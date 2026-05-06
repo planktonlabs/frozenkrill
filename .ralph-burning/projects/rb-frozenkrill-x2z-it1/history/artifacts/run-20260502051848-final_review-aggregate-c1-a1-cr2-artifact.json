@@ -1,0 +1,13 @@
+{
+  "artifact_id": "run-20260502051848-final_review-aggregate-c1-a1-cr2-artifact",
+  "payload_id": "run-20260502051848-final_review-aggregate-c1-a1-cr2-payload",
+  "stage_id": "final_review",
+  "created_at": "2026-05-02T05:55:54.013711823Z",
+  "content": "# Final Review Aggregate\n\n**Summary:** Final review accepted 1 amendment(s); restart required.\n**Restart Required:** true\n**Force Completed:** false\n**Total Reviewers:** 2\n**Unique Amendments:** 1\n**Final Review Restarts:** 2/25\n**Effective Min Reviewers:** 1\n**Exhausted Count:** 1\n\n## Accepted\n\n- `fr-2-d4bb881f`\n\n## Rejected\n\nNone.\n\n## Disputed\n\nNone.\n\n## Final Accepted Amendments\n\n### `fr-2-d4bb881f`\n\n**Classification:** fix_current_bead\n\n`docs/secret_sharing.md` still documents several stale user-facing details that no longer match the branch: line 98 lists `--wallet-file-type` for `split-secret`, but the CLI explicitly has no such flag and hardcodes VSS shares to `V0Standard` in `src/main.rs:552` and `src/main.rs:1250`; lines 110 and 115 present `--display-mnemonic` as the way to show output, but the flag is hidden/deprecated in `src/main.rs:596` and ignored while the mnemonic is printed unconditionally in `src/commands/combine_secret.rs:168`; lines 143 and 153 show JSON values (`\"single\"`, `\"segwit_native\"`) that do not match the serializers (`\"singlesig\"` at `frozenkrill-core/src/wallet_description.rs:119`, `\"segwit-native\"` at `frozenkrill-core/src/wallet_description.rs:157`). This will lead users following the guide to pass unsupported flags or misunderstand the actual share payload; update the guide to match the current CLI and serialized values.\n\n",
+  "record_kind": "stage_aggregate",
+  "producer": {
+    "type": "system",
+    "component": "final_review_aggregator"
+  },
+  "completion_round": 2
+}

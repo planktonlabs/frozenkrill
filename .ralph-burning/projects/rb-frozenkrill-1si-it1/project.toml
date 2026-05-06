@@ -1,0 +1,7 @@
+id = "rb-frozenkrill-1si-it1"
+name = "P3 cleanup trio (1si)"
+flow = "iterative_minimal"
+prompt_reference = "prompt.md"
+prompt_hash = "b1fc155274ade481fbb684259739ca542f5cd6a95dd79916be48a3365f48f368"
+created_at = "2026-05-03T00:56:08.759485710Z"
+status_summary = "created"

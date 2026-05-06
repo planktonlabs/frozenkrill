@@ -89,7 +89,7 @@ pub(crate) fn singlesig_core_generate(
     theme: &dyn Theme,
     term: &Term,
     secp: &mut Secp256k1<All>,
-    mut rng: &mut impl CryptoRng,
+    mut rng: &mut (impl CryptoRng + frozenkrill_core::rand::RngCore),
     ic: impl InternetChecker,
     args: SinglesigCoreGenerateArgs,
 ) -> anyhow::Result<()> {
@@ -208,7 +208,7 @@ pub(crate) fn multisig_core_generate(
     theme: &dyn Theme,
     term: &Term,
     secp: &mut Secp256k1<All>,
-    mut rng: &mut impl CryptoRng,
+    mut rng: &mut (impl CryptoRng + frozenkrill_core::rand::RngCore),
     args: MultisigCoreGenerateArgs,
 ) -> anyhow::Result<()> {
     warn_difficulty_level(args.difficulty);

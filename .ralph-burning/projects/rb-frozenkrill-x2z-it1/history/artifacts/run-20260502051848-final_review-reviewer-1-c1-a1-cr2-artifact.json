@@ -1,0 +1,16 @@
+{
+  "artifact_id": "run-20260502051848-final_review-reviewer-1-c1-a1-cr2-artifact",
+  "payload_id": "run-20260502051848-final_review-reviewer-1-c1-a1-cr2-payload",
+  "stage_id": "final_review",
+  "created_at": "2026-05-02T05:55:14.055899276Z",
+  "content": "# Final Review Proposal\n**Producer:** agent:codex/gpt-5.5-xhigh\n\n## Summary\n\nReviewed the branch diff/status and the changed implementation paths. `nix develop --command cargo test --workspace`, `cargo clippy --workspace --all-targets -- -D warnings`, `cargo fmt --check`, `cargo build --workspace`, and `nix build` passed. Found one user-facing documentation correctness gap.\n\n## Amendments\n\n1. `docs/secret_sharing.md` still documents several stale user-facing details that no longer match the branch: line 98 lists `--wallet-file-type` for `split-secret`, but the CLI explicitly has no such flag and hardcodes VSS shares to `V0Standard` in `src/main.rs:552` and `src/main.rs:1250`; lines 110 and 115 present `--display-mnemonic` as the way to show output, but the flag is hidden/deprecated in `src/main.rs:596` and ignored while the mnemonic is printed unconditionally in `src/commands/combine_secret.rs:168`; lines 143 and 153 show JSON values (`\"single\"`, `\"segwit_native\"`) that do not match the serializers (`\"singlesig\"` at `frozenkrill-core/src/wallet_description.rs:119`, `\"segwit-native\"` at `frozenkrill-core/src/wallet_description.rs:157`). This will lead users following the guide to pass unsupported flags or misunderstand the actual share payload; update the guide to match the current CLI and serialized values.\n   Classification: fix_current_bead\n   Rationale: The documentation is part of the reviewed branch and now contradicts the implemented CLI/API behavior in ways that affect user commands and recovery expectations.\n",
+  "record_kind": "stage_supporting",
+  "producer": {
+    "type": "agent",
+    "requested_backend_family": "codex",
+    "requested_model_id": "gpt-5.5-xhigh",
+    "actual_backend_family": "codex",
+    "actual_model_id": "gpt-5.5-xhigh"
+  },
+  "completion_round": 2
+}

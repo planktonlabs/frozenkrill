@@ -1,0 +1,16 @@
+{
+  "artifact_id": "run-20260502051848-final_review-reviewer-1-c1-a1-cr1-artifact",
+  "payload_id": "run-20260502051848-final_review-reviewer-1-c1-a1-cr1-payload",
+  "stage_id": "final_review",
+  "created_at": "2026-05-02T05:39:42.028389250Z",
+  "content": "# Final Review Proposal\n**Producer:** agent:codex/gpt-5.5-xhigh\n\n## Summary\n\nReviewed the branch delta against the requested fork point, excluding live .ralph-burning state. Code changes for dropping `OriginalWalletJson` and unifying the encryption envelope look correct; `nix develop --command cargo test --workspace`, `cargo fmt --check`, `cargo clippy --workspace --all-targets -- -D warnings`, `cargo build --workspace`, and `nix build` passed. One documentation correctness fix remains.\n\n## Amendments\n\n1. docs/secret_sharing.md:127 documents a decrypted VSS share JSON shape that no longer matches the implementation: docs/secret_sharing.md:133-134 call the share and verifier fields base64 even though the code serializes hex strings, and docs/secret_sharing.md:136-144 still show a tagged `original_wallet` with `wallet_type`, `seed_phrase`, `descriptors`, and `public_keys`. The current schema stores `original_wallet` directly as `SinglesigPublicMetadataV0` (frozenkrill-core/src/wallet_description.rs:1347) and includes `blinder_share_data` plus optional `*_hi` fields (frozenkrill-core/src/wallet_description.rs:1331). Update the docs example and file-format text so users and future maintainers do not rely on the removed enum/tagged layout or expect fields that are not present.\n   Classification: fix_current_bead\n   Rationale: The bead intentionally changes the VSS JSON shape; leaving the user-facing file-format documentation on the old shape is a correctness gap for an unreleased but security-sensitive recovery feature.\n",
+  "record_kind": "stage_supporting",
+  "producer": {
+    "type": "agent",
+    "requested_backend_family": "codex",
+    "requested_model_id": "gpt-5.5-xhigh",
+    "actual_backend_family": "codex",
+    "actual_model_id": "gpt-5.5-xhigh"
+  },
+  "completion_round": 1
+}

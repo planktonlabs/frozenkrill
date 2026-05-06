@@ -1,0 +1,16 @@
+{
+  "artifact_id": "run-20260502051848-final_review-vote-2-c1-a1-cr1-artifact",
+  "payload_id": "run-20260502051848-final_review-vote-2-c1-a1-cr1-payload",
+  "stage_id": "final_review",
+  "created_at": "2026-05-02T05:40:51.836107380Z",
+  "content": "# Final Review Votes\n**Producer:** agent:claude/claude-opus-4-7-max\n\n## Summary\n\nBoth amendments identify the same real documentation defect in docs/secret_sharing.md:127-146: the example claims base64 encoding (code uses hex), shows a tagged `wallet_type: \"singlesig\"` discriminator that no longer exists after the enum drop, lists fictional fields (`seed_phrase`, `descriptors`, `public_keys`) that are absent from `SinglesigPublicMetadataV0`, and omits real fields (`blinder_share_data`, `mnemonic_length`, `*_hi` variants). Verified against frozenkrill-core/src/wallet_description.rs:1280-1348. Both votes accept; they describe the same fix with fr-1-4a3963db adding a concrete generation recommendation.\n\n## Votes\n\n- `fr-1-19ba7088`: Accept\n  Confirmed accurate: docs/secret_sharing.md:133-134 mislabels share_data/verification_data as base64 while wallet_description.rs:1331-1336 documents them as hex strings; docs/secret_sharing.md:136-144 shows a tagged `original_wallet` with fields (`wallet_type`, `seed_phrase`, `descriptors`, `public_keys`) that do not exist on `SinglesigPublicMetadataV0` (wallet_description.rs:1280-1297), and omits `blinder_share_data`, `mnemonic_length`, and the optional `*_hi` fields actually present at wallet_description.rs:1330-1345. Stale docs after the enum drop will mislead users inspecting decrypted shares and future maintainers reasoning about the format. The fix is bounded and low-risk.\n- `fr-1-4a3963db`: Accept\n  Same defect as fr-1-19ba7088 with stronger remediation: regenerating the example from a real round-trip test (e.g. test_random_24_word_round_trip) prevents the doc from drifting again, since hand-maintained JSON examples have demonstrably rotted twice already (pre-x2z fictional fields plus the post-x2z stale tag). Accept; the implementer should treat fr-1-19ba7088 and fr-1-4a3963db as a single doc fix and follow the generated-from-tests recommendation to keep the example honest going forward.\n",
+  "record_kind": "stage_supporting",
+  "producer": {
+    "type": "agent",
+    "requested_backend_family": "claude",
+    "requested_model_id": "claude-opus-4-7-max",
+    "actual_backend_family": "claude",
+    "actual_model_id": "claude-opus-4-7-max"
+  },
+  "completion_round": 1
+}

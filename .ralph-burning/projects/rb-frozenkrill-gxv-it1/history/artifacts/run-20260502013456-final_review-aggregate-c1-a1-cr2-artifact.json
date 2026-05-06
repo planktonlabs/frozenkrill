@@ -1,0 +1,13 @@
+{
+  "artifact_id": "run-20260502013456-final_review-aggregate-c1-a1-cr2-artifact",
+  "payload_id": "run-20260502013456-final_review-aggregate-c1-a1-cr2-payload",
+  "stage_id": "final_review",
+  "created_at": "2026-05-02T02:33:59.403703586Z",
+  "content": "# Final Review Aggregate\n\n**Summary:** Final review accepted 1 amendment(s); restart required.\n**Restart Required:** true\n**Force Completed:** false\n**Total Reviewers:** 2\n**Unique Amendments:** 1\n**Final Review Restarts:** 2/25\n**Effective Min Reviewers:** 1\n**Exhausted Count:** 1\n\n## Accepted\n\n- `fr-2-5594977e`\n\n## Rejected\n\nNone.\n\n## Disputed\n\nNone.\n\n## Final Accepted Amendments\n\n### `fr-2-5594977e`\n\n**Classification:** fix_current_bead\n\n`combine_vss_wallets` can accept and authenticate recovered metadata from fewer than the threshold number of complete VSS shares. At `frozenkrill-core/src/secret_sharing.rs:1205` it builds `verified_inputs` as the intersection of shares whose low and high halves both verify for the winning 24-word candidate, but `frozenkrill-core/src/secret_sharing.rs:1211` only requires that intersection to be non-empty before deriving metadata. For a 3-of-5 24-word wallet, low-half recovery can succeed from shares {1,2,3} while high-half recovery succeeds from {3,4,5}, leaving only share 3 as a complete verified input. Then `derive_metadata` computes `is_duress` from that one input at `frozenkrill-core/src/secret_sharing.rs:1378`/`frozenkrill-core/src/secret_sharing.rs:1385`; a single tampered complete share with `is_duress=true` becomes a strict majority, `authenticate` can still pass because it validates xpub/network via no-passphrase rebuild, and `VssRecovery::rebuild_singlesig` permits passphrase use when `metadata.is_duress` is true at `frozenkrill-core/src/secret_sharing.rs:83`. Require at least the candidate threshold worth of distinct complete verified share identifiers before accepting a candidate and deriving metadata, or otherwise keep metadata unauthenticated so the candidate is rejected.\n\n",
+  "record_kind": "stage_aggregate",
+  "producer": {
+    "type": "system",
+    "component": "final_review_aggregator"
+  },
+  "completion_round": 2
+}
