@@ -1493,12 +1493,13 @@ dependencies = [
 
 [[package]]
 name = "miniscript"
-version = "12.3.8"
+version = "13.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "06a2f93613888f7d069f00cb94f83dab82f01f78a50c9935814a2547fa30ceba"
+checksum = "4d79651cdf97eaf4d1e4478bfdf49fed1d8df3b24f8e60349e154ba156032a8b"
 dependencies = [
  "bech32",
  "bitcoin",
+ "hex-conservative 1.3.0",
 ]
 
 [[package]]
