@@ -6,12 +6,9 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 alkali = "0.3"
-libsodium-sys-stable = "1.22.3"
+libsodium-sys-stable = "1.24.5"
 anyhow = { version = "1", features = ["backtrace"] }
-bip39 = { git = "https://github.com/rust-bitcoin/rust-bip39", features = [
-    "rand",
-    "zeroize",
-] }
+bip39 = { version = "3", features = ["rand", "zeroize"] }
 bitcoin = "0.32"
 blake3 = { version = "1", features = ["rayon"] }
 env_logger = "0.11"

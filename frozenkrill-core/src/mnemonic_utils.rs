@@ -277,13 +277,13 @@ static WORDS: [&str; 2048] = [
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bip39::Mnemonic;
+    use bip39::{Mnemonic, WordCount};
     use std::str::FromStr;
 
     #[test]
     fn test_complete_words_with_checksum() -> anyhow::Result<()> {
         let mut rng = rand::thread_rng();
-        for word_count in [24, 12] {
+        for word_count in [WordCount::Words24, WordCount::Words12] {
             let seed_phrase =
                 Mnemonic::generate_in(bip39::Language::English, word_count)?.to_string();
             println!("original seed phrase: {seed_phrase}");
