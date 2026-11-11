@@ -44,13 +44,9 @@ pub fn complete_words_with_checksum(
 }
 
 fn calculate_checksum(data: &[u8]) -> anyhow::Result<Vec<u8>> {
-    use std::io::Write;
-
     let mut checksum = Vec::new();
     let mut writer = BitStreamWriter::new(&mut checksum);
-    let mut sha2 = Sha256::new();
-    sha2.write_all(data)?;
-    let hash = sha2.finalize();
+    let hash = Sha256::digest(data);
     let mut check_cursor = bitcoin::io::Cursor::new(&hash);
     let mut check_reader = BitStreamReader::new(&mut check_cursor);
     for _ in 0..data.len() / 4 {
