@@ -382,7 +382,7 @@ mod tests {
     #[test]
     fn test_sign() -> anyhow::Result<()> {
         custom_logger::init();
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let secp = get_secp(&mut rng);
         let tempdir = tempfile::tempdir()?;
         let psbt_path = tempdir.path().join("psbt.psbt");

@@ -127,7 +127,7 @@ mod tests {
     #[test]
     fn test_encryption() -> anyhow::Result<()> {
         use pretty_assertions::assert_eq;
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let mut key = [0u8; KEY_SIZE];
         rng.fill_bytes(&mut key);
         let nonce = get_random_nonce(&mut rng)?;

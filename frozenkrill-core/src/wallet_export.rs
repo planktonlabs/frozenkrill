@@ -313,7 +313,7 @@ mod tests {
         // TODO: also test using https://github.com/satoshilabs/slips/blob/master/slip-0014.md
         let seed_phrase = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
         let mnemonic = Secret::from(Box::new(bip39::Mnemonic::from_str(seed_phrase)?));
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let secp = get_secp(&mut rng);
         let w = SingleSigWalletDescriptionV0::generate(
             Arc::new(mnemonic),

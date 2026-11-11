@@ -278,7 +278,7 @@ mod tests {
 
     #[test]
     fn test_complete_words_with_checksum() -> anyhow::Result<()> {
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         for word_count in [WordCount::Words24, WordCount::Words12] {
             let seed_phrase =
                 Mnemonic::generate_in(bip39::Language::English, word_count)?.to_string();

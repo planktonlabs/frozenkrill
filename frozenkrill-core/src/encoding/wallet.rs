@@ -417,7 +417,7 @@ mod tests {
     #[test]
     fn test_serialization_deserialization() -> anyhow::Result<()> {
         use pretty_assertions::assert_eq;
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let secp = get_secp(&mut rng);
         let mut ddpks = vec![
             random_wpkh_descriptor(&secp, &mut rng)?,

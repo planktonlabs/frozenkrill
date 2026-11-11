@@ -1633,7 +1633,7 @@ mod tests {
         // BIP 84 test vectors
         let seed_phrase = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
         let mnemonic = Secret::from(Box::new(bip39::Mnemonic::from_str(seed_phrase)?));
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let secp = get_secp(&mut rng);
         let w = SingleSigWalletDescriptionV0::generate(
             Arc::new(mnemonic),
@@ -1670,7 +1670,7 @@ mod tests {
     //         "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
     //     let mnemonic = Secret::new(bip39::Mnemonic::from_str(seed_phrase)?);
     //     let root_key = get_root_key(&mnemonic, &SecretString::new("".into()), Network::Bitcoin)?;
-    //     let mut rng = rand::thread_rng();
+    //     let mut rng = rand::rng();
     //     let secp = get_secp(&mut rng);
     //     let derivation_path = DerivationPath::from_str("48'/0'/0'/2'")?;
     //     let xpriv = Secret::new(WExtendedPrivKey(
@@ -1725,7 +1725,7 @@ mod tests {
         use pretty_assertions::assert_eq;
 
         println!("header length: {ENCRYPTED_HEADER_LENGTH}");
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
 
         let key = Secret::from(Box::new(get_random_key(&mut rng)?));
         let nonce = get_random_nonce(&mut rng)?;
