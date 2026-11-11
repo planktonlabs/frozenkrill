@@ -263,8 +263,10 @@ pub fn ms_dpks_to_ddpk(
 ) -> anyhow::Result<Descriptor<DescriptorPublicKey>> {
     match script_type {
         ScriptType::SegwitNative => Ok(miniscript::Descriptor::new_wsh_sortedmulti(
-            configuration.required.try_into()?,
-            descriptors.into_iter().sorted_by(Ord::cmp).collect(),
+            miniscript::Threshold::new(
+                configuration.required.try_into()?,
+                descriptors.into_iter().sorted_by(Ord::cmp).collect(),
+            )?,
         )?),
     }
 }

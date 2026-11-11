@@ -377,7 +377,7 @@ pub fn deserialize_descriptor_descriptor_pk(
                     pks.push(deserialize_descriptor_pk(r)?);
                 }
                 Ok(Descriptor::Sh(miniscript::descriptor::Sh::new_sortedmulti(
-                    k, pks,
+                    miniscript::Threshold::new(k, pks)?,
                 )?))
             }
             VarInt(3) => todo!("Sh(Ms) isn't supported (yet)"),
@@ -394,7 +394,9 @@ pub fn deserialize_descriptor_descriptor_pk(
                     pks.push(deserialize_descriptor_pk(r)?);
                 }
                 Ok(Descriptor::Wsh(
-                    miniscript::descriptor::Wsh::new_sortedmulti(k, pks)?,
+                    miniscript::descriptor::Wsh::new_sortedmulti(miniscript::Threshold::new(
+                        k, pks,
+                    )?)?,
                 ))
             }
             VarInt::ONE => todo!("Wsh(Ms) isn't supported (yet)"),
@@ -417,7 +419,7 @@ mod tests {
     #[test]
     fn test_serialization_deserialization() -> anyhow::Result<()> {
         use pretty_assertions::assert_eq;
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let secp = get_secp(&mut rng);
         let mut ddpks = vec![
             random_wpkh_descriptor(&secp, &mut rng)?,

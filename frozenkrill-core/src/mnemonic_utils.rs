@@ -44,13 +44,9 @@ pub fn complete_words_with_checksum(
 }
 
 fn calculate_checksum(data: &[u8]) -> anyhow::Result<Vec<u8>> {
-    use std::io::Write;
-
     let mut checksum = Vec::new();
     let mut writer = BitStreamWriter::new(&mut checksum);
-    let mut sha2 = Sha256::new();
-    sha2.write_all(data)?;
-    let hash = sha2.finalize();
+    let hash = Sha256::digest(data);
     let mut check_cursor = bitcoin::io::Cursor::new(&hash);
     let mut check_reader = BitStreamReader::new(&mut check_cursor);
     for _ in 0..data.len() / 4 {
@@ -277,13 +273,13 @@ static WORDS: [&str; 2048] = [
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bip39::Mnemonic;
+    use bip39::{Mnemonic, WordCount};
     use std::str::FromStr;
 
     #[test]
     fn test_complete_words_with_checksum() -> anyhow::Result<()> {
-        let mut rng = rand::thread_rng();
-        for word_count in [24, 12] {
+        let mut rng = rand::rng();
+        for word_count in [WordCount::Words24, WordCount::Words12] {
             let seed_phrase =
                 Mnemonic::generate_in(bip39::Language::English, word_count)?.to_string();
             println!("original seed phrase: {seed_phrase}");

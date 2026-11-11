@@ -112,7 +112,7 @@ pub fn random_sh_sortedmulti_descriptor(
     }
 
     Ok(Descriptor::Sh(miniscript::descriptor::Sh::new_sortedmulti(
-        k, dpks,
+        miniscript::Threshold::new(k, dpks)?,
     )?))
 }
 
@@ -152,7 +152,7 @@ pub fn random_wsh_descriptor(
 
     // TODO: add others Wsh types
     Ok(Descriptor::Wsh(
-        miniscript::descriptor::Wsh::new_sortedmulti(k, dpks)?,
+        miniscript::descriptor::Wsh::new_sortedmulti(miniscript::Threshold::new(k, dpks)?)?,
     ))
 }
 
@@ -213,10 +213,7 @@ pub fn random_descriptor_pk(
     }
 }
 
-pub fn random_pk(
-    secp: &Secp256k1<All>,
-    rng: &mut impl CryptoRng,
-) -> bitcoin::secp256k1::PublicKey {
+pub fn random_pk(secp: &Secp256k1<All>, rng: &mut impl CryptoRng) -> bitcoin::secp256k1::PublicKey {
     let mut secret_bytes = [0u8; 32];
     rng.fill_bytes(&mut secret_bytes);
     let secret =
@@ -225,10 +222,7 @@ pub fn random_pk(
     kp.public_key()
 }
 
-pub fn random_xpub(
-    secp: &Secp256k1<All>,
-    rng: &mut impl CryptoRng,
-) -> anyhow::Result<Xpub> {
+pub fn random_xpub(secp: &Secp256k1<All>, rng: &mut impl CryptoRng) -> anyhow::Result<Xpub> {
     let chain_code: [u8; 32] = rand::random();
     let xkey = Xpub {
         network: bitcoin::NetworkKind::Test,

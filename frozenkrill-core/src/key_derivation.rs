@@ -249,7 +249,7 @@ mod tests {
     #[test]
     fn test_key_derivation() -> anyhow::Result<()> {
         use pretty_assertions::assert_eq;
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let mut password = [1u8; 1024 * 1024];
         rng.fill_bytes(&mut password);
         let salt = get_random_salt(&mut rng)?;
