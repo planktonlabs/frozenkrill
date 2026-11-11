@@ -31,10 +31,10 @@ walkdir = "2"
 zeroize = { version = "1", features = ["zeroize_derive"] }
 
 [dev-dependencies]
-argon2 = { version = "0.5", features = ["zeroize"] }
-chacha20poly1305 = "0.10"
+argon2 = { version = "0.6", features = ["zeroize"] }
+chacha20poly1305 = "0.11"
 mockall = "0.15"
-orion = "0.17"
+orion = "0.18"
 pretty_assertions = "1"
-rargon2 = { version = "2", package = "rust-argon2" }
+rargon2 = { version = "3", package = "rust-argon2" }
 tempfile = "3.21"

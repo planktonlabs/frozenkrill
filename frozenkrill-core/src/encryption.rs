@@ -65,6 +65,7 @@ fn libsodium_decrypt_xchacha20poly1305(
 #[cfg(test)]
 mod tests {
     use chacha20poly1305::{KeyInit, aead::Aead};
+    use orion::hazardous::aead::xchacha20poly1305;
     use rand_core::RngCore;
 
     use crate::random_generation_utils::get_random_nonce;
@@ -99,17 +100,11 @@ mod tests {
         nonce: &[u8; NONCE_SIZE],
         message: &[u8],
     ) -> anyhow::Result<Vec<u8>> {
-        let key = orion::hazardous::aead::xchacha20poly1305::SecretKey::from_slice(key)?;
-        let nonce = orion::aead::streaming::Nonce::from_slice(nonce)?;
+        let key = xchacha20poly1305::SecretKey::try_from(&key[..])?;
+        let nonce = xchacha20poly1305::Nonce::try_from(&nonce[..])?;
         let mut ciphertext =
             vec![0u8; message.len() + alkali::symmetric::aead::xchacha20poly1305_ietf::MAC_LENGTH];
-        orion::hazardous::aead::xchacha20poly1305::seal(
-            &key,
-            &nonce,
-            message,
-            None,
-            &mut ciphertext,
-        )?;
+        xchacha20poly1305::XChaCha20Poly1305::seal(&key, &nonce, message, None, &mut ciphertext)?;
         Ok(ciphertext)
     }
 
@@ -118,20 +113,14 @@ mod tests {
         nonce: &[u8; NONCE_SIZE],
         ciphertext: &[u8],
     ) -> anyhow::Result<Vec<u8>> {
-        let key = orion::hazardous::aead::xchacha20poly1305::SecretKey::from_slice(key)?;
-        let nonce = orion::aead::streaming::Nonce::from_slice(nonce)?;
+        let key = xchacha20poly1305::SecretKey::try_from(&key[..])?;
+        let nonce = xchacha20poly1305::Nonce::try_from(&nonce[..])?;
         let mut cleartext = vec![
             0u8;
             ciphertext.len()
                 - alkali::symmetric::aead::xchacha20poly1305_ietf::MAC_LENGTH
         ];
-        orion::hazardous::aead::xchacha20poly1305::open(
-            &key,
-            &nonce,
-            ciphertext,
-            None,
-            &mut cleartext,
-        )?;
+        xchacha20poly1305::XChaCha20Poly1305::open(&key, &nonce, ciphertext, None, &mut cleartext)?;
         Ok(cleartext)
     }
 
