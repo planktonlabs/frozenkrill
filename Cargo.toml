@@ -12,9 +12,7 @@ base32 = "0.5"
 clap = { version = "4", features = ["derive", "env"] }
 const_format = "0.2"
 current_platform = "0.2"
-dialoguer = { git = "https://github.com/galtland/dialoguer", branch = "master", features = [
-    "fuzzy-select",
-] }
+dialoguer = { version = "0.12", features = ["fuzzy-select"] }
 frozenkrill-core = { path = "./frozenkrill-core" }
 indicatif = "0.18"
 mockall = "0.15"
