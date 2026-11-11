@@ -146,7 +146,7 @@ impl PsbtExt for Psbt {
     fn internal_extract_tx(self) -> Transaction {
         let mut tx: Transaction = self.unsigned_tx;
 
-        for (vin, psbtin) in tx.input.iter_mut().zip(self.inputs.into_iter()) {
+        for (vin, psbtin) in tx.input.iter_mut().zip(self.inputs) {
             vin.script_sig = psbtin.final_script_sig.unwrap_or_default();
             vin.witness = psbtin.final_script_witness.unwrap_or_default();
         }
