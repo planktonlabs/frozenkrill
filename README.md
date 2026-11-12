@@ -67,7 +67,7 @@ The recommended way is to download and boot [our minimalist Alpine distribution]
 
 For more security considerations, see [this document](./docs/security.md)
 
-Alternatively download the source code or Linux binary on [GitHub Releases](https://github.com/planktonlabs/frozenkrill/releases)
+Alternatively download the source code or Linux binary on [GitHub Releases](https://github.com/planktonlabs/frozenkrill/releases) and verify its signature as described in [Release.md](./Release.md)
 
 To build from sources, install rust (use [rustup](https://rustup.rs/)), then run on the source directory:
 
