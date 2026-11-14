@@ -9,7 +9,7 @@ use frozenkrill_core::{
     },
     itertools::Itertools,
     log::{self, debug},
-    psbt::{open_psbt_file, save_psbt_file},
+    psbt::{ensure_sighash_all, open_psbt_file, save_psbt_file},
     wallet_description::PsbtWallet,
 };
 
@@ -28,7 +28,8 @@ pub(super) fn validated_input_psbt_sign(psbt: &Psbt) -> anyhow::Result<()> {
         !psbt.outputs.is_empty(),
         "The PSBT has no outputs, better avoid signing that"
     );
-    Ok(())
+    // Checked here too, before the wallet is opened, so a bad PSBT fails fast
+    ensure_sighash_all(psbt)
 }
 
 pub(super) fn ask_sign_non_duress(theme: &dyn Theme, term: &Term) -> anyhow::Result<bool> {
