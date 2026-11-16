@@ -1,10 +1,10 @@
 use anyhow::Context;
 use bitcoin::secp256k1::{All, Secp256k1};
 use bitcoin::{
-    FeeRate, PrivateKey, Psbt, PublicKey, Transaction, ecdsa,
+    EcdsaSighashType, FeeRate, PrivateKey, Psbt, PublicKey, TapSighashType, Transaction, ecdsa,
     psbt::{
         Error, ExtractTxError, GetKey, GetKeyError, IndexOutOfBoundsError, Input, KeyRequest,
-        OutputType, SignError, SigningAlgorithm, SigningKeys, SigningKeysMap,
+        OutputType, PsbtSighashType, SignError, SigningAlgorithm, SigningKeys, SigningKeysMap,
     },
     sighash::SighashCache,
 };
@@ -34,12 +34,36 @@ pub fn save_psbt_file<'a>(psbt: &Psbt, path: &'a Path) -> anyhow::Result<&'a Pat
     create_file(&psbt.serialize(), path)
 }
 
+/// Refuses PSBTs whose inputs request a sighash type that doesn't commit to the whole
+/// transaction.
+///
+/// With SIGHASH_NONE, SIGHASH_SINGLE or ANYONECANPAY the signature leaves some outputs or
+/// inputs uncommitted, so whoever holds the signed PSBT can change them after the user
+/// approved the outputs shown on screen.
+pub fn ensure_sighash_all(psbt: &Psbt) -> anyhow::Result<()> {
+    let allowed = [
+        PsbtSighashType::from(EcdsaSighashType::All),
+        // Taproot's default commits to the whole transaction just like SIGHASH_ALL
+        PsbtSighashType::from(TapSighashType::Default),
+    ];
+    for (index, input) in psbt.inputs.iter().enumerate() {
+        if let Some(sighash_type) = input.sighash_type {
+            anyhow::ensure!(
+                allowed.contains(&sighash_type),
+                "Input {index} requests sighash type {sighash_type}, refusing to sign: only SIGHASH_ALL is supported because other types allow the transaction to be changed after it is signed"
+            );
+        }
+    }
+    Ok(())
+}
+
 pub(super) fn sign_psbt(
     psbt: &mut Psbt,
     input_keys: &[&Secret<WExtendedPrivKey>],
     secp: &Secp256k1<All>,
 ) -> anyhow::Result<usize> {
     anyhow::ensure!(!input_keys.is_empty(), "No keys given for sign psbt");
+    ensure_sighash_all(psbt)?;
     let keys = input_keys
         .iter()
         .map(|k| k.expose_secret().0.to_owned())
@@ -379,6 +403,17 @@ mod tests {
     use super::*;
     use crate::{custom_logger, random_generation_utils::get_secp, slip132::FromSlip132};
 
+    // A testnet P2WPKH spend with one input (sighash type ALL) and two outputs
+    const TEST_PSBT_HEX: &str = "70736274ff010071020000000187ca9152f3540a73cfd51115277667e91a548fcf0544276f05fba9628c27fc5c0000000000fdffffff022a6203000000000016001487b78396f6f85213bce62e3374661bc578ae39d610560d00000000001600145c217d465b15f3c3041f9eac8ae88133485d4f6ae6340b00000100710200000001aa20bc793370fb83dba9a87753969fd3b9d7fd361be40a55d302f0d6fa1ddc410000000000feffffff02a8b81000000000001600149ef71340cba5b463069cfa4d781390cc9eefadb234de14d4010000001600140f4a26ef5174291b5c02b258a605d33944081b9f27cd240001011fa8b81000000000001600149ef71340cba5b463069cfa4d781390cc9eefadb2010304010000002206037a0f324d4c7baccc4da3bb2594cee6ee9f3b0771231fa7ce89b14ae191232bab0ccee87ee50000000001000000002202029402da79dd8b0d4f4d8eb625aaa79908088d0b1e10fbf70ab70fd5c84fbabbeb0ccee87ee501000000000000000000";
+    // The key that signs the input of TEST_PSBT_HEX
+    const TEST_SPRIV: &str = "vprv9Ks2HJ9nwsjejp3mbQnSKEEZfN9jNNAEvrBvZP6N3P473Q2u6Noskm5nSu7wyoyNZB6T4e9U5FWYPjcQFsFKFoATH6hWYkrr2GShCuAwfYs";
+
+    fn test_xpriv() -> anyhow::Result<Secret<WExtendedPrivKey>> {
+        Ok(Secret::from(Box::new(WExtendedPrivKey(
+            Xpriv::from_slip132_str(TEST_SPRIV)?,
+        ))))
+    }
+
     #[test]
     fn test_sign() -> anyhow::Result<()> {
         custom_logger::init();
@@ -386,15 +421,9 @@ mod tests {
         let secp = get_secp(&mut rng);
         let tempdir = tempfile::tempdir()?;
         let psbt_path = tempdir.path().join("psbt.psbt");
-        create_file(
-            &hex::decode(
-                "70736274ff010071020000000187ca9152f3540a73cfd51115277667e91a548fcf0544276f05fba9628c27fc5c0000000000fdffffff022a6203000000000016001487b78396f6f85213bce62e3374661bc578ae39d610560d00000000001600145c217d465b15f3c3041f9eac8ae88133485d4f6ae6340b00000100710200000001aa20bc793370fb83dba9a87753969fd3b9d7fd361be40a55d302f0d6fa1ddc410000000000feffffff02a8b81000000000001600149ef71340cba5b463069cfa4d781390cc9eefadb234de14d4010000001600140f4a26ef5174291b5c02b258a605d33944081b9f27cd240001011fa8b81000000000001600149ef71340cba5b463069cfa4d781390cc9eefadb2010304010000002206037a0f324d4c7baccc4da3bb2594cee6ee9f3b0771231fa7ce89b14ae191232bab0ccee87ee50000000001000000002202029402da79dd8b0d4f4d8eb625aaa79908088d0b1e10fbf70ab70fd5c84fbabbeb0ccee87ee501000000000000000000",
-            )?,
-            &psbt_path,
-        )?;
+        create_file(&hex::decode(TEST_PSBT_HEX)?, &psbt_path)?;
         let mut p = open_psbt_file(&psbt_path)?;
-        let spriv = "vprv9Ks2HJ9nwsjejp3mbQnSKEEZfN9jNNAEvrBvZP6N3P473Q2u6Noskm5nSu7wyoyNZB6T4e9U5FWYPjcQFsFKFoATH6hWYkrr2GShCuAwfYs";
-        let xpriv = Secret::from(Box::new(WExtendedPrivKey(Xpriv::from_slip132_str(spriv)?)));
+        let xpriv = test_xpriv()?;
         assert!(!p.inputs.is_empty());
         for i in &p.inputs {
             assert!(i.partial_sigs.is_empty())
@@ -405,6 +434,54 @@ mod tests {
         for i in &p.inputs {
             println!("{:?}", i);
             assert!(!i.partial_sigs.is_empty())
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn test_sign_without_sighash_type() -> anyhow::Result<()> {
+        let mut rng = rand::rng();
+        let secp = get_secp(&mut rng);
+        let mut p = Psbt::deserialize(&hex::decode(TEST_PSBT_HEX)?)?;
+        // An absent sighash type means SIGHASH_ALL
+        p.inputs[0].sighash_type = None;
+        let xpriv = test_xpriv()?;
+        assert_eq!(sign_psbt(&mut p, &[&xpriv], &secp)?, 1);
+        let sig = p.inputs[0]
+            .partial_sigs
+            .values()
+            .next()
+            .expect("a signature");
+        assert_eq!(sig.sighash_type, EcdsaSighashType::All);
+        Ok(())
+    }
+
+    #[test]
+    fn test_sign_refuses_sighash_types_other_than_all() -> anyhow::Result<()> {
+        let mut rng = rand::rng();
+        let secp = get_secp(&mut rng);
+        let xpriv = test_xpriv()?;
+        for sighash_type in [
+            PsbtSighashType::from(EcdsaSighashType::None),
+            PsbtSighashType::from(EcdsaSighashType::Single),
+            PsbtSighashType::from(EcdsaSighashType::AllPlusAnyoneCanPay),
+            PsbtSighashType::from(EcdsaSighashType::NonePlusAnyoneCanPay),
+            PsbtSighashType::from(EcdsaSighashType::SinglePlusAnyoneCanPay),
+        ] {
+            let mut p = Psbt::deserialize(&hex::decode(TEST_PSBT_HEX)?)?;
+            p.inputs[0].sighash_type = Some(sighash_type);
+            assert!(ensure_sighash_all(&p).is_err(), "{sighash_type} accepted");
+            let error = sign_psbt(&mut p, &[&xpriv], &secp)
+                .expect_err("signing must be refused")
+                .to_string();
+            assert!(
+                error.contains(&sighash_type.to_string()),
+                "unexpected error: {error}"
+            );
+            assert!(
+                p.inputs.iter().all(|i| i.partial_sigs.is_empty()),
+                "{sighash_type} produced a signature"
+            );
         }
         Ok(())
     }
